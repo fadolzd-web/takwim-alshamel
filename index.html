@@ -2171,22 +2171,111 @@ window.deleteSayeghCity=function(){var sel=document.getElementById('sayegh-city-
 window.editSayeghCity=function(){var sel=document.getElementById('sayegh-city-select');var code=sel.value;var idx=window._sayeghCities.findIndex(function(c){return c.code===code;});if(idx<0) return;var city=window._sayeghCities[idx];document.getElementById('inp-city-name').value=city.name;document.getElementById('inp-city-code').value=city.code;window._editingOldCode=city.code;var b=document.getElementById('btn-add-city');if(b){b.textContent='💾 حفظ التعديل';}};
 window.openDynamicSayegh=function(){var sel=document.getElementById('sayegh-city-select');if(!sel||!sel.value) return;window.open('https://taqwimalsayegh.com/city/'+sel.value,'_blank');};
 
-window._sayeghProxies=[
-function(url){return 'https://corsproxy.io/?'+encodeURIComponent(url);},
-function(url){return 'https://proxy.cors.sh/'+url;},
-function(url){return 'https://api.allorigins.win/raw?url='+encodeURIComponent(url);},
-function(url){return 'https://api.allorigins.win/get?url='+encodeURIComponent(url);},
-function(url){return 'https://corsproxy.org/?'+encodeURIComponent(url);},
-function(url){return 'https://proxy.hoppscotch.io/'+encodeURIComponent(url);},
-function(url){return 'https://api.allorigins.win/raw?url='+encodeURIComponent(url)+'&cb='+Date.now();}
-];
-window.fetchWith7ProxiesParallel=async function(originalUrl){
- var proxies=window._sayeghProxies;
- var tasks=proxies.map(function(makeUrl){return (async function(){try{var pUrl=makeUrl(originalUrl);var res=await fetch(pUrl,{method:'GET'});if(!res.ok) return null;var text=await res.text();if(pUrl.includes('/get?url=')){try{var j=JSON.parse(text);if(j.contents) text=j.contents;}catch(e){}}if(text&&text.length>500) return text;return null;}catch(e){return null;}})();});
- var results=await Promise.all(tasks);
- for(var i=0;i<results.length;i++){if(results[i]) return results[i];}
- return null;
+
+/* ===== جسر الصايغ - بلا بروكسي - عملية جراحية نظيفة =====
+   مصدر واحد: https://api.sayeghcalendar.com/city/{code} JSON مباشرة
+   + fallback داخل APK فقط: CapacitorHttp.get على https://taqwimalsayegh.com/city/{code}
+   ما فيه أي بروكسي للصايغ هنا. الفشل = فشل، ما فيه داتا مخترعة.
+   بروكسي النجومي / العتبة العلوية / تلغرام ما انلمس، بيضل بمكانو.
+   الإضافات (فارسي + برج القمر) بترجع مع نفس الجسر من السيرفر، للمرحلة 2.
+*/
+window.SAYEGH_BRIDGE = { apiBase: 'https://api.sayeghcalendar.com', htmlBase: 'https://taqwimalsayegh.com/city/' };
+window._sayeghLastExtras = null;
+window.getSayeghExtras = function(){ return window._sayeghLastExtras; };
+window._sayeghNormalizeCode = function(code){
+  try{
+    var s = String(code == null ? '' : code).trim();
+    if(window.toWesternDigits) s = window.toWesternDigits(s);
+    else { var mp={'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9','۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9'}; s = s.replace(/[٠-٩۰-۹]/g,function(m){return mp[m]||m;}); }
+    return s;
+  }catch(e){ return String(code); }
 };
+window._sayeghMapDayToPrayers = function(d){
+  if(!d) return null;
+  return {
+    bigMaghrib: d.maghrebTime || null,
+    ghurub: d.sunsetTime || null,
+    fadilaIshaStart: d.ishaFadhilatBeginTime || null,
+    midnight: d.midnightTime || null,
+    sahar: d.saharTime || null,
+    bigDhuhr: d.dhuhrTime || null,
+    zawal: d.zawalTime || null,
+    fadilaAsrStart: d.asrFadhilatBeginTime || null,
+    fadilaDhuhrEnd: d.dhuhrFadhilatEndTime || null,
+    asr: d.asrTime_1 || null,
+    asr2: d.asrTime_2 || null,
+    bigFajr: d.subhTime || null,
+    imsak: d.imsakTime || null,
+    fajr: d.dawnTime || null,
+    fadilaFajr: d.subhFadhilatEndTime || null,
+    shuruq: d.sunriseTime || null,
+    sunset: d.sunsetTime || null,
+    maghreb: d.maghrebTime || null,
+    isha: d.ishaTime || null
+  };
+};
+window.fetchSayeghBridge = async function(code){
+  var c = window._sayeghNormalizeCode(code);
+  if(!c || !/^\d+$/.test(c)) return null;
+  try{
+    var apiUrl = window.SAYEGH_BRIDGE.apiBase + '/city/' + c;
+    var res = await fetch(apiUrl, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+    if(res && res.ok){
+      var j = await res.json();
+      var months = (j && j.months) || [];
+      var now = new Date();
+      var m = now.getMonth() + 1, dy = now.getDate();
+      var md = null;
+      for(var i=0;i<months.length;i++){ if(months[i] && months[i].month === m){ md = months[i]; break; } }
+      var dayObj = null;
+      if(md && md.days){ for(var k=0;k<md.days.length;k++){ if(md.days[k] && md.days[k].day === dy){ dayObj = md.days[k]; break; } } }
+      if(dayObj){
+        var hijriStr = dayObj.longDateAr || ((dayObj.hijriDate ? String(dayObj.hijriDate) : '') + ' ' + (dayObj.hijriMonthAr || ''));
+        var miladiStr = dayObj.longDateEn || dayObj.date || '';
+        var pr = window._sayeghMapDayToPrayers(dayObj);
+        var extras = { farsiDate: dayObj.farsiDate || null, trueZodiacName: dayObj.trueZodiacName || null, commonZodiacName: dayObj.commonZodiacName || null, moonriseTime: dayObj.moonriseTime || null, moonsetTime: dayObj.moonsetTime || null, anwaaName: dayObj.anwaaName || null, mawasemName: dayObj.mawasemName || null, copticDate: dayObj.copticDate || null, hebrewDate: dayObj.hebrewDate || null, julianDate: dayObj.julianDate || null, longDateAr: dayObj.longDateAr || null, longDateEn: dayObj.longDateEn || null, hijriDate: dayObj.hijriDate || null, hijriMonthAr: dayObj.hijriMonthAr || null };
+        window._sayeghLastExtras = extras;
+        return { hijri: hijriStr, miladi: miladiStr, prayers: pr, extras: extras, rawDay: dayObj, rawCity: j, source: 'api.sayeghcalendar.com/city/' + c };
+      }
+    }
+  }catch(e){}
+  try{
+    if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp){
+      var htmlUrl = window.SAYEGH_BRIDGE.htmlBase + c;
+      var r = await window.Capacitor.Plugins.CapacitorHttp.get({ url: htmlUrl, headers: { Accept: 'text/html,application/xhtml+xml,*/*' }, connectTimeout: 20000, readTimeout: 20000, responseType: 'text' });
+      var htmlTxt = (r && typeof r.data === 'string') ? r.data : ((r && r.data && typeof r.data === 'object') ? JSON.stringify(r.data) : String((r && r.data) || ''));
+      if(r && r.status >= 200 && r.status < 300 && htmlTxt && htmlTxt.length > 500){
+        var parsed = (window.parseHijriMiladi ? window.parseHijriMiladi(htmlTxt) : { hijri: null, miladi: null });
+        var pr2 = (window.parsePrayerTimesReal ? window.parsePrayerTimesReal(htmlTxt) : null);
+        if(parsed && parsed.hijri && pr2){
+          window._sayeghLastExtras = null;
+          return { hijri: parsed.hijri, miladi: parsed.miladi, prayers: pr2, extras: null, rawDay: null, rawCity: null, source: htmlUrl + ' via CapacitorHttp' };
+        }
+      }
+    }
+  }catch(e){}
+  return null;
+};
+/* ===== بروكسي النجف فقط - مش بروكسي الصايغ =====
+   هيدا البديل المحفوظ لجلب النجف (نجومي / عتبة علوية) بعد ما انشال بروكسي الصايغ.
+   بروكسي النجومي / العتبة الأصلي ما انلمس، هيدا بس بديل للكود اللي كان يستعمل البروكسي القديم للنجف.
+*/
+window._najafProxies = [
+  function(url){ return 'https://corsproxy.io/?' + encodeURIComponent(url); },
+  function(url){ return 'https://proxy.cors.sh/' + url; },
+  function(url){ return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url); },
+  function(url){ return 'https://api.allorigins.win/get?url=' + encodeURIComponent(url); },
+  function(url){ return 'https://corsproxy.org/?' + encodeURIComponent(url); },
+  function(url){ return 'https://proxy.hoppscotch.io/' + encodeURIComponent(url); }
+];
+window.fetchNajafWithProxy = async function(originalUrl){
+  var proxies = window._najafProxies;
+  var tasks = proxies.map(function(makeUrl){ return (async function(){ try{ var pUrl = makeUrl(originalUrl); var res = await fetch(pUrl, { method: 'GET' }); if(!res.ok) return null; var text = await res.text(); if(pUrl.indexOf('/get?url=') !== -1){ try{ var jj = JSON.parse(text); if(jj.contents) text = jj.contents; }catch(e){} } if(text && text.length > 500) return text; return null; }catch(e){ return null; } })(); });
+  var results = await Promise.all(tasks);
+  for(var i=0;i<results.length;i++){ if(results[i]) return results[i]; }
+  return null;
+};
+
 
 window.parseHijriMiladi=function(html){
  try{
@@ -2390,9 +2479,9 @@ window.fetchSayeghBeirut=async function(){
   if(window._stopLive) break;
   document.getElementById('sayegh-beirut-status').textContent='جاري... محاولة '+attempt+'/10 دورة '+cycle+'/3 ['+code+']';
   for(var u of URLS){
-   var html=await window.fetchWith7ProxiesParallel(u);
-   if(html){var parsed=window.parseHijriMiladi(html); if(parsed&&parsed.hijri){finalHijri=parsed.hijri;finalMiladiSite=parsed.miladi;if(finalHijri) break;}}
-  }
+    var br=await window.fetchSayeghBridge(code);
+    if(br&&br.hijri){finalHijri=br.hijri;finalMiladiSite=br.miladi;if(finalHijri) break;}
+   }
   if(finalHijri) break;
   await new Promise(r=>setTimeout(r,300));
   }
@@ -2916,7 +3005,7 @@ window.fetchNajaf = async function(){
        }
       }catch(e){}
       if(!htmlContent){
-       try{ if(window.fetchWith7ProxiesParallel){ htmlContent = await window.fetchWith7ProxiesParallel(u, attempt); } }catch(e){}
+       try{ if(window.fetchNajafWithProxy){ htmlContent = await window.fetchNajafWithProxy(u); } }catch(e){}
       }
       if(htmlContent){
        var parsed = parseNajafSpecific(htmlContent, selectedSrc);
@@ -3417,15 +3506,7 @@ var _origApply=window.applyMuteStateForAll;window.applyMuteStateForAll=function(
  }
  window.toWesternDigits=toWesternDigits;
 
- if(!window._sayeghProxies){
-  window._sayeghProxies=[u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u)+'&cb='+Date.now(),u=>'https://corsproxy.io/?'+encodeURIComponent(u),u=>'https://proxy.cors.sh/'+u,u=>'https://thingproxy.freeboard.name/fetch/'+u,u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u),u=>'https://proxy.hoppscotch.io/'+encodeURIComponent(u),u=>'https://api.allorigins.win/get?url='+encodeURIComponent(u)];
- }
- if(!window.fetchWith7ProxiesParallel){
-  window.fetchWith7ProxiesParallel=async function(url){
-   let tasks=window._sayeghProxies.map(fn=>(async()=>{try{let p=fn(url);let r=await fetch(p);if(!r.ok)return null;let t=await r.text();if(p.includes('/get?url=')){try{let j=JSON.parse(t);if(j.contents)t=j.contents;}catch(e){}}if(t&&t.length>200)return t;return null;}catch(e){return null;}})());
-   let res=await Promise.all(tasks);for(let x of res)if(x)return x;return null;
-  };
- }
+ /* جسر الصايغ معرّف فوق - بلا بروكسي - ما فيه تعريف تاني هنا */
  function toLat(s){return toWesternDigits(s||'');}
  window.parseHijriMiladi=window.parseHijriMiladi||function(html){
   try{let txt=toLat(html);let hijri=null,miladi=null;let m1=txt.match(/\d{1,2}\s+(محرم|صفر|ربيع الأول|ربيع الثاني|جمادى الأولى|جمادى الآخرة|رجب|شعبان|رمضان|شوال|ذو القعدة|ذو الحجة)\s+14\d{2}/);if(m1)hijri=m1[0];let m2=txt.match(/\d{1,2}\s+(كانون الثاني|شباط|آذار|نيسان|أيار|حزيران|تموز|آب|أيلول|تشرين الأول|تشرين الثاني|كانون الأول)\s+\d{4}/i);if(m2)miladi=m2[0];return{hijri,miladi};}catch(e){return{hijri:null,miladi:null};}
@@ -3788,11 +3869,10 @@ let fetching=false;
  async function fetchPrayers(code){
   if(fetching)return null;fetching=true;
   try{
-   let url='https://taqwimalsayegh.com/city/'+toWesternDigits(code);
-   let html=await window.fetchWith7ProxiesParallel(url);
-   if(!html)throw new Error('fail');
-   let parsed=window.parseHijriMiladi(html);
-   let pr=window.parsePrayerTimesReal(html);
+   let br=await window.fetchSayeghBridge(code);
+    if(!br)throw new Error('fail');
+    let parsed={hijri:br.hijri, miladi:br.miladi};
+    let pr=br.prayers;
    let td=fmtToday();
    // توحيد الصيغة - الإثنين 8 ربيع الأول 1448 هـ
    let hijriUnified=formatHijriUnified(parsed.hijri||td.hijri, td.dayName);
@@ -4079,12 +4159,11 @@ let fetching=false;
  async function fetchPrayersAuto(code){
   if(fetchingAuto) return null;fetchingAuto=true;
   try{
-   if(!window.fetchWith7ProxiesParallel || !window.parseHijriMiladi || !window.parsePrayerTimesReal) return null;
-   var url='https://taqwimalsayegh.com/city/'+toWestern(code);
-   var pageHtml=await window.fetchWith7ProxiesParallel(url);
-   if(!pageHtml) throw new Error('empty');
-   var parsed=window.parseHijriMiladi(pageHtml);
-   var pr=window.parsePrayerTimesReal(pageHtml);
+   if(!window.fetchSayeghBridge) return null;
+    var br=await window.fetchSayeghBridge(code);
+    if(!br) throw new Error('empty');
+    var parsed={hijri:br.hijri, miladi:br.miladi};
+    var pr=br.prayers;
    var td=(window.fmtToday||function(){return {hijri:'',greg:'',dayName:''};})();
    var hijriUnified=(window.formatHijriUnified||function(s){return s;})(parsed.hijri||td.hijri, td.dayName);
    var miladiUnified=(window.formatMiladiUnified||function(s){return s;})(parsed.miladi||td.greg, td.dayName);
@@ -4113,7 +4192,7 @@ let fetching=false;
   }catch(e){}
  }
  function startGMTScheduler(){checkAndFetch();setInterval(checkAndFetch,60000);}
- function initAuto(){var tries=0;var iv=setInterval(function(){tries++;if(window.fetchWith7ProxiesParallel && window.parsePrayerTimesReal){clearInterval(iv);startGMTScheduler();}if(tries>60) clearInterval(iv);},1000);}
+ function initAuto(){var tries=0;var iv=setInterval(function(){tries++;if(window.fetchSayeghBridge){clearInterval(iv);startGMTScheduler();}if(tries>60) clearInterval(iv);},1000);}
  // Expose for APK background
  window.fetchPrayersAuto = fetchPrayersAuto;
  window.checkAndFetchBackgroundPrayer = checkAndFetchBackground;
