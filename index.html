@@ -1931,6 +1931,7 @@ function loadActivationState(){
  if(st){
  if(window._boxState.boxesMuted.madina) st.textContent='الحالة: غير مفعل - فعل بوكس مدينتك أولاً';
  else if(window._boxState.connecting) st.textContent='الحالة: جاري الاتصال...';
+ else if(document.getElementById('sayegh-result-inside') && document.getElementById('sayegh-result-inside').style.display==='block'){ /* لا تمسح نتيجة الجلب - فيها المصدر والطريقة */ }
  else st.textContent='الحالة: جاهز - اختر مدينة واضغط جلب حي';
  }
  var st2=document.getElementById('najaf-status');
@@ -2145,7 +2146,7 @@ window.renderSayeghCities=function(){
  // إذا كان البحث موجود، لا نعرض كل المدن (حتى لا يثقل)
  var statusEl=document.getElementById('sayegh-beirut-status');
  if(statusEl && window._masterCities && window._masterCities.length>100){
-  statusEl.textContent='✅ جاهز - '+window._masterCities.length+' مدينة - اكتب حرفين للبحث';
+  if(!(document.getElementById('sayegh-result-inside') && document.getElementById('sayegh-result-inside').style.display==='block')) statusEl.textContent='✅ جاهز - '+window._masterCities.length+' مدينة - اكتب حرفين للبحث';
  }
 };
 
@@ -2298,8 +2299,8 @@ window.parseGregorianDate=function(str){
  if(!str) return null;
  var d=new Date(str); if(!isNaN(d)) return d;
  var monthsMap={'يناير':0,'فبراير':1,'مارس':2,'أبريل':3,'ابريل':3,'مايو':4,'يونيو':5,'يوليو':6,'أغسطس':7,'اغسطس':7,'سبتمبر':8,'أكتوبر':9,'اكتوبر':9,'نوفمبر':10,'ديسمبر':11,'كانون الثاني':0,'شباط':1,'آذار':2,'نيسان':3,'أيار':4,'حزيران':5,'تموز':6,'آب':7,'أيلول':8,'تشرين الأول':9,'تشرين الاول':9,'تشرين الثاني':10,'كانون الأول':11,'كانون الاول':11,'January':0,'February':1,'March':2,'April':3,'May':4,'June':5,'July':6,'August':7,'September':8,'October':9,'November':10,'December':11,'Jan':0,'Feb':1,'Mar':2,'Apr':3,'Jun':5,'Jul':6,'Aug':7,'Sep':8,'Oct':9,'Nov':10,'Dec':11};
- var m=str.match(/(\d{1,2})\s+([^\d\s]+)\s+(\d{4})/);
- if(m){var day=parseInt(m[1]); var mon=monthsMap[m[2]]; var year=parseInt(m[3]); if(mon!==undefined) return new Date(year,mon,day);}
+ var m=str.match(/(\d{1,2})\s+(.+?)\s+(\d{4})/);
+ if(m){var day=parseInt(m[1]); var year=parseInt(m[3]); var monStr=(m[2]||'').trim(); var mon=monthsMap[monStr]; if(mon===undefined){ var _keys=Object.keys(monthsMap).sort(function(a,b){return b.length-a.length;}); for(var _ki=0;_ki<_keys.length;_ki++){ if(str.indexOf(_keys[_ki])!==-1){ mon=monthsMap[_keys[_ki]]; break; } } } if(mon!==undefined) return new Date(year,mon,day);}
  return null;
  }catch(e){return null;}
 };
@@ -2513,7 +2514,7 @@ window.fetchSayeghBeirut=async function(){
   /* fallback: الميلادي إجباري - إذا ما انقرا الميلادي، ما منعرض نتيجة غلط، منعتبرها فشل */
   msg='Fallback بلا ميلادي - ما تم الفحص، لن يحدث'; send=false;
   window.renderCard('sayegh-beirut',finalHijri,finalMiladiSite,deviceDate,null,finalHijri,send,msg,null,finalMethod==='api'?'API':'HTML Fallback');
-  document.getElementById('sayegh-beirut-status').textContent='❌ Fallback بلا ميلادي - ما تم الفحص';
+  document.getElementById('sayegh-beirut-status').textContent='❌ Fallback بلا ميلادي - ما تم الفحص | المصدر: HTML Fallback';
   window.setFetchBtnState('idle'); applyBoxMute(); return;
  }
  var dayMatch = (hijriFinal.match(/\d+/)||['0'])[0]; var hijriDay = parseInt(dayMatch)||0;
@@ -2554,7 +2555,7 @@ window.fetchSayeghBeirut=async function(){
   window.setFetchBtnState('connected');
   }catch(e){}
  } else {
-  document.getElementById('sayegh-beirut-status').textContent='ℹ️ '+msg+' - لم يحدث';
+  document.getElementById('sayegh-beirut-status').textContent='ℹ️ '+msg+' - لم يحدث | المصدر: '+(finalMethod==='api'?'API':'HTML Fallback');
   window.setFetchBtnState('idle');
  }
  }catch(e){document.getElementById('sayegh-beirut-status').textContent='خطأ: '+e.message;window.setFetchBtnState('idle');}
