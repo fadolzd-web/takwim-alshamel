@@ -2352,6 +2352,20 @@ window.buildUnifiedFinalObj = function(hd, hm, hy, hmn){
  };
 };
 
+window._confirmFinalAndRefresh = function(expectedDay, statusElId, statusText){
+  try{
+   var chk=null; try{ chk=JSON.parse(localStorage.getItem('_final_unified')||'null'); }catch(e){}
+   if(!chk || !chk.finalStr) return false;
+   if(expectedDay && chk.finalStr.indexOf(String(expectedDay))===-1) return false;
+   var el=document.getElementById(statusElId); if(el) el.textContent=statusText+' — جارٍ تحديث العرض';
+   var last=parseInt(sessionStorage.getItem('_final_just_updated_at')||'0');
+   if(Date.now()-last < 60000) return true;
+   try{ sessionStorage.setItem('_final_just_updated_at', String(Date.now())); }catch(e){}
+   setTimeout(function(){ location.reload(); }, 900);
+   return true;
+  }catch(e){ return false; }
+};
+
 window.applyLiveUpdate = function(objFinal, sourceLabel, displayStr){
  try{
   if(!objFinal || !objFinal.hd || !objFinal.hm || !objFinal.hy) return;
@@ -2394,11 +2408,11 @@ window.applyLiveUpdate = function(objFinal, sourceLabel, displayStr){
      el.textContent = cleanText;
     }
    }
-   // أيضا تحديث كل عناصر تحتوي هـ
+   // تحديث كل عناصر التاريخ الهجري، دون تقييد بشهر محدد
    var allTruncate = document.querySelectorAll('span.truncate');
    for(var ai=0; ai<allTruncate.length; ai++){
     var ael = allTruncate[ai];
-    if(ael.textContent && ael.textContent.match(/\d+ ربيع الأول/)){
+    if(ael.textContent && (ael.textContent.includes('هـ') || ael.textContent.match(/\d+\s+\S+\s+14\d\d/))){
      ael.textContent = longStr;
     }
    }
@@ -2546,6 +2560,7 @@ window.fetchSayeghBeirut=async function(){
   var obj={hd:d,hm:map[mName]||2,hy:y,hmn:mName,finalStr:hijriFinal+(hijriFinal.includes('هـ')?'':' هـ'),dt:hijriFinal+(hijriFinal.includes('هـ')?'':' هـ'),len:30};
   window.applyLiveUpdate(obj, 'الصايغ - بيروت', hijriFinal);
   document.getElementById('sayegh-beirut-status').textContent='✅ تم التحديث النهائي: '+hijriFinal+' (موحد ✅) | المصدر: '+(finalMethod==='api'?'API - دون فحص الوقت':'HTML Fallback - مع فحص ميلادي');
+  window._confirmFinalAndRefresh(d, 'sayegh-beirut-status', '✅ تم التحديث النهائي: '+hijriFinal+' (موحد ✅) | المصدر: '+(finalMethod==='api'?'API - دون فحص الوقت':'HTML Fallback - مع فحص ميلادي'));
   /* najaf box display removed - لا يفتح نطاق النجف عند جلب مدينتك */
   window.setFetchBtnState('connected');
   }catch(e){}
@@ -3083,6 +3098,7 @@ window.fetchNajaf = async function(){
      var displaySrc2 = 'مركز البحوث والدراسات الفلكية';
      window.applyLiveUpdate(objFinal, displaySrc2, hijriToFinal);
      document.getElementById('najaf-status').textContent='✅ تم التحديث النهائي ['+displaySrc2+']: '+hijriToFinal+' (موحد ✅)';
+     window._confirmFinalAndRefresh(dFinal, 'najaf-status', '✅ تم التحديث النهائي ['+displaySrc2+']: '+hijriToFinal+' (موحد ✅)');
      /* reload removed surgically - auto update via _Setters */ try{ var keepBox=document.getElementById('najaf-result-inside'); if(keepBox) keepBox.style.display='block'; }catch(e){}
     }catch(e){
      console.log('update final error', e);
@@ -3122,41 +3138,32 @@ setTimeout(function(){
 (function(){
 const SOURCES_DIRECT = [];
 if(!localStorage.getItem('nojumi_best_source')) localStorage.setItem('nojumi_best_source','مباشر');
-window.fetchDirectName=window.fetchDirectName||async function(targetUrl){
+window.fetchDirectName = async function(targetUrl){
+ /* الاستهلال: اتصال مباشر فقط. CapacitorHttp أولا داخل التطبيق، ثم fetch مباشر. */
  try{
-  const ctrl=new AbortController(); const to=setTimeout(function(){ctrl.abort()},4000);
-  const r=await fetch(targetUrl+'?_t='+Date.now(),{cache:'no-store', signal:ctrl.signal});
-  clearTimeout(to);
-  if(r.ok){ let h=await r.text(); if(h && h.length>500){ window._lastSourceSuccess='مباشر'; return {html:h, source:'مباشر'}; } }
+  if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp){
+   var rCap = await Promise.race([
+    window.Capacitor.Plugins.CapacitorHttp.get({url:targetUrl, headers:{'Accept':'text/html'}}),
+    new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('مهلة الاتصال')); }, 12000); })
+   ]);
+   var tCap = (rCap && rCap.data!=null) ? (typeof rCap.data==='string' ? rCap.data : JSON.stringify(rCap.data)) : '';
+   if(tCap && tCap.length>500){ window._lastSourceSuccess='مباشر'; return {html:tCap, source:'مباشر'}; }
+  }
  }catch(e){}
- const bestName=localStorage.getItem('nojumi_best_source')||'مباشر';
- let ordered=[...SOURCES_DIRECT];
- let idx=ordered.findIndex(function(p){return p.name===bestName});
- if(idx>0) ordered=[ordered[idx], ...ordered.slice(0,idx), ...ordered.slice(idx+1)];
- for(let p of ordered){
+ try{
+  var ctrl=new AbortController(); var to=setTimeout(function(){ try{ctrl.abort();}catch(e){} }, 12000);
   try{
-   const controller=new AbortController(); const tid=setTimeout(function(){controller.abort()},7000);
-   const cb=targetUrl.includes('?')?'&':'?';
-   const urlWithCb=targetUrl+cb+'_cb='+Date.now()+'_'+Math.random().toString(36).slice(2,5);
-   const proxUrl=p.tmpl+(p.encode===false?urlWithCb:encodeURIComponent(urlWithCb));
-   const r=await fetch(proxUrl,{cache:'no-store',signal:controller.signal});
-   clearTimeout(tid);
-   if(!r.ok) continue;
-   let txt=''; if(p.type==='json'){ const j=await r.json(); txt=j.contents||j.data||''; } else txt=await r.text();
-   if(txt && txt.length>200){
-    localStorage.setItem('nojumi_best_source', p.name);
-    window._lastSourceSuccess=p.name;
-    return {html:txt, source:p.name};
-   }
-  }catch(e){}
- }
+   var res=await fetch(targetUrl+'?_t='+Date.now(),{cache:'no-store', signal:ctrl.signal});
+   if(res && res.ok){ var h=await res.text(); if(h && h.length>500){ window._lastSourceSuccess='مباشر'; return {html:h, source:'مباشر'}; } }
+  }finally{ clearTimeout(to); }
+ }catch(e){}
  return null;
 };
 const STORAGE_KEY='nojumi_last_bayan_full';
 window._nojumiLastBayanId = parseInt(localStorage.getItem('nojumi_last_bayan_id')||'1009');
 function toWesternDigits(t){ const m={'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9','۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9'}; return (t||'').replace(/[٠-٩۰-۹]/g,function(ch){return m[ch]||ch}); }
 function stripTashkeel(s){ if(!s) return ''; s=toWesternDigits(s); return s.replace(/[\u064B-\u065F\u0670]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[^\u0600-\u06FF0-9\s]/g,' ').replace(/\s+/g,' ').trim().toLowerCase(); }
-function hasSistani(html){ const p=stripTashkeel(html); return p.includes('اعلن مكتب') && p.includes('السيستاني'); }
+function hasSistani(html){ const p=stripTashkeel(html); if(!p.includes('السيستاني')) return false; return p.includes('اعلن مكتب') || p.includes('مكتب السيد') || p.includes('استهلال') || p.includes('هلال') || p.includes('بيان'); }
 function openModal(){
  let old=document.getElementById('nojumi-bayan-modal');
  if(old) old.remove();
@@ -3189,7 +3196,8 @@ async function runBackgroundSearch(){
    window._bayanSearchProgress.checked++;
    notifyListeners('progress', {id:id, checked:window._bayanSearchProgress.checked, total:window._bayanSearchProgress.total});
    let res=null;
-   if(window.fetchDirectName) res=await window.fetchDirectName('https://arabic.nojumi.org/news/'+id+'/');
+   try{ if(window._nojumiFetchHtml){ var hTmp=await window._nojumiFetchHtml('https://arabic.nojumi.org/news/'+id+'/'); if(hTmp) res={html:hTmp, source:'مباشر'}; } }catch(e){}
+   if(!res && window.fetchDirectName) res=await window.fetchDirectName('https://arabic.nojumi.org/news/'+id+'/');
    if(!res || !res.html) continue;
    if(hasSistani(res.html)){
     let dateM=res.html.match(/1448\/\d{2}\/\d{2}/)||res.html.match(/\d{4}-\d{2}-\d{2}/);
@@ -3198,7 +3206,7 @@ async function runBackgroundSearch(){
     let title=titleM?titleM[1].trim():'بيان';
     let body=''; const pr=/<p[^>]*>([\s\S]*?)<\/p>/gi; let mm; let ps=[];
     while((mm=pr.exec(res.html))!==null){ let t=mm[1].replace(/<[^>]+>/g,'').trim(); if(t.length>25) ps.push(t); }
-    let fp=ps.find(function(p){return stripTashkeel(p).includes('اعلن مكتب') && stripTashkeel(p).includes('السيستاني')});
+    let fp=ps.find(function(p){return hasSistani(p);});
     body=fp||ps.slice(0,3).join('\n\n');
     const full={id:id, text:body, title:title, date:dateStr, fetchedAt:new Date().toLocaleString('ar-EG'), source:res.source};
     saveFull(full);
@@ -4428,6 +4436,33 @@ let fetching=false;
      }catch(e){ if(njP_monthStatus){ njP_monthStatus.style.display='block'; njP_monthStatus.textContent='❌ فشل جدول الشهر: '+(e&&e.message?e.message:String(e)); } }
      finally{ njP_monthLoading=false; }
    }
+   function njP_monthToCSV(rows, y, m, city){
+     var head='اليوم,التاريخ,أذان الفجر,طلوع الشمس,أذان الظهر,غروب الشمس,أذان المغرب,نصف الليل الشرعي,نصف الليل الفلكي\n';
+     var dayNames=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+     var lines=[head];
+     rows.forEach(function(r){ if(!r) return; var dt=new Date(y, m-1, r.day); var wd=dayNames[dt.getDay()]||''; var t=r.times||{}; function v(x){ return '"'+String(x==null?'--:--':x).replace(/"/g,'')+'"'; } lines.push(wd+','+r.date+','+v(t.fajr)+','+v(t.sunrise)+','+v(t.dhuhr)+','+v(t.sunset)+','+v(t.maghreb)+','+v(t.midnight)+','+v(t.astronomicalMidnight)+'\n'); });
+     return lines.join('');
+   }
+   function njP_exportMonthCSV(){
+     var ex=window._njMonthExport; if(!ex || !ex.rows){ alert('لا توجد بيانات بعد — اطلب جدول الشهر أولا'); return; }
+     var csv='\ufeff'+'الأوقات الشرعية — '+ex.city+' — '+ex.y+'/'+ex.m+'\n'+njP_monthToCSV(ex.rows, ex.y, ex.m, ex.city);
+     try{
+      var blob=new Blob([csv], {type:'text/csv;charset=utf-8'});
+      var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download='prayer-times-'+ex.y+'-'+String(ex.m).padStart(2,'0')+'.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+      if(njP_monthStatus) njP_monthStatus.textContent='✅ تم تصدير جدول الشهر — ملف CSV';
+     }catch(e){ alert('تعذر التصدير: '+String(e&&e.message?e.message:e)); }
+   }
+   function njP_copyMonthTable(){
+     var ex=window._njMonthExport; if(!ex || !ex.rows){ alert('لا توجد بيانات بعد — اطلب جدول الشهر أولا'); return; }
+     var dayNames=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+     var lines=['الأوقات الشرعية — '+ex.city+' — '+ex.y+'/'+ex.m, 'اليوم\tالتاريخ\tأذان الفجر\tطلوع الشمس\tأذان الظهر\tغروب الشمس\tأذان المغرب\tنصف الليل الشرعي\tنصف الليل الفلكي'];
+     ex.rows.forEach(function(r){ if(!r) return; var dt=new Date(ex.y, ex.m-1, r.day); var wd=dayNames[dt.getDay()]||''; var t=r.times||{}; function v(x){ return x==null?'--:--':String(x); } lines.push(wd+'\t'+r.date+'\t'+v(t.fajr)+'\t'+v(t.sunrise)+'\t'+v(t.dhuhr)+'\t'+v(t.sunset)+'\t'+v(t.maghreb)+'\t'+v(t.midnight)+'\t'+v(t.astronomicalMidnight)); });
+     var text=lines.join('\n');
+     try{
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(function(){ if(njP_monthStatus) njP_monthStatus.textContent='✅ تم نسخ الجدول — الصقه في Excel أو Sheets'; }, function(){ throw new Error('النسخ غير متاح'); }); }
+      else{ var ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); if(njP_monthStatus) njP_monthStatus.textContent='✅ تم نسخ الجدول'; }
+     }catch(e){ alert('تعذر النسخ: '+String(e&&e.message?e.message:e)); }
+   }
    function njP_renderMonthTable(rows, y, m){
      if(!njP_monthTable) return;
      let monthNames=['','كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
@@ -4444,7 +4479,15 @@ let fetching=false;
        h+='<tr style="'+(isToday?'background:#fff3cd;font-weight:900':'')+'"><td style="padding:5px;border:1px solid #eee;text-align:center">'+wd+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;direction:ltr">'+r.date+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+c(t.fajr)+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+c(t.sunrise)+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+c(t.dhuhr)+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+c(t.sunset)+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+c(t.maghreb)+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+c(t.midnight)+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+c(t.astronomicalMidnight)+'</td></tr>';
      });
      h+='</tbody></table>';
+     window._njMonthExport={rows:rows, y:y, m:m, city:city};
      njP_monthTable.innerHTML=head+h;
+     try{
+      var expDiv=document.createElement('div'); expDiv.style.cssText='display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
+      expDiv.innerHTML='<button class="sayegh-btn primary" id="nj-p-export-csv" style="flex:1">⬇ تصدير CSV</button><button class="sayegh-btn" id="nj-p-export-copy" style="flex:1">📋 نسخ الجدول</button>';
+      njP_monthTable.appendChild(expDiv);
+      var csvBtn=document.getElementById('nj-p-export-csv'); if(csvBtn) csvBtn.onclick=function(){ njP_exportMonthCSV(); };
+      var copyBtn=document.getElementById('nj-p-export-copy'); if(copyBtn) copyBtn.onclick=function(){ njP_copyMonthTable(); };
+     }catch(e){}
    }
    if(njP_btnTimes) njP_btnTimes.onclick=function(){njP_getTimes(false);};
    if(njP_refresh) njP_refresh.onclick=function(){njP_getTimes(true);};
