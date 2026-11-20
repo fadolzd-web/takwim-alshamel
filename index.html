@@ -1,5 +1,6 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
+<meta charset="utf-8">
 <meta http-equiv="Content-Language" content="ar">
 <style id="RTL-FORCE-FIX">html,body{direction:rtl !important; unicode-bidi:embed;}</style>
 
@@ -1808,17 +1809,7 @@ select:disabled{opacity:0.78;pointer-events:none}
 <div class="live-box-title">🕌 نطاق النجف الأشرف</div>
 <div class="live-box-inner">
 <div class="sayegh-controls">
-<div class="sayegh-row" style="gap:10px">
-<label style="flex:1;cursor:pointer;display:flex;align-items:center;gap:8px;background:#0f2418;border:1px solid rgba(212,175,55,0.25);border-radius:10px;padding:10px 12px">
-<input type="radio" name="najaf-source" value="nojumi" id="najaf-src-nojumi" checked style="accent-color:#d4af37">
-<span style="color:#e8d9a3;font-size:13px">🔭 مركز البحوث الفلكية<br><span style="font-size:10px;color:#9ca3af">arabic.nojumi.org</span></span>
-</label>
-<label style="flex:1;cursor:pointer;display:flex;align-items:center;gap:8px;background:#0f2418;border:1px solid rgba(212,175,55,0.25);border-radius:10px;padding:10px 12px">
-<input type="radio" name="najaf-source" value="alawi" id="najaf-src-alawi" style="accent-color:#d4af37">
-<span style="color:#e8d9a3;font-size:13px">🕌 العتبة العلوية المقدسة<br><span style="font-size:10px;color:#9ca3af">imamali.net</span></span>
-</label>
-</div>
-<div id="najaf-url-preview" style="font-size:11px;color:#9ca3af;word-break:break-all;background:rgba(0,0,0,0.35);padding:6px 8px;border-radius:8px;font-family:monospace">https://arabic.nojumi.org/</div>
+<div style="background:#0f2418;border:1px solid rgba(212,175,55,0.25);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px"><span style="color:#e8d9a3;font-size:13px">🔭 مركز البحوث والدراسات الفلكية<br><span style="font-size:10px;color:#9ca3af">arabic.nojumi.org</span></span><input type="radio" name="najaf-source" value="nojumi" id="najaf-src-nojumi" checked style="display:none"></div> <div id="najaf-url-preview" style="font-size:11px;color:#9ca3af;word-break:break-all;background:rgba(0,0,0,0.35);padding:6px 8px;border-radius:8px;font-family:monospace">https://arabic.nojumi.org/</div>
 <div class="sayegh-row" style="justify-content:space-between">
 <div style="display:flex;gap:8px">
 <button class="sayegh-btn" id="btn-open-najaf">🔗 المصدر</button>
@@ -2177,7 +2168,7 @@ window.openDynamicSayegh=function(){var sel=document.getElementById('sayegh-city
    مصدر واحد: https://api.sayeghcalendar.com/city/{code} JSON مباشرة
    + fallback داخل APK فقط: CapacitorHttp.get على https://taqwimalsayegh.com/city/{code}
    ما فيه أي بروكسي للصايغ هنا. الفشل = فشل، ما فيه داتا مخترعة.
-   بروكسي النجومي / العتبة العلوية / تلغرام ما انلمس، بيضل بمكانو.
+   بروكسي النجومي / تلغرام ما انلمس، بيضل بمكانو.
    الإضافات (فارسي + برج القمر) بترجع مع نفس الجسر من السيرفر، للمرحلة 2.
 */
 window.SAYEGH_BRIDGE = { apiBase: 'https://api.sayeghcalendar.com', htmlBase: 'https://taqwimalsayegh.com/city/' };
@@ -2218,30 +2209,50 @@ window._sayeghMapDayToPrayers = function(d){
 window.fetchSayeghBridge = async function(code){
   var c = window._sayeghNormalizeCode(code);
   if(!c || !/^\d+$/.test(c)) return null;
+  window._sayeghLastApiError = '';
+  var _parseApi = function(j){
+    var months = (j && j.months) || [];
+    var now = new Date();
+    var m = now.getMonth() + 1, dy = now.getDate();
+    var md = null;
+    for(var i=0;i<months.length;i++){ if(months[i] && months[i].month === m){ md = months[i]; break; } }
+    var dayObj = null;
+    if(md && md.days){ for(var k=0;k<md.days.length;k++){ if(md.days[k] && md.days[k].day === dy){ dayObj = md.days[k]; break; } } }
+    if(!dayObj) return null;
+    var hijriStr = dayObj.longDateAr || ((dayObj.hijriDate ? String(dayObj.hijriDate) : '') + ' ' + (dayObj.hijriMonthAr || ''));
+    var miladiStr = dayObj.longDateEn || dayObj.date || '';
+    if(!miladiStr) return null;
+    var pr = window._sayeghMapDayToPrayers(dayObj);
+    var extras = { farsiDate: dayObj.farsiDate || null, trueZodiacName: dayObj.trueZodiacName || null, commonZodiacName: dayObj.commonZodiacName || null, moonriseTime: dayObj.moonriseTime || null, moonsetTime: dayObj.moonsetTime || null, anwaaName: dayObj.anwaaName || null, mawasemName: dayObj.mawasemName || null, copticDate: dayObj.copticDate || null, hebrewDate: dayObj.hebrewDate || null, julianDate: dayObj.julianDate || null, longDateAr: dayObj.longDateAr || null, longDateEn: dayObj.longDateEn || null, hijriDate: dayObj.hijriDate || null, hijriMonthAr: dayObj.hijriMonthAr || null };
+    window._sayeghLastExtras = extras;
+    return { hijri: hijriStr, miladi: miladiStr, prayers: pr, extras: extras, rawDay: dayObj, rawCity: j, source: 'api.sayeghcalendar.com/city/' + c, method: 'api' };
+  };
+  var apiUrl = window.SAYEGH_BRIDGE.apiBase + '/city/' + c;
+  /* 1) API عبر CapacitorHttp أولا - بلا CORS، هيدا هو الأساس داخل APK */
   try{
-    var apiUrl = window.SAYEGH_BRIDGE.apiBase + '/city/' + c;
+    if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp){
+      var rApi = await window.Capacitor.Plugins.CapacitorHttp.get({ url: apiUrl, headers: { Accept: 'application/json' }, connectTimeout: 20000, readTimeout: 20000, responseType: 'json' });
+      if(rApi && rApi.status >= 200 && rApi.status < 300 && rApi.data){
+        var jApi = (typeof rApi.data === 'string') ? JSON.parse(rApi.data) : rApi.data;
+        var outApi = _parseApi(jApi);
+        if(outApi) return outApi;
+        window._sayeghLastApiError = 'API رد لكن بلا يوم اليوم';
+      } else {
+        window._sayeghLastApiError = 'API CapacitorHttp status=' + (rApi && rApi.status);
+      }
+    }
+  }catch(e){ window._sayeghLastApiError = 'API CapacitorHttp: ' + (e && e.message ? e.message : String(e)); }
+  /* 2) API عبر fetch العادي - للمتصفح، إذا انحجب CORS بيوقع هون */
+  try{
     var res = await fetch(apiUrl, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
     if(res && res.ok){
       var j = await res.json();
-      var months = (j && j.months) || [];
-      var now = new Date();
-      var m = now.getMonth() + 1, dy = now.getDate();
-      var md = null;
-      for(var i=0;i<months.length;i++){ if(months[i] && months[i].month === m){ md = months[i]; break; } }
-      var dayObj = null;
-      if(md && md.days){ for(var k=0;k<md.days.length;k++){ if(md.days[k] && md.days[k].day === dy){ dayObj = md.days[k]; break; } } }
-      if(dayObj){
-        var hijriStr = dayObj.longDateAr || ((dayObj.hijriDate ? String(dayObj.hijriDate) : '') + ' ' + (dayObj.hijriMonthAr || ''));
-        var miladiStr = dayObj.longDateEn || dayObj.date || '';
-        if(!miladiStr){ /* ميلادي إجباري - إذا ما فيه ميلادي من API، كمل على fallback، ما ترجع بلا ميلادي */ } else {
-        var pr = window._sayeghMapDayToPrayers(dayObj);
-        var extras = { farsiDate: dayObj.farsiDate || null, trueZodiacName: dayObj.trueZodiacName || null, commonZodiacName: dayObj.commonZodiacName || null, moonriseTime: dayObj.moonriseTime || null, moonsetTime: dayObj.moonsetTime || null, anwaaName: dayObj.anwaaName || null, mawasemName: dayObj.mawasemName || null, copticDate: dayObj.copticDate || null, hebrewDate: dayObj.hebrewDate || null, julianDate: dayObj.julianDate || null, longDateAr: dayObj.longDateAr || null, longDateEn: dayObj.longDateEn || null, hijriDate: dayObj.hijriDate || null, hijriMonthAr: dayObj.hijriMonthAr || null };
-        window._sayeghLastExtras = extras;
-        return { hijri: hijriStr, miladi: miladiStr, prayers: pr, extras: extras, rawDay: dayObj, rawCity: j, source: 'api.sayeghcalendar.com/city/' + c, method: 'api' };
-        } /* end else miladi mandatory */
-      }
+      var out = _parseApi(j);
+      if(out) return out;
+    } else {
+      window._sayeghLastApiError = 'API fetch status=' + (res && res.status);
     }
-  }catch(e){}
+  }catch(e){ if(!window._sayeghLastApiError) window._sayeghLastApiError = 'API fetch: ' + (e && e.message ? e.message : String(e)); else window._sayeghLastApiError += ' | fetch: ' + (e && e.message ? e.message : String(e)); }
   try{
     if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp){
       var htmlUrl = window.SAYEGH_BRIDGE.htmlBase + c;
@@ -2260,8 +2271,8 @@ window.fetchSayeghBridge = async function(code){
   return null;
 };
 /* ===== بروكسي النجف فقط - مش بروكسي الصايغ =====
-   هيدا البديل المحفوظ لجلب النجف (نجومي / عتبة علوية) بعد ما انشال بروكسي الصايغ.
-   بروكسي النجومي / العتبة الأصلي ما انلمس، هيدا بس بديل للكود اللي كان يستعمل البروكسي القديم للنجف.
+   هيدا البديل المحفوظ لجلب النجف (نجومي فقط) بعد ما انشال بروكسي الصايغ.
+   بروكسي النجومي ما انلمس، هيدا بس بديل للكود اللي كان يستعمل البروكسي القديم للنجف.
 */
 window._najafProxies = [
   function(url){ return 'https://corsproxy.io/?' + encodeURIComponent(url); },
@@ -2876,9 +2887,9 @@ window.subtractOneHijriDay = function(hijriStr, source){
   return {str:newStr, day:newDay};
  }catch(e){ return {str:hijriStr}; }
 };
-window.NAJAF_URLS = { nojumi: 'https://arabic.nojumi.org/', alawi: 'https://www.imamali.net/' };
-window.getSelectedNajafSource = function(){ try{ var r=document.querySelector('input[name="najaf-source"]:checked'); return r ? r.value : 'nojumi'; }catch(e){ return 'nojumi'; } };
-window.getSelectedNajafUrl = function(){ var src=window.getSelectedNajafSource(); return window.NAJAF_URLS[src] || window.NAJAF_URLS.nojumi; };
+window.NAJAF_URLS = { nojumi: 'https://arabic.nojumi.org/' };
+window.getSelectedNajafSource = function(){ return 'nojumi'; };
+window.getSelectedNajafUrl = function(){ return window.NAJAF_URLS.nojumi; };
 window.updateNajafPreview = function(){ var url=window.getSelectedNajafUrl(); var pre=document.getElementById('najaf-url-preview'); if(pre) pre.textContent=url; };
 document.addEventListener('change', function(e){ if(e.target && e.target.name==='najaf-source'){ window.updateNajafPreview(); } });
 window.openNajafSource = function(){ var url=window.getSelectedNajafUrl(); window.open(url,'_blank'); };
@@ -2889,18 +2900,7 @@ function setNajafFetchBtnState(state){
  else if(state==='connected'){ btn.textContent='✂️ قطع'; btn.className='sayegh-btn'; btn.style.background='linear-gradient(135deg,#14532d,#166534)'; btn.style.borderColor='#22c55e'; btn.style.color='#bbf7d0'; btn.disabled=false; btn.style.opacity='1'; }
 }
 window.setNajafFetchBtnState=setNajafFetchBtnState;
-function applyNajafLinkMute(isConnecting){
- var selected=window.getSelectedNajafSource();
- var labelNojumi=document.getElementById('najaf-src-nojumi') ? document.getElementById('najaf-src-nojumi').closest('label') : null;
- var labelAlawi=document.getElementById('najaf-src-alawi') ? document.getElementById('najaf-src-alawi').closest('label') : null;
- if(isConnecting){
-  if(selected==='nojumi'){ if(labelAlawi){ labelAlawi.style.opacity='0.35'; labelAlawi.style.pointerEvents='none'; } }
-  else{ if(labelNojumi){ labelNojumi.style.opacity='0.35'; labelNojumi.style.pointerEvents='none'; } }
- }else{
-  if(labelNojumi){ labelNojumi.style.opacity='1'; labelNojumi.style.pointerEvents='auto'; }
-  if(labelAlawi){ labelAlawi.style.opacity='1'; labelAlawi.style.pointerEvents='auto'; }
- }
-}
+function applyNajafLinkMute(isConnecting){ return; }
 function parseNajafSpecific_Nojumi(html){
  try{
   function clean(t){return t.replace(/\s+/g,' ').trim();}
@@ -2926,41 +2926,9 @@ function parseNajafSpecific_Nojumi(html){
   return{hijri:null,miladi:null};
  }catch(e){ return{hijri:null,miladi:null}; }
 }
-function parseNajafSpecific_Alawi(html){
- try{
-  function clean(t){return t.replace(/\s+/g,' ').trim();}
-  var toLat=window.toLatComprehensive;
-  var hijri=null, miladi=null;
-  try{
-   var reMeta=[/property=["']og:updated_time["'][^>]*content=["']([^"']+)["']/i,/property=["']og:published_time["'][^>]*content=["']([^"']+)["']/i,/property=["']article:modified_time["'][^>]*content=["']([^"']+)["']/i,/<time[^>]*datetime=["']([^"']+)["']/i];
-   for(var mi=0; mi<reMeta.length; mi++){var mMeta=html.match(reMeta[mi]); if(mMeta && mMeta[1]){var iso=mMeta[1].trim(); var dMatch=iso.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/); if(dMatch){ miladi=dMatch[0]; break; } } }
-  }catch(e){}
-  var txt2=toLat(html);
-  var plain2=txt2.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
-  var p1=plain2.match(/(\d{1,2})\s+(ربيع الأول|ربيع الاول|صفر المظفر|صفر|ربيع الثاني|جمادى الأولى|جمادى الآخرة|رجب|شعبان|رمضان|شوال|ذو القعدة|ذو الحجة|محرم|Muharram|Safar|Rabi al-Awwal|Rabi al-Thani|Jumada al-Ula|Jumada al-Akhirah|Rajab|Shaban|Ramadan|Shawwal|Dhu al-Qadah|Dhu al-Hijjah)\s+(14\d\d)/i);
-  if(p1) hijri=clean(p1[0]);
-  if(!miladi){
-   var pm1=plain2.match(/(\d{1,2})\s+(آب|أغسطس|August|كانون الثاني|يناير|January|شباط|فبراير|February|آذار|مارس|March|نيسان|أبريل|April|أيار|مايو|May|حزيران|يونيو|June|تموز|يوليو|July|أيلول|سبتمبر|September|تشرين الأول|أكتوبر|October|تشرين الثاني|نوفمبر|November|كانون الأول|ديسمبر|December)\s+(\d{4})/i);
-   if(pm1) miladi=clean(pm1[0]);
-  }
-  if(!miladi){
-   var pm2=plain2.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-   if(pm2) miladi=clean(pm2[0]);
-  }
-  if(!hijri){
-   var hijriMonths2='(محرم|صفر المظفر|صفر|ربيع الأول|ربيع الاول|ربيع الثاني|جمادى الأولى|جمادى الآخرة|رجب|شعبان|رمضان|شوال|ذو القعدة|ذو الحجة)';
-   var hp2=new RegExp('(\\d{1,2})\\s+'+hijriMonths2+'\\s+(14\\d{2})','gi');
-   var hm2=plain2.match(hp2);
-   if(hm2) hijri=clean(hm2[0]);
-  }
-  return{hijri:hijri,miladi:miladi};
- }catch(e){ return{hijri:null,miladi:null}; }
-}
 function parseNajafSpecific(html, src){
- if(src==='nojumi') return parseNajafSpecific_Nojumi(html);
- if(src==='alawi') return parseNajafSpecific_Alawi(html);
- return parseNajafSpecific_Nojumi(html);
-}
+  return parseNajafSpecific_Nojumi(html);
+ }
 window.fetchNajaf = async function(){
   if(window._boxState && window._boxState.boxesMuted && window._boxState.boxesMuted.najaf){ alert('فعل بوكس النجف أولاً'); return; }
   var btn = document.getElementById('btn-fetch-najaf');
@@ -3098,50 +3066,8 @@ window.fetchNajaf = async function(){
      statusMsg='✅ [مركز البحوث والدراسات الفلكية] مطابق (فرق '+diffDays+') - سيحدث';
      send=true;
     }
-   }else if(selectedSrc==='alawi'){
-    if(!finalHijri){
-     statusMsg='❌ غير متصل بعد 3 دورات (30 محاولة) - العتبة العلوية المقدسة';
-     setStatus(statusMsg); if(rf) rf.textContent=statusMsg; send=false;
-    }else if(!hasMiladi){
-     statusMsg='⚠️ ما لم اعثر على الميلادي - العتبة العلوية المقدسة - سيعرض بدون تحديث';
-     if(rf) rf.textContent=statusMsg; setStatus(statusMsg);
-     hijriToFinal=finalHijri; send=false;
-    }else if(diffDays===1){
-     try{ var res2=window.subtractOneHijriDay(finalHijri,'alawi'); hijriToFinal=res2.str||finalHijri; }catch(e){}
-     statusMsg='⚠️ [العتبة العلوية المقدسة] الموقع متقدم يوم (بكرا) - تم التصحيح -1 يوم هجري - سيحدث';
-     send=true; showYellowBar=false;
-    }else if(diffDays===-1){
-     try{
-      var parts2=window.parseHijriParts(finalHijri);
-      var oldDay2=parts2 ? parts2.day : 0;
-      var addRes2=window.addOneHijriDay(finalHijri);
-      hijriToFinal=addRes2.str||finalHijri;
-      if(oldDay2<28){
-       statusMsg='⏰ [العتبة العلوية المقدسة] الموقع عارض مبارح (فرق -1) - هجري كان '+oldDay2+' (<28) - زدت يوم -> '+addRes2.day+' - سيحدث';
-       send=true; showYellowBar=false;
-      }else if(oldDay2===28 || oldDay2===29){
-       statusMsg='⏰ [العتبة العلوية المقدسة] الموقع عارض مبارح - هجري '+oldDay2+' - زدت يوم -> '+addRes2.day+' - سيحدث مع تنبيه';
-       yellowMsg='⚠️ بانتظار الرؤية الشرعية - العتبة العلوية المقدسة عارض مبارح والهجري كان '+oldDay2;
-       send=true; showYellowBar=true;
-      }else if(oldDay2===30){
-       statusMsg='⏰ [العتبة العلوية المقدسة] الموقع عارض مبارح - هجري 30 -> 1 الشهر التالي - سيحدث مع تنبيه';
-       yellowMsg='⚠️ بانتظار الرؤية الشرعية - العتبة العلوية المقدسة: انتقال من 30 إلى 1 الشهر التالي';
-       send=true; showYellowBar=true;
-      }else{
-       statusMsg='⏰ [العتبة العلوية المقدسة] مبارح - تمت إضافة يوم - سيحدث';
-       send=true;
-      }
-     }catch(e){ statusMsg='⏰ [العتبة العلوية المقدسة] مبارح - خطأ بالمعالجة'; send=false; }
-    }else if(Math.abs(diffDays)>1){
-     statusMsg='❌ [العتبة العلوية المقدسة] غير متطابق (فرق '+diffDays+' يوم) - لن يحدث';
-     send=false;
-    }else{
-     statusMsg='✅ [العتبة العلوية المقدسة] مطابق (فرق '+diffDays+') - سيحدث';
-     send=true;
-    }
-   }
-   if(rf) rf.textContent=statusMsg;
-   var displaySrc = selectedSrc==='nojumi' ? 'مركز البحوث والدراسات الفلكية' : (selectedSrc==='alawi' ? 'العتبة العلوية المقدسة' : selectedSrc);
+   }   if(rf) rf.textContent=statusMsg;
+   var displaySrc = 'مركز البحوث والدراسات الفلكية';
    setStatus(statusMsg+' ✓ '+displaySrc);
    setNajafFetchBtnState('connected');
    if(showYellowBar && yellowMsg){
@@ -3155,7 +3081,7 @@ window.fetchNajaf = async function(){
      var _pn=window.parseHijriParts?window.parseHijriParts(hijriToFinal):null; var dFinal=_pn&&_pn.day?_pn.day:parseInt((hijriToFinal.match(/\d+/)||[1])[0]); var yFinal=_pn&&_pn.year?_pn.year:parseInt((hijriToFinal.match(/14\d\d/)||[1448])[0]); var _cleanForMonth = hijriToFinal.replace(/الأحد|الإثنين|الاثنين|الثلاثاء|الأربعاء|الاربعاء|الخميس|الجمعة|الجمعه|السبت/g,'').trim();
      var mNameFinal=_pn&&_pn.monthIdx>=0?(window.hijriMonthsCanonical[_pn.monthIdx]||'ربيع الأول'):(_cleanForMonth.match(/(محرم|المحرم|Muharram|Moharram|صفر|الصفر|صفر المظفر|صفرالمظفر|صفر مظفر|صفر الخير|Safar|Safar al-Muzaffar|Safar al-Mudhaffar|ربيع الأول|ربيع الاول|ربيع أول|ربيع اول|الربيع الأول|ربيع 1|Rabi al-Awwal|Rabi al-Awal|Rabi I|Rabi 1|Rabi al Awwal|ربيع الثاني|ربيع ثاني|ربيع الآخر|ربيع الاخر|ربيع 2|Rabi al-Thani|Rabi al-Sani|Rabi II|Rabi 2|جمادى الأولى|جمادى الاولى|جمادي الأولى|جمادي الاولى|جمادى أولى|جمادى 1|Jumada al-Ula|Jumada al-Oula|Jumada I|جمادى الآخرة|جمادى الاخرة|جمادي الآخرة|جمادي الاخرة|جمادى الثانية|جمادى 2|Jumada al-Akhirah|Jumada al-Akhira|Jumada II|رجب|الرجب|Rajab|شعبان|الشعبان|Shaban|Shaaban|رمضان|شهر رمضان|Ramadan|Ramadhan|شوال|Shawwal|ذو القعدة|ذو القعده|ذي القعدة|Dhu al-Qadah|Dhul Qadah|ذو الحجة|ذو الحجه|ذي الحجة|Dhu al-Hijjah|Dhul Hijjah|Zul Hijjah)/)||['ربيع الأول'])[0];
      var objFinal={hd:dFinal,hm:mapFinal[mNameFinal]||2,hy:yFinal,hmn:mNameFinal,finalStr:hijriToFinal+(hijriToFinal.includes('هـ')?'':' هـ'),dt:hijriToFinal+(hijriToFinal.includes('هـ')?'':' هـ'),len:30,hmName:mNameFinal};
-     var displaySrc2 = selectedSrc==='nojumi' ? 'مركز البحوث والدراسات الفلكية' : (selectedSrc==='alawi' ? 'العتبة العلوية المقدسة' : selectedSrc);
+     var displaySrc2 = 'مركز البحوث والدراسات الفلكية';
      window.applyLiveUpdate(objFinal, displaySrc2, hijriToFinal);
      document.getElementById('najaf-status').textContent='✅ تم التحديث النهائي ['+displaySrc2+']: '+hijriToFinal+' (موحد ✅)';
      /* reload removed surgically - auto update via _Setters */ try{ var keepBox=document.getElementById('najaf-result-inside'); if(keepBox) keepBox.style.display='block'; }catch(e){}
@@ -3540,6 +3466,18 @@ var _origApply=window.applyMuteStateForAll;window.applyMuteStateForAll=function(
  .prayer-overlay{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;padding:10px;animation:pFadeIn 0.15s ease}
  .prayer-box{background:#0f2215;border:1px solid rgba(212,175,55,0.25);border-radius:22px;width:100%;max-width:500px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,0.5)}
  .prayer-head{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;background:#0a1f14;flex-shrink:0}
+ .p-tabs{display:flex;gap:8px;padding:10px 14px 0;background:#0a1f14;flex-shrink:0}
+ .p-tab{flex:1;min-height:48px;padding:6px 8px;border-radius:12px;border:1px solid rgba(212,175,55,0.25);background:#132a1a;color:#e8d9a3;font-weight:900;font-size:13px;line-height:1.35;cursor:pointer;font-family:'Tajawal';display:flex;align-items:center;justify-content:center;text-align:center}
+ .p-tab.active{background:linear-gradient(135deg,#d4af37,#b8941f);color:#000;border-color:#d4af37}
+ .nj-p-label{display:block;font-weight:900;color:#e8d9a3;font-size:13px;margin:4px 0 8px}
+ .nj-p-pin{margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,0.35);border:1px solid rgba(212,175,55,0.15);color:#a7f3d0;font-size:12px;font-weight:700;line-height:1.6;text-align:center}
+ .nj-p-results{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+ .nj-p-res{padding:10px 12px;border-radius:12px;background:rgba(0,0,0,0.35);border:1px solid rgba(212,175,55,0.15);cursor:pointer}.nj-p-res:active{border-color:#d4af37;background:rgba(212,175,55,0.12)}
+ .nj-p-res b{color:#e8d9a3;font-size:13px;line-height:1.5}
+ .nj-p-res span{color:#9ca3af;font-size:12px}
+ .nj-p-quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+ .nj-p-quick .sayegh-btn{flex:1;min-width:70px}
+ .nj-p-note{font-size:11px;color:#9ca3af;line-height:1.6;text-align:center;margin-top:8px}
  .prayer-body{overflow:auto;padding:14px;flex:1;background:#0a1f14}
  .sayegh-row{display:flex;gap:8px;flex-wrap:wrap}
  .sayegh-btn{height:40px;padding:0 14px;border-radius:10px;border:1px solid rgba(212,175,55,0.2);background:#132a1a;color:#d4af37;font-weight:800;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:'Tajawal'}
@@ -3914,7 +3852,7 @@ let fetching=false;
       <div class="sayegh-row"><button class="sayegh-btn" id="p-btn-add">➕ إضافة</button><button class="sayegh-btn" id="p-btn-fill">✏️ تعبئة</button><button class="sayegh-btn" id="p-btn-del">🗑️ حذف</button></div>
       <div style="font-size:10px;color:#6b7280">مثال: النجف 107، بيروت 236 - حتى لو أدخلت ٢٣٦ يتحول لـ 236</div>
      </div>
-     <div id="p-city-status" class="prayer-status">اكتب حرفين للبحث ثم اختر</div>
+     <div id="p-city-status" class="prayer-status">اكتب الاسم واكبس عليه دغري</div>
      <div class="sayegh-row" style="margin-top:12px"><button class="sayegh-btn primary" id="p-btn-save-def" style="flex:1">حفظ</button><button class="sayegh-btn" id="p-btn-close2" style="flex:1">إغلاق</button></div>
     </div>
    </div>`;
@@ -3982,10 +3920,7 @@ let fetching=false;
    resultsBox.querySelectorAll('.city-res-item').forEach(el=>{
     el.addEventListener('click',()=>{
      selectedCode=toWesternDigits(el.dataset.code);
-     resultsBox.querySelectorAll('.city-res-item').forEach(x=>x.classList.remove('active'));
-     el.classList.add('active');
-     let cur=cities.find(c=>toWesternDigits(c.code)===selectedCode);
-     statusEl.textContent=cur?('📍 تم اختيار: '+cur.name+' - '+toWesternDigits(cur.code)):'';
+     setDef(toWesternDigits(selectedCode));close();setTimeout(()=>window.openPrayerSystem(),150);
     });
    });
   }
@@ -4007,9 +3942,7 @@ let fetching=false;
      suggestBox.querySelectorAll('.city-suggest-item').forEach(it=>{
       it.addEventListener('click',()=>{
        selectedCode=toWesternDigits(it.dataset.code);
-       searchInp.value=cities.find(x=>toWesternDigits(x.code)===selectedCode)?.name||'';
-       suggestBox.style.display='none';
-       renderResults(searchInp.value);
+       setDef(toWesternDigits(selectedCode));close();setTimeout(()=>window.openPrayerSystem(),150);
       });
      });
     }else suggestBox.style.display='none';
@@ -4071,8 +4004,10 @@ let fetching=false;
   let ov=document.createElement('div');ov.id='prayer-main-overlay';ov.className='prayer-overlay';
   ov.innerHTML=`
    <div class="prayer-box">
-    <div class="prayer-head"><div style="font-weight:900;color:#d4af37;font-size:15px;display:flex;align-items:center;gap:8px"><span>🕌 مواقيت الصلاة</span><a id="p-source-icon" href="https://taqwimalsayegh.com/city/${toWesternDigits(code)}" target="_blank" title="المصدر" style="font-size:16px;text-decoration:none;cursor:pointer;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center">🔗</a></div><button id="p-close-main" style="background:#132a1a;border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:999px;width:32px;height:32px;cursor:pointer">✕</button></div>
+    <div class="prayer-head"><div style="font-weight:900;color:#d4af37;font-size:15px;display:flex;align-items:center;gap:8px"><span>🕌 مواقيت الصلاة</span><a id="p-source-icon" href="https://taqwimalsayegh.com/city/${toWesternDigits(code)}" target="_blank" title="المصدر - تقويم الصايغ" style="font-size:16px;text-decoration:none;cursor:pointer;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center">🔗</a><a id="nj-p-source-icon" href="https://arabic.nojumi.org/" target="_blank" title="المصدر - مركز البحوث والدراسات الفلكية" style="font-size:16px;text-decoration:none;cursor:pointer;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:50%;width:28px;height:28px;display:none;align-items:center;justify-content:center">🔗</a></div><button id="p-close-main" style="background:#132a1a;border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:999px;width:32px;height:32px;cursor:pointer">✕</button></div>
+    <div class="p-tabs"><button id="p-tab-sayegh" class="p-tab active">تقويم الصايغ</button><button id="p-tab-nojumi" class="p-tab">مركز البحوث<br>والدراسات الفلكية</button></div>
     <div class="prayer-body">
+     <div id="p-panel-sayegh">
      <div class="prayer-center-head">
       <div class="prayer-center-city">${cityObj.name}</div>
       <div class="prayer-center-hijri" id="p-center-hijri">${hijriText}</div>
@@ -4083,6 +4018,30 @@ let fetching=false;
      <div style="background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.25);border-radius:8px;padding:10px 8px;text-align:center;color:#d4af37;font-size:12px;line-height:1.5;margin-top:12px">⚠️ نلفت انتباه جنابكم الى وجوب الاحتياط بضع دقائق..و شكرا</div>
      <div class="sayegh-row" style="margin-top:12px"><button class="sayegh-btn primary" id="p-refresh" style="flex:1">🔄 تحديث</button><button class="sayegh-btn" id="p-change" style="flex:1">📍 حدد مدينتك</button></div>
      <div class="sayegh-row" style="margin-top:8px"><button class="sayegh-btn" id="p-share-img" style="flex:1;background:linear-gradient(135deg,#0f3218,#132a1a);border:1px solid rgba(212,175,55,0.4);color:#d4af37">📸 مشاركة كصورة</button></div>
+     </div>
+     <div id="p-panel-nojumi" style="display:none">
+     <div class="prayer-center-head">
+      <div class="prayer-center-city" id="nj-p-city">النجف الأشرف</div>
+      <div class="prayer-center-hijri" id="nj-p-center-hijri">${hijriText}</div>
+      <div class="prayer-center-miladi" id="nj-p-center-miladi">${miladiText}</div>
+      <div class="nj-p-pin" id="nj-p-pin">الدبوس الحالي: النجف الأشرف — 31.9996 , 44.3143</div>
+     </div>
+     <label class="nj-p-label" for="nj-p-searchInput">🔍 ابحث عن اسم المدينة أو القرية</label>
+     <input id="nj-p-searchInput" class="city-search-input" placeholder="اكتب اسم المدينة... بتطلع الأسماء تحت دغري - اكبس على الاسم" />
+     
+     <div id="nj-p-searchStatus" class="prayer-status" style="display:none"></div>
+     <div id="nj-p-searchResults" class="nj-p-results"></div>
+     <div class="nj-p-quick"><button class="sayegh-btn nj-p-quick-btn" data-lat="31.9996" data-lng="44.3143" data-name="النجف الأشرف">النجف</button><button class="sayegh-btn nj-p-quick-btn" data-lat="32.6160" data-lng="44.0240" data-name="كربلاء">كربلاء</button><button class="sayegh-btn nj-p-quick-btn" data-lat="33.8938" data-lng="35.5016" data-name="بيروت">بيروت</button><button class="sayegh-btn nj-p-quick-btn" data-lat="34.4368" data-lng="35.8497" data-name="طرابلس">طرابلس</button></div>
+     <label class="nj-p-label" for="nj-p-dateInput" style="margin-top:12px">📅 التاريخ (من جهازك)</label>
+     <input id="nj-p-dateInput" class="city-search-input" inputmode="numeric" />
+     
+     <div id="nj-p-status" class="prayer-status" style="display:none"></div>
+     <div id="nj-p-cards"></div>
+     <div id="nj-p-extra" class="prayer-status" style="display:none"></div>
+     <div style="background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.25);border-radius:8px;padding:10px 8px;text-align:center;color:#d4af37;font-size:12px;line-height:1.5;margin-top:12px">⚠️ نلفت انتباه جنابكم الى وجوب الاحتياط بضع دقائق..و شكرا</div>
+     <div class="sayegh-row" style="margin-top:12px"><button class="sayegh-btn primary" id="nj-p-refresh" style="flex:1">🔄 تحديث</button><button class="sayegh-btn" id="nj-p-share-img" style="flex:1;background:linear-gradient(135deg,#0f3218,#132a1a);border:1px solid rgba(212,175,55,0.4);color:#d4af37">📸 مشاركة كصورة</button></div>
+     <div class="nj-p-note">أوقات مركز البحوث: أذان الفجر، طلوع الشمس، أذان الظهر، غروب الشمس، أذان المغرب، نصف الليل، نصف الليل الفلكي فقط. لا نعرض إمساك أو سحر أو فضيلة من نجومي لأن الموقع لا يرجعها.</div>
+     </div>
     </div>
    </div>`;
   document.body.appendChild(ov);
@@ -4131,6 +4090,332 @@ let fetching=false;
     if(still&&r){let c=document.getElementById('p-cards');if(c)c.innerHTML=prayerDarkHTML(r.prayers);let h=document.getElementById('p-center-hijri');if(h)h.textContent=r.hijri;let m=document.getElementById('p-center-miladi');if(m)m.textContent=r.miladi+' م';let s=document.getElementById('p-status');if(s){s.textContent='✅ تم الحفظ';setTimeout(()=>s.style.display='none',800);}}
    })();
   }
+
+  /* ===== تبويب مركز البحوث والدراسات الفلكية - جديد مستقل، بلا لمس تبويب الصايغ ===== */
+  try{
+   let njP_tabSayegh=document.getElementById('p-tab-sayegh');
+   let njP_tabNojumi=document.getElementById('p-tab-nojumi');
+   let njP_panelSayegh=document.getElementById('p-panel-sayegh');
+   let njP_panelNojumi=document.getElementById('p-panel-nojumi');
+   let njP_srcSayegh=document.getElementById('p-source-icon');
+   let njP_srcNojumi=document.getElementById('nj-p-source-icon');
+   let njP_cityEl=document.getElementById('nj-p-city');
+   let njP_pinEl=document.getElementById('nj-p-pin');
+   let njP_searchInp=document.getElementById('nj-p-searchInput');
+   let njP_searchBtn=document.getElementById('nj-p-btn-search');
+   let njP_searchStatus=document.getElementById('nj-p-searchStatus');
+   let njP_searchResults=document.getElementById('nj-p-searchResults');
+   let njP_dateInp=document.getElementById('nj-p-dateInput');
+   let njP_btnTimes=document.getElementById('nj-p-btn-times');
+   let njP_status=document.getElementById('nj-p-status');
+   let njP_cards=document.getElementById('nj-p-cards');
+   let njP_extra=document.getElementById('nj-p-extra');
+   let njP_hijriEl=document.getElementById('nj-p-center-hijri');
+   let njP_miladiEl=document.getElementById('nj-p-center-miladi');
+   let njP_refresh=document.getElementById('nj-p-refresh');
+   let njP_shareBtn=document.getElementById('nj-p-share-img');
+   let njP_cur={name:'النجف الأشرف', lat:31.9996, lng:44.3143};
+   let njP_results=[];
+   let njP_fetching=false;
+   let njP_hijriFetched=false;
+   let njP_last=null;
+   function njP_esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+   function njP_todayStr(){let d=new Date();return d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0');}
+   function njP_todayKey(){let d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+   function njP_cacheKey(){return '_prayer_nojumi_cache_v1_'+njP_cur.lat+'_'+njP_cur.lng+'_'+njP_todayKey();}
+   function njP_getCache(){try{let s=localStorage.getItem(njP_cacheKey());if(s)return JSON.parse(s);}catch(e){}return null;}
+   function njP_setCache(v){try{localStorage.setItem(njP_cacheKey(), JSON.stringify(v));}catch(e){}}
+   function njP_shortName(full){try{let s=String(full||'').split(',')[0].trim();return s||full;}catch(e){return full;}}
+   function njP_setPin(){if(njP_pinEl) njP_pinEl.textContent='الدبوس الحالي: '+njP_cur.name+' — '+njP_cur.lat+' , '+njP_cur.lng;if(njP_cityEl) njP_cityEl.textContent=njP_shortName(njP_cur.name);}
+   function njP_showStatus(msg){if(!njP_status) return;njP_status.style.display='block';njP_status.innerHTML=msg;}
+   function njP_hideStatus(){if(njP_status) njP_status.style.display='none';}
+   if(njP_dateInp) njP_dateInp.value=njP_todayStr();
+   njP_setPin();
+   function njP_switch(tab){
+    let isNojumi=(tab==='nojumi');
+    if(njP_tabSayegh) njP_tabSayegh.classList.toggle('active', !isNojumi);
+    if(njP_tabNojumi) njP_tabNojumi.classList.toggle('active', isNojumi);
+    if(njP_panelSayegh) njP_panelSayegh.style.display=isNojumi?'none':'block';
+    if(njP_panelNojumi) njP_panelNojumi.style.display=isNojumi?'block':'none';
+    if(njP_srcSayegh) njP_srcSayegh.style.display=isNojumi?'none':'flex';
+    if(njP_srcNojumi) njP_srcNojumi.style.display=isNojumi?'flex':'none';
+    try{localStorage.setItem('_prayer_active_tab', isNojumi?'nojumi':'sayegh');}catch(e){}
+    if(isNojumi && !njP_hijriFetched){njP_hijriFetched=true;njP_fetchHijriMiladi();}
+    if(isNojumi && njP_cards && !njP_cards.innerHTML.trim()){
+     let c=njP_getCache();
+     if(c && c.times){njP_render(c.times, c.extra||null);if(c.hijri && njP_hijriEl) njP_hijriEl.textContent=c.hijri;if(c.miladi && njP_miladiEl) njP_miladiEl.textContent=c.miladi;njP_showStatus('✅ من الكاش - النجف / الدبوس الحالي');}
+     else njP_showStatus('اكتب اسم المدينة أو اختر من الأزرار السريعة، ثم اكبس جلب أوقات الصلاة من مركز البحوث.');
+    }
+   }
+   if(njP_tabSayegh) njP_tabSayegh.onclick=function(){njP_switch('sayegh');};
+   if(njP_tabNojumi) njP_tabNojumi.onclick=function(){njP_switch('nojumi');};
+   try{
+    let saved=null;try{saved=localStorage.getItem('_prayer_active_tab');}catch(e){}
+    if(saved==='nojumi') njP_switch('nojumi');
+   }catch(e){}
+   ov.querySelectorAll('.nj-p-quick-btn').forEach(function(b){
+    b.addEventListener('click', function(){
+     let la=parseFloat(b.dataset.lat), lo=parseFloat(b.dataset.lng);
+     if(!isFinite(la)||!isFinite(lo)) return;
+     njP_cur={name:b.dataset.name||b.textContent.trim(), lat:la, lng:lo};
+     njP_setPin();
+     if(njP_searchResults) njP_searchResults.innerHTML='';
+     njP_showStatus('صار الدبوس: '+njP_esc(njP_cur.name)+' — '+la+' , '+lo+' — عم جيب الأوقات...');
+     njP_getTimes(false);
+    });
+   });
+   async function njP_searchCity(){
+    let q=(njP_searchInp?njP_searchInp.value:'').trim();
+    if(!q){if(njP_searchStatus){njP_searchStatus.style.display='block';njP_searchStatus.textContent='اكتب اسم المدينة أو القرية أولا';}return;}
+    if(njP_searchStatus){njP_searchStatus.style.display='block';njP_searchStatus.textContent='عم ينده لـ Nominatim ...';}
+    if(njP_searchResults) njP_searchResults.innerHTML='';
+    try{
+     let url='https://nominatim.openstreetmap.org/search?format=json&limit=8&accept-language=ar&q='+encodeURIComponent(q);
+     let res=await fetch(url,{headers:{'Accept':'application/json'}});
+     if(!res.ok) throw new Error('HTTP '+res.status);
+     let arr=await res.json();
+     njP_results=Array.isArray(arr)?arr:[];
+     if(njP_results.length===0){if(njP_searchStatus) njP_searchStatus.textContent='ما لقى ولا نتيجة لـ "'+q+'" — جرّب اسم تاني أو ضيف البلد، مثل: عكار لبنان';return;}
+     if(njP_searchStatus) njP_searchStatus.textContent='لقى '+njP_results.length+' نتيجة — اكبس على الاسم';
+     if(njP_searchResults){
+      njP_searchResults.innerHTML='';
+      njP_results.forEach(function(r,idx){
+       let la=parseFloat(r.lat), lo=parseFloat(r.lon);
+       let typ=r.type||r.class||'';
+       let div=document.createElement('div');div.className='nj-p-res';
+       div.innerHTML='<b>'+njP_esc(r.display_name||'')+'</b><br><span>'+njP_esc(typ)+' — '+la+' , '+lo+'</span>';
+       div.onclick=function(){
+        if(!isFinite(la)||!isFinite(lo)) return;
+        njP_cur={name:r.display_name, lat:la, lng:lo};
+        njP_setPin();
+        if(njP_searchInp) njP_searchInp.value=(r.display_name||'').split(',')[0];
+        if(njP_searchResults) njP_searchResults.innerHTML='';
+        if(njP_searchStatus) njP_searchStatus.innerHTML='صار الدبوس: '+njP_esc(r.display_name)+' — '+la+' , '+lo+' — عم جيب الأوقات...';
+        njP_showStatus('صار الدبوس: '+njP_esc(r.display_name)+' — '+la+' , '+lo);
+        njP_getTimes(false);
+       };
+       njP_searchResults.appendChild(div);
+      });
+     }
+    }catch(e){if(njP_searchStatus) njP_searchStatus.textContent='فشل بحث الإحداثيات: '+(e&&e.message?e.message:String(e));}
+   }
+   if(njP_searchBtn) njP_searchBtn.onclick=function(){njP_searchCity();};
+   if(njP_searchInp){
+    let njP_searchTimer=null;
+    njP_searchInp.addEventListener('input', function(){
+     let q=(njP_searchInp.value||'').trim();
+     if(njP_searchTimer) clearTimeout(njP_searchTimer);
+     if(q.length<2){ if(njP_searchResults) njP_searchResults.innerHTML=''; if(njP_searchStatus) njP_searchStatus.style.display='none'; return; }
+     njP_searchTimer=setTimeout(function(){ njP_searchCity(); }, 400);
+    });
+    njP_searchInp.addEventListener('keydown', function(e){if(e.key==='Enter'){e.preventDefault(); if(njP_searchTimer) clearTimeout(njP_searchTimer); njP_searchCity();}});
+   }
+   function njP_cleanD(d){if(typeof d==='object'&&d!==null) return d;let s=String(d||'');s=s.replace(/^[\uFEFF\xA0\s]+/,'').trim();try{return JSON.parse(s);}catch(e){return {__raw:s, __parseError:String(e)};}}
+   function njP_pick(obj, keys){if(!obj||typeof obj!=='object') return null;let lower={};for(let k of Object.keys(obj)) lower[String(k).toLowerCase()]=obj[k];for(let k of keys){if(lower[k]!==undefined&&lower[k]!==null&&lower[k]!=='') return lower[k];}return null;}
+   function njP_render(times, extra){
+    njP_last={times:times||{}, extra:extra||null};
+    if(!njP_cards) return;
+    function row(label, val){return '<div class="prayer-row-dark"><span class="prayer-row-dark-label">'+label+'</span><span class="prayer-row-dark-time">'+njP_esc(val==null||val===''?'--:--':String(val))+'</span></div>';}
+    let t=times||{};
+    njP_cards.innerHTML=
+     '<div class="prayer-card-dark"><div class="prayer-card-dark-head"><div class="prayer-card-dark-title">🌅 صلاة الصبح</div><div class="prayer-card-dark-big">'+njP_esc(t.fajr||'--:--')+'</div></div>'+row('أذان الفجر', t.fajr)+row('طلوع الشمس', t.sunrise)+'</div>'+
+     '<div class="prayer-card-dark"><div class="prayer-card-dark-head"><div class="prayer-card-dark-title">☀️ أذان الظهر</div><div class="prayer-card-dark-big">'+njP_esc(t.dhuhr||'--:--')+'</div></div>'+row('أذان الظهر', t.dhuhr)+'</div>'+
+     '<div class="prayer-card-dark"><div class="prayer-card-dark-head"><div class="prayer-card-dark-title">🌇 أذان المغرب</div><div class="prayer-card-dark-big">'+njP_esc(t.maghreb||t.sunset||'--:--')+'</div></div>'+row('غروب الشمس', t.sunset)+row('أذان المغرب', t.maghreb)+row('نصف الليل', t.midnight)+row('نصف الليل الفلكي', t.astronomicalMidnight)+'</div>';
+    if(njP_extra){
+     let parts=[];
+     if(extra && extra.qibla) parts.push('زاوية الانحراف عن القبلة: <b>'+njP_esc(extra.qibla)+'</b>');
+     if(extra && extra.distance) parts.push('المسافة عن الكعبة: <b>'+njP_esc(extra.distance)+'</b>');
+     if(parts.length){njP_extra.style.display='block';njP_extra.innerHTML=parts.join('<br>');}
+     else njP_extra.style.display='none';
+    }
+   }
+   function njP_extractTimes(cleaned){
+    let src=(cleaned && cleaned.data)?cleaned.data:cleaned;
+    if(src && typeof src==='object' && src.prayerTimes){
+     let pt=src.prayerTimes;
+     if(Array.isArray(pt)){
+      let merged={};Object.assign(merged, src);
+      pt.forEach(function(item){if(item&&typeof item==='object'){Object.keys(item).forEach(function(k){merged[k]=item[k];});}});
+      merged._prayerTimesRaw=pt;src=merged;
+     } else if(typeof pt==='object'){src=Object.assign({}, src, pt);src._prayerTimesRaw=pt;}
+    }
+    let get=function(keys){return njP_pick(src, keys);};
+    let times={
+     fajr:get(['fajr','fajr_time','azan_fajr']),
+     sunrise:get(['sunrise','sun_rise','tulou']),
+     dhuhr:get(['dhuhr','zuhr','dhuhr_time','azan_dhuhr','azan_zuhr']),
+     sunset:get(['sunset','ghurub','sun_set']),
+     maghreb:get(['maghrib','maghreb','maghrib_time','azan_maghrib']),
+     midnight:get(['midnight','nisf_allayl','half_night']),
+     astronomicalMidnight:get(['astronomicalmidnight','astronomical_midnight','midnight_astronomical','nisf_falaki'])
+    };
+    let qibla=get(['qibla','qiblaangle','qibla_angle','zawia','angle','qiblaDirection','qibla_degree']);
+    if(!qibla && src && src.location && typeof src.location==='object') qibla=njP_pick(src.location, ['qibla','qiblaangle','qibla_angle','angle','direction']);
+    let dist=get(['distance','dist','distance_km','masafa','distanceToKaaba','distance_from_kaaba']);
+    if(!dist && src && src.location && typeof src.location==='object') dist=njP_pick(src.location, ['distance','dist','distance_km']);
+    let found=Object.values(times).filter(function(v){return v!==null&&v!==undefined&&v!=='';}).length;
+    return {times:times, extra:{qibla:qibla, distance:dist}, found:found, src:src};
+   }
+   function njP_stripTags(s){return String(s||'').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();}
+   async function njP_fetchHijriMiladi(){
+    try{
+     let res=await fetch('https://arabic.nojumi.org/');
+     let html=await res.text();
+     let text=njP_stripTags(html);
+     let miladi='—';let m=text.match(/20\d\d\/\d{1,2}\/\d{1,2}/);
+     if(m) miladi=m[0];
+     else{let m2=text.match(/\d{1,2}\s+(يناير|فبراير|مارس|أبريل|مايو|يونيو|يوليو|أغسطس|سبتمبر|أكتوبر|نوفمبر|ديسمبر|كانون الثاني|شباط|آذار|نيسان|أيار|حزيران|تموز|آب|أيلول|تشرين الأول|تشرين الثاني|كانون الأول)\s+20\d\d/);if(m2) miladi=m2[0];}
+     let hijri='—';let hijriMonths='محرم|صفر|ربيع الأول|ربيع الآخر|جمادى الأولى|جمادى الآخرة|رجب|شعبان|رمضان|شوال|ذو القعدة|ذو الحجة';
+     let h=text.match(new RegExp('\\d{1,2}\\s+('+hijriMonths+')\\s+14\\d\\d','i'));
+     if(h) hijri=h[0];
+     else{let h2=text.match(new RegExp('14\\d\\d\\s*[/\\-\\s]\\s*\\d{1,2}\\s*[/\\-\\s]\\s*\\d{1,2}'));if(h2) hijri=h2[0];}
+     if(hijri!=='—' && njP_hijriEl) njP_hijriEl.textContent=hijri;
+     if(miladi!=='—' && njP_miladiEl) njP_miladiEl.textContent=miladi;
+     return {hijri:hijri, miladi:miladi};
+    }catch(e){return null;}
+   }
+   async function njP_getTimes(force){
+    if(njP_fetching) return;njP_fetching=true;
+    try{
+     let date=(njP_dateInp&&njP_dateInp.value.trim())||njP_todayStr();
+     let lat=njP_cur.lat, lng=njP_cur.lng;
+     if(!force){
+      let c=njP_getCache();
+      if(c && c.times){njP_render(c.times, c.extra||null);if(c.hijri && njP_hijriEl) njP_hijriEl.textContent=c.hijri;if(c.miladi && njP_miladiEl) njP_miladiEl.textContent=c.miladi;njP_showStatus('✅ من الكاش - مركز البحوث والدراسات الفلكية');return;}
+     }
+     njP_showStatus('⏳ عم ينده لمركز البحوث ...');
+     let cleaned=null;let okMethod='';
+     try{
+      if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp){
+       let rApi=await window.Capacitor.Plugins.CapacitorHttp.post({url:'https://arabic.nojumi.org/WebPages/PrayerTimes.aspx/GetPrayerTimesFromAPI', headers:{'Content-Type':'application/json; charset=utf-8'}, data:{lat:lat, lng:lng, date:date, navafel:false}});
+       if(rApi && rApi.status>=200 && rApi.status<300 && rApi.data!=null){
+        let jApi=(typeof rApi.data==='string')?JSON.parse(rApi.data):rApi.data;
+        let d=(jApi && jApi.d!==undefined)?jApi.d:jApi;
+        cleaned=njP_cleanD(d);
+        if(cleaned && !cleaned.error && (cleaned.data||cleaned.fajr||cleaned.Fajr)) okMethod='POST الداخلي - CapacitorHttp';
+       }
+      }
+     }catch(e){}
+     if(!okMethod){
+      try{
+       let res=await fetch('https://arabic.nojumi.org/WebPages/PrayerTimes.aspx/GetPrayerTimesFromAPI', {method:'POST', headers:{'Content-Type':'application/json; charset=utf-8'}, body:JSON.stringify({lat:lat, lng:lng, date:date, navafel:false})});
+       let txt2=await res.text();let j=null;try{j=JSON.parse(txt2);}catch(e){j={__text:txt2};}
+       let d=(j && j.d!==undefined)?j.d:j;
+       let cl=njP_cleanD(d);
+       if(cl && !cl.error && (cl.data||cl.fajr||cl.Fajr)){cleaned=cl;okMethod='POST الداخلي';}
+      }catch(e){}
+     }
+     if(!okMethod){
+      try{
+       let url='https://arabic.nojumi.org/api/prayertimes?apiKey=NJ5M14WSIA8PI&Latitude='+encodeURIComponent(lat)+'&Longitude='+encodeURIComponent(lng)+'&date='+encodeURIComponent(date);
+       let res2=await fetch(url);let txt3=await res2.text();let j2=null;try{j2=JSON.parse(txt3);}catch(e){}
+       if(j2){let cl2=njP_cleanD(j2.d!==undefined?j2.d:j2);if(cl2 && !cl2.error && (cl2.data||cl2.fajr)){cleaned=cl2;okMethod='البديل المباشر';}}
+      }catch(e){}
+     }
+     if(!cleaned||!okMethod){njP_showStatus('❌ ما نجح ولا طريقة من مركز البحوث. جرّب تحديث أو غيّر الدبوس.');return;}
+     let r=njP_extractTimes(cleaned);
+     if(r.found===0){njP_showStatus('❌ مركز البحوث رجع رد بلا أوقات.');return;}
+     njP_render(r.times, r.extra);
+     let hm=await njP_fetchHijriMiladi();
+     let save={times:r.times, extra:r.extra, hijri:(hm&&hm.hijri!=='—')?hm.hijri:(njP_hijriEl?njP_hijriEl.textContent:''), miladi:(hm&&hm.miladi!=='—')?hm.miladi:(njP_miladiEl?njP_miladiEl.textContent:'')};
+     njP_setCache(save);
+     njP_showStatus('✅ نجح — '+okMethod+' — لقى '+r.found+' أوقات من مركز البحوث والدراسات الفلكية');
+    }catch(e){njP_showStatus('❌ فشل: '+(e&&e.message?e.message:String(e)));}
+    finally{njP_fetching=false;}
+   }
+   if(njP_btnTimes) njP_btnTimes.onclick=function(){njP_getTimes(false);};
+   if(njP_refresh) njP_refresh.onclick=function(){njP_getTimes(true);};
+   if(njP_shareBtn) njP_shareBtn.onclick=function(){njP_share();};
+   async function njP_share(){
+    try{
+     if(!njP_last||!njP_last.times){alert('لا توجد بيانات للصلاة من مركز البحوث بعد - اكبس جلب أولا');return;}
+     let t=njP_last.times;
+     let cityName=njP_shortName(njP_cur.name)||'أوقات الصلاة';
+     let hijriText2=njP_hijriEl?njP_hijriEl.textContent.trim():'';
+     let miladiText2=njP_miladiEl?njP_miladiEl.textContent.trim():'';
+     let g=800, L=1250;
+     let F=document.createElement('canvas');F.width=g;F.height=L;
+     let P=F.getContext('2d');if(!P) throw Error('canvas');
+     let mn=P.createLinearGradient(0,0,0,L);mn.addColorStop(0,'#0a1f14');mn.addColorStop(0.5,'#132a1a');mn.addColorStop(1,'#1a3a2a');
+     P.fillStyle=mn;P.fillRect(0,0,g,L);
+     P.fillStyle='rgba(212,175,55,0.06)';
+     for(let En=0;En<L;En+=28) for(let sr=0;sr<g;sr+=28){P.beginPath();P.arc(sr+14,En+14,1.1,0,Math.PI*2);P.fill();}
+     P.strokeStyle='#d4af37';P.lineWidth=6;P.strokeRect(18,18,g-36,L-36);
+     P.strokeStyle='rgba(212,175,55,0.22)';P.lineWidth=1;P.strokeRect(28,28,g-56,L-56);
+     P.fillStyle='#d4af37';P.font='900 38px Tajawal, sans-serif';P.textAlign='center';
+     P.fillText('🕌 '+cityName, g/2, 85);
+     P.strokeStyle='rgba(212,175,55,0.3)';P.lineWidth=1;P.beginPath();P.moveTo(g*0.18,112);P.lineTo(g*0.82,112);P.stroke();
+     P.save();P.translate(g/2,112);P.rotate(Math.PI/4);P.fillStyle='#d4af37';P.fillRect(-6,-6,12,12);P.restore();
+     P.fillStyle='#e8d9a3';P.font='700 22px Tajawal, sans-serif';if(hijriText2) P.fillText(hijriText2, g/2, 148);
+     P.fillStyle='rgba(255,255,255,0.6)';P.font='400 18px Tajawal, sans-serif';if(miladiText2) P.fillText(miladiText2, g/2, 174);
+     P.fillStyle='#a7f3d0';P.font='700 17px Tajawal, sans-serif';P.fillText('مركز البحوث والدراسات الفلكية', g/2, 198);
+     function drawCard(y, title, bigTime, rows){
+      let cardX=32, cardW=g-64, cardH=22+40+rows.length*42+14;
+      P.fillStyle='rgba(0,0,0,0.38)';P.beginPath();let r=14;
+      P.moveTo(cardX+r,y);P.lineTo(cardX+cardW-r,y);P.quadraticCurveTo(cardX+cardW,y,cardX+cardW,y+r);
+      P.lineTo(cardX+cardW,y+cardH-r);P.quadraticCurveTo(cardX+cardW,y+cardH,cardX+cardW-r,y+cardH);
+      P.lineTo(cardX+r,y+cardH);P.quadraticCurveTo(cardX,y+cardH,cardX,y+cardH-r);
+      P.lineTo(cardX,y+r);P.quadraticCurveTo(cardX,y,cardX+r,y);P.fill();
+      P.strokeStyle='rgba(212,175,55,0.18)';P.lineWidth=1;P.stroke();
+      P.fillStyle='#e8d9a3';P.font='900 24px Tajawal, sans-serif';P.textAlign='right';P.fillText(title, cardX+cardW-16, y+32);
+      P.fillStyle='#d4af37';P.font='900 30px Tajawal, sans-serif';P.textAlign='left';P.fillText(bigTime||'--:--', cardX+16, y+32);
+      P.strokeStyle='rgba(212,175,55,0.15)';P.setLineDash([4,4]);P.beginPath();P.moveTo(cardX+16,y+44);P.lineTo(cardX+cardW-16,y+44);P.stroke();P.setLineDash([]);
+      let ry=y+62;
+      for(let row of rows){P.fillStyle='#9ca3af';P.font='600 19px Tajawal, sans-serif';P.textAlign='right';P.fillText(row.label, cardX+cardW-16, ry+16);P.fillStyle='#a7f3d0';P.font='800 21px Tajawal, sans-serif';P.textAlign='left';P.fillText(row.time||'--:--', cardX+16, ry+16);ry+=42;}
+      return y+cardH+14;
+     }
+     let curY=220;
+     curY=drawCard(curY,'🌅 صلاة الصبح', t.fajr||'--:--', [{label:'أذان الفجر', time:t.fajr},{label:'طلوع الشمس', time:t.sunrise}]);
+     curY=drawCard(curY,'☀️ أذان الظهر', t.dhuhr||'--:--', [{label:'أذان الظهر', time:t.dhuhr}]);
+     curY=drawCard(curY,'🌇 أذان المغرب', t.maghreb||t.sunset||'--:--', [{label:'غروب الشمس', time:t.sunset},{label:'أذان المغرب', time:t.maghreb},{label:'نصف الليل', time:t.midnight},{label:'نصف الليل الفلكي', time:t.astronomicalMidnight}]);
+     if(njP_last.extra&&(njP_last.extra.qibla||njP_last.extra.distance)){
+      P.fillStyle='#a7f3d0';P.font='700 17px Tajawal, sans-serif';P.textAlign='center';
+      let extraTxt='';if(njP_last.extra.qibla) extraTxt+='القبلة: '+njP_last.extra.qibla+'  ';
+      if(njP_last.extra.distance) extraTxt+='المسافة عن الكعبة: '+njP_last.extra.distance;
+      if(extraTxt) P.fillText(extraTxt, g/2, curY+18);
+      curY+=30;
+     }
+     let warnY=curY+4;
+     P.fillStyle='rgba(212,175,55,0.12)';P.beginPath();let wx=32, ww=g-64, wh=46, wr=10;
+     P.moveTo(wx+wr,warnY);P.lineTo(wx+ww-wr,warnY);P.quadraticCurveTo(wx+ww,warnY,wx+ww,warnY+wr);
+     P.lineTo(wx+ww,warnY+wh-wr);P.quadraticCurveTo(wx+ww,warnY+wh,wx+ww-wr,warnY+wh);
+     P.lineTo(wx+wr,warnY+wh);P.quadraticCurveTo(wx,warnY+wh,wx,warnY+wh-wr);
+     P.lineTo(wx, warnY+wr);P.quadraticCurveTo(wx,warnY,wx+wr,warnY);P.fill();
+     P.strokeStyle='rgba(212,175,55,0.25)';P.stroke();
+     P.fillStyle='#d4af37';P.font='700 15px Tajawal, sans-serif';P.textAlign='center';
+     P.fillText('⚠️ نلفت انتباه جنابكم الى وجوب الاحتياط بضع دقائق.. و شكرا', g/2, warnY+28);
+     let footerY=L-148;
+     P.strokeStyle='rgba(212,175,55,0.2)';P.beginPath();P.moveTo(g*0.15,footerY);P.lineTo(g*0.85,footerY);P.stroke();
+     P.fillStyle='#d4af37';P.font='900 30px Tajawal, sans-serif';P.textAlign='center';P.fillText('التقويم الشامل', g/2, L-108);
+     P.fillStyle='rgba(212,175,55,0.9)';P.font='700 21px Amiri, serif';P.fillText('إعداد وتقديم الشيخ فضل زين الدين', g/2, L-74);
+     P.fillStyle='rgba(255,255,255,0.38)';P.font='400 15px Tajawal, sans-serif';P.fillText('نَسْأَلُكُمُ الدُّعَاء', g/2, L-42);
+     let blob=await new Promise(function(res){F.toBlob(function(r){res(r);},'image/png',1);});
+     if(!blob) throw Error('blob failed');
+     let fileName='taqwim-nojumi-'+(cityName.replace(/\s+/g,'-'))+'-'+Date.now()+'.png';
+     if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
+      let Cap=window.Capacitor;let Filesystem=Cap.Plugins.Filesystem, Share=Cap.Plugins.Share;
+      let base64=await new Promise(function(res,rej){let reader=new FileReader();reader.onloadend=function(){let d=reader.result;if(typeof d==='string') res(d.split(',')[1]);else rej('no data');};reader.onerror=rej;reader.readAsDataURL(blob);});
+      let filePath='taqweem/'+fileName;
+      try{await Filesystem.mkdir({path:'taqweem',directory:'CACHE',recursive:true});}catch(e){}
+      await Filesystem.writeFile({path:filePath,data:base64,directory:'CACHE'});
+      let uriResult=await Filesystem.getUri({path:filePath,directory:'CACHE'});
+      await Share.share({title:'أوقات الصلاة - '+cityName+' - مركز البحوث', text:hijriText2+' - '+cityName+' - التقويم الشامل', url:uriResult.uri, dialogTitle:'مشاركة أوقات الصلاة'});
+      if(window.T) window.T('تمت المشاركة ✓');return;
+     }
+     try{
+      if(navigator.canShare && navigator.canShare({files:[new File([blob],fileName,{type:'image/png'})]})){
+       let f=new File([blob],fileName,{type:'image/png'});
+       await navigator.share({files:[f], title:'أوقات الصلاة - '+cityName, text:hijriText2+' - '+cityName});
+       if(window.T) window.T('تمت المشاركة ✓');return;
+      }
+     }catch(e){}
+     let url=URL.createObjectURL(blob);
+     let a=document.createElement('a');a.href=url;a.download=fileName;document.body.appendChild(a);a.click();a.remove();
+     setTimeout(function(){URL.revokeObjectURL(url);},1000);
+     if(window.T) window.T('تم تحميل الصورة ✓');
+    }catch(e){console.error(e);if(window.T) window.T('تعذر إنشاء الصورة');else alert('تعذر إنشاء الصورة: '+e.message);}
+   }
+  }catch(e){console.error('Nojumi tab init failed', e);}
  }
 
  window.openPrayerSystem=function(){
