@@ -2040,7 +2040,7 @@ window.getUserCitiesUnified = getUserCitiesUnified;
 window._sayeghCities=(window.MASTER_CITIES && window.MASTER_CITIES.length>100)?window.MASTER_CITIES:loadCities();
 window._editingOldCode=null;
 window._masterCities=window._sayeghCities;
-window._selectedSayeghCode=window._sayeghCities[0]?.code||'107';
+window._selectedSayeghCode=(function(){ try{ var _s=localStorage.getItem('_selectedSayeghCode'); if(_s && /^\d+$/.test(String(_s).trim())) return String(_s).trim(); }catch(e){} return window._sayeghCities[0]?.code||'107'; })();
 
 // تحميل الملف الخارجي بشكل غير متزامن - موحد
 async function fetchMasterCities(){
@@ -2131,7 +2131,7 @@ window.addSayeghCity=function(){
  if(window._sayeghCities.find(function(c){return c.code===code;})){alert('الكود موجود');return;}
  window._sayeghCities.push({name:name,code:code});
  }
- saveCities(window._sayeghCities);window.renderSayeghCities();nameEl.value='';codeEl.value='';document.getElementById('sayegh-city-select').value=code;window.updateSayeghPreview();
+ saveCities(window._sayeghCities);if(window._saveSayeghCityAtomic) window._saveSayeghCityAtomic(code); else { window._selectedSayeghCode=code; document.getElementById('sayegh-city-select').value=code; }window.renderSayeghCities();nameEl.value='';codeEl.value='';window.updateSayeghPreview();
 };
 window.deleteSayeghCity=function(){var sel=document.getElementById('sayegh-city-select');var code=sel.value;if(!code) return;if(window._sayeghCities.length<=1){alert('لا يمكن حذف آخر مدينة');return;}window._sayeghCities=window._sayeghCities.filter(function(c){return c.code!==code;});saveCities(window._sayeghCities);window.renderSayeghCities();};
 window.editSayeghCity=function(){var sel=document.getElementById('sayegh-city-select');var code=sel.value;var idx=window._sayeghCities.findIndex(function(c){return c.code===code;});if(idx<0) return;var city=window._sayeghCities[idx];document.getElementById('inp-city-name').value=city.name;document.getElementById('inp-city-code').value=city.code;window._editingOldCode=city.code;var b=document.getElementById('btn-add-city');if(b){b.textContent='💾 حفظ التعديل';}};
@@ -2862,7 +2862,7 @@ if(document.body) obs.observe(document.body,{childList:true,subtree:true});
    suggestBox.querySelectorAll('.city-suggest-item').forEach(function(el){
     el.addEventListener('click', function(){
      var code=el.dataset.code;
-     window._selectedSayeghCode=code;
+     if(window._saveSayeghCityAtomic) window._saveSayeghCityAtomic(code); else window._selectedSayeghCode=code;
      var cur=(window._sayeghCities||[]).find(function(c){return c.code===code;});
      if(cur) searchInp.value=cur.name+' - '+cur.code;
      suggestBox.style.display='none';
