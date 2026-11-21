@@ -35,8 +35,6 @@
   const NAJAF_CITY={name:'النجف الأشرف',code:'107',country:'العراق',lat:31.9996,lng:44.3143};
   console.log('🔧 PRO FIX: Najaf 107 root');
 
-  // FIX4: علامة أول تشغيل تحترم. لا نحذفها ولا نعترضها. أول تشغيل يحدث مرة واحدة فقط.
-  // FIX4: لا تحويل 236 بيروت إلى 107. 236 مدينة صحيحة. لا كتابة افتراضية عند كل فتح.
   try{
     // إصلاح مصفوفة المدن
     let cityKeys = ['sayegh_dynamic_cities_v3','taqweem_user_cities','USER_CITIES_KEY'];
@@ -59,7 +57,6 @@
         }
       }catch(e){}
     });
-    // FIX4: لا نفرض النجف عند كل فتح. النطاق المحفوظ يبقى. الافتراض عند أول تشغيل فقط.
     try{
       let _fr = localStorage.getItem('_first_run_done');
       let _act = localStorage.getItem('liveBoxActive');
@@ -79,7 +76,7 @@
   window.MASTER_CITIES = [NAJAF_CITY];
   window._masterCitiesCache = [NAJAF_CITY];
   window._sayeghCities = [NAJAF_CITY];
-  window._selectedSayeghCode = (function(){ try{ return localStorage.getItem('_selectedSayeghCode')||NAJAF_CODE; }catch(e){ return NAJAF_CODE; } })(); // FIX4: قراءة المخزون، لا فرض النجف
+  window._selectedSayeghCode = (function(){ try{ return localStorage.getItem('_selectedSayeghCode')||NAJAF_CODE; }catch(e){ return NAJAF_CODE; } })();
 
   // 4- اعتراض تحميل cities.json من الشبكة وإرجاع النجف أولاً
   try{
@@ -127,11 +124,11 @@
  try{
   var FINAL={hd:28,hm:2,hy:1448,hmn:"صفر المظفر",dt:"28 صفر المظفر 1448 هـ",len:30,finalStr:"28 صفر المظفر 1448 هـ",hmName:"صفر المظفر"};
   try{
-   var existing = localStorage.getItem('_final_unified');
+   var existing = localStorage.getItem('taqweem_final_unified');
    if(!existing){
-    localStorage.setItem('_final_unified',JSON.stringify(FINAL));
+    localStorage.setItem('taqweem_final_unified',JSON.stringify(FINAL));
    }else{
-    try{ FINAL = JSON.parse(existing); }catch(e){ localStorage.setItem('_final_unified',JSON.stringify(FINAL)); }
+    try{ FINAL = JSON.parse(existing); }catch(e){ localStorage.setItem('taqweem_final_unified',JSON.stringify(FINAL)); }
    }
   }catch(e){}
   window.FINAL_HIJRI=FINAL;
@@ -289,7 +286,7 @@ html,body{background:#0a1f14;margin:0;padding:0;min-height:100vh}
   localStorage.setItem = function(k,v){
    try{
     origSetItem.call(localStorage,k,v);
-    if(k==='_final_unified' || k==='taqweem_final_unified'){
+    if(k==='taqweem_final_unified'){
      // نجح تحديث التاريخ = اتصال ناجح
      origSetItem.call(localStorage,'_last_successful_fetch_time', String(Date.now()));
      console.log('✅ last_successful_fetch_time updated');
@@ -367,14 +364,14 @@ html,body{background:#0a1f14;margin:0;padding:0;min-height:100vh}
 (function(){
 try{
  window.In = function(n,e){return n;};
- window.Sa = function(n){let FINAL=null;try{let raw=localStorage.getItem('_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){} return FINAL?{hy:FINAL.hy,hm:FINAL.hm,hd:FINAL.hd}:null;};
- window._i = function(n){let FINAL=null;try{let raw=localStorage.getItem('_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){} if(!FINAL)FINAL={hd:28,hm:2,hy:1448,hmn:"صفر المظفر"}; return {hy:FINAL.hy,hm:FINAL.hm,hd:FINAL.hd,hmName:FINAL.hmn};};
- window.ka = function(n){let FINAL=null;try{let raw=localStorage.getItem('_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){} return FINAL?FINAL.dt:"28 صفر المظفر 1448 هـ";};
+ window.Sa = function(n){let FINAL=null;try{let raw=localStorage.getItem('taqweem_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){} return FINAL?{hy:FINAL.hy,hm:FINAL.hm,hd:FINAL.hd}:null;};
+ window._i = function(n){let FINAL=null;try{let raw=localStorage.getItem('taqweem_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){} if(!FINAL)FINAL={hd:28,hm:2,hy:1448,hmn:"صفر المظفر"}; return {hy:FINAL.hy,hm:FINAL.hm,hd:FINAL.hd,hmName:FINAL.hmn};};
+ window.ka = function(n){let FINAL=null;try{let raw=localStorage.getItem('taqweem_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){} return FINAL?FINAL.dt:"28 صفر المظفر 1448 هـ";};
  window.$r = function(n){try{return n.toLocaleDateString("ar-LB");}catch{return "";}};
- window.$e = function(n,e,r){let FINAL=null;try{let raw=localStorage.getItem('_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){} let base=new Date(); return new Date(base.getFullYear(),base.getMonth(),base.getDate()-(FINAL?FINAL.hd-(r||1):0));};
+ window.$e = function(n,e,r){let FINAL=null;try{let raw=localStorage.getItem('taqweem_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){} let base=new Date(); return new Date(base.getFullYear(),base.getMonth(),base.getDate()-(FINAL?FINAL.hd-(r||1):0));};
  window.ir = function(n){try{return{day:n.getDate(),month:n.getMonth()+1};}catch{return{day:1,month:1}};};
- window.getSayeghHijri = function(){let FINAL=null;try{let raw=localStorage.getItem('_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){} return FINAL;};
- window.getSayeghHijriPure = function(){let FINAL=null;try{let raw=localStorage.getItem('_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){} return FINAL;};
+ window.getSayeghHijri = function(){let FINAL=null;try{let raw=localStorage.getItem('taqweem_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){} return FINAL;};
+ window.getSayeghHijriPure = function(){let FINAL=null;try{let raw=localStorage.getItem('taqweem_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){} return FINAL;};
 }catch(e){}
 })();
 </script>
@@ -538,7 +535,7 @@ Error generating stack: `+u.message+`
  try{
   let base=null;
   try{
-   let raw=localStorage.getItem('_final_unified');
+   let raw=localStorage.getItem('taqweem_final_unified');
    if(raw){ base=JSON.parse(raw); }
    else{
     let raw2=localStorage.getItem('_timing_source');
@@ -646,7 +643,6 @@ Error generating stack: `+u.message+`
   T("تم إلغاء التذكير");return;
  }
  
- // === FIX: طلب الإذن أولاً عند ضغط الجرس ===
  try{
   if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications){
    var LN=window.Capacitor.Plugins.LocalNotifications;
@@ -700,12 +696,12 @@ Ka=(o)=>{let f=o.ownerGroupId??15;Tl(o),Ui(!1);let k=o.aamal||[],z=o.aamalEnable
     URL.revokeObjectURL(url);
     T('تم تصدير النسخة ✅ '+customEvents.length+' مناسبة');
    }catch(e){alert('خطأ: '+e.message);}
-  },Wl=()=>{return cr&&cr.length>0?cr:Aa},td=()=>{if(!Fi.trim()){T("اسم القسم مطلوب");return}let o=Wl(),k={id:Math.max(0,...o.map(($)=>$.id))+1,label:Fi.trim(),icon:Fa.trim()||"\uD83D\uDCC1"},z=[...o,k];St(z),Li((f)=>{let s=new Set(f);s.add(k.id);return s}),Ia(""),Ba("\uD83D\uDCC1"),T(`تمت إضافة القسم ${k.label} ✓`)},ld=(o)=>{if(o<=37){if(!confirm("هذا قسم أساسي، هل تريد حذفه؟ سيتم نقل مناسباته إلى مناسبات عامة."))return}let k=Wl().filter((z)=>z.id!==o);St(k),Qe((z)=>z.map(($)=>$.ownerGroupId===o?{...$,ownerGroupId:15}:$)),T("تم حذف القسم ✓")},ud=(o)=>{Oi(o.id),Qi(o.label),Ii(o.icon)},id=()=>{if(!$i)return;if(!Vi.trim()){T("الاسم مطلوب");return}let f=Wl().map((k)=>k.id===$i?{...k,label:Vi.trim(),icon:Qa.trim()||"\uD83D\uDCC1"}:k);St(f),Oi(null),Qi(""),Ii(""),T("تم تعديل القسم ✓")},Wa=(o,f)=>{let k=Wl(),z=k.findIndex((F)=>F.id===o);if(z===-1)return;let $=z+f;if($<0||$>=k.length)return;let g=[...k],[L]=g.splice(z,1);g.splice($,0,L),St(g)},od=(o)=>{Pt(!1),Tl(null),Ui(!0),Ln({title:"",day:v||1,month:p||1,type:"event",strength:"مشهورة",strengthDisplay:"مشهورة",ownerGroupId:o,desc:"",source:"",aamalEnabled:!0,aamalList:[]}),wt(""),Nt(""),ar(!0)},Xl=({ev:o})=>{if(!fe)return null;let f=o.strength;return s("div",{className:"mt-3 bg-gray-900/70 border border-white/10 rounded-xl p-2.5 space-y-2.5",children:[a("div",{className:"h-[1px] bg-white/10 w-full"}),a("div",{className:"text-[10px] font-bold text-white/50",children:"\uD83D\uDEE1️ لوحة الإدارة - تغيير سريع للقوة:"}),s("div",{className:"flex gap-1.5",children:[a("button",{onClick:(g)=>{g.stopPropagation(),Ki(o,"صحيحة")},className:`flex-1 h-8 rounded-full text-[11px] font-bold border transition ${f==="صحيحة"?"bg-emerald-600 border-emerald-500 text-white shadow":"bg-[#132a1a] border-white/10 text-white/60 hover:bg-white/10"}`,children:"صحيحة"}),a("button",{onClick:(g)=>{g.stopPropagation(),Ki(o,"مشهورة")},className:`flex-1 h-8 rounded-full text-[11px] font-bold border transition ${f==="مشهورة"?"bg-amber-500 border-amber-400 text-[#0a1f14] shadow":"bg-[#132a1a] border-white/10 text-white/60 hover:bg-white/10"}`,children:"مشهورة"}),a("button",{onClick:(g)=>{g.stopPropagation(),Ki(o,"على رواية")},className:`flex-1 h-8 rounded-full text-[11px] font-bold border transition ${f==="رواية"?"bg-orange-500 border-orange-400 text-white shadow":"bg-[#132a1a] border-white/10 text-white/60 hover:bg-white/10"}`,children:"على رواية"})]}),a("div",{className:"h-[1px] bg-white/5 w-full"}),s("div",{className:"grid grid-cols-2 gap-2",children:[s("button",{onClick:(g)=>{g.stopPropagation(),Ka(o)},className:"h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black border border-blue-500/50 shadow-lg shadow-blue-600/20 flex flex-col items-center justify-center gap-0.5 transition active:scale-95 leading-tight",children:[a("span",{children:"✏️"}),a("span",{children:"تعديل"})]}),s("button",{onClick:(g)=>{g.stopPropagation(),ed(o)},className:"h-11 rounded-full bg-red-600 hover:bg-red-700 text-white text-[11px] font-black border border-red-500/50 shadow-lg shadow-red-600/20 flex flex-col items-center justify-center gap-0.5 transition active:scale-95 leading-tight",children:[a("span",{children:"\uD83D\uDDD1️"}),a("span",{children:"حذف"})]})]})]})};N.useEffect(()=>{if(_.trim().length>=1)O(!0);else O(!1)},[_]),N.useEffect(()=>{try{let o=localStorage.getItem("hijriCorrection");if(o!==null){let f=parseInt(o,10);if(!isNaN(f)&&f>=-10&&f<=10)I(f)}}catch{}},[]),N.useEffect(()=>{try{localStorage.setItem("hijriCorrection",String(U))}catch{}},[U]),N.useEffect(()=>{try{let f=localStorage.getItem("customEvents_v2");if(f){let z=JSON.parse(f);if(Array.isArray(z))Qe(z)}let k=localStorage.getItem("deletedIds_v2");if(k){let z=JSON.parse(k);if(Array.isArray(z))Ri(z.filter(($)=>typeof $==="number"))}let _cg=localStorage.getItem("customOwnerGroups_v2");if(_cg){try{let _v=JSON.parse(_cg);if(Array.isArray(_v))St(_v)}catch{}}}catch{}},[]),N.useEffect(()=>{try{void 0}catch{}},[fe]),N.useEffect(()=>{try{localStorage.setItem("customEvents_v2",JSON.stringify(Qr))}catch{}},[Qr]),N.useEffect(()=>{try{localStorage.setItem("deletedIds_v2",JSON.stringify(zt))}catch{}},[zt]),N.useEffect(()=>{try{localStorage.setItem("customOwnerGroups_v2",JSON.stringify(cr))}catch{}},[cr]),N.useEffect(()=>{try{let o=localStorage.getItem("smartReminders");if(o){let f=JSON.parse(o);if(f&&typeof f==="object")As((k)=>({master:f.master??k.master,items:{...k.items,...f.items||{}}}))}}catch{}},[]),N.useEffect(()=>{try{localStorage.setItem("smartReminders",JSON.stringify(_t))}catch{}},[_t]),N.useEffect(()=>{try{let o=localStorage.getItem("eventReminders");if(o){let f=JSON.parse(o);if(Array.isArray(f))Ni(f.filter((k)=>typeof k==="number"))}}catch{}},[]),N.useEffect(()=>{try{localStorage.setItem("eventReminders",JSON.stringify(ke))}catch{}},[ke]),N.useEffect(()=>{let o=(k)=>{k.preventDefault(),j(k)},f=()=>{Wn(!0),j(null),or(!1)};window.addEventListener("beforeinstallprompt",o),window.addEventListener("appinstalled",f);try{let k=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===!0;Wn(!!k)}catch{}return()=>{window.removeEventListener("beforeinstallprompt",o),window.removeEventListener("appinstalled",f)}},[]),N.useEffect(()=>{let FINAL=null;try{let raw=localStorage.getItem('_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){} if(!FINAL)FINAL={hd:28,hm:2,hy:1448,hmn:"صفر المظفر",dt:"28 صفر المظفر 1448 هـ"};let dev=new Date();let dY=dev.getFullYear(),dM=dev.getMonth()+1,dD=dev.getDate();c(FINAL.hy);m(FINAL.hm);C(FINAL.hd);try{u(FINAL);}catch(e){} try{t($r(dev));}catch(e){} try{e(FINAL.dt);}catch(e){} let k=FINAL;;wi({gy:dY,gm:dM,gd:dD});Oe(dY);ie(dM);Ve(dD);},[]),N.useEffect(()=>{let o=setInterval(()=>{Ds(Date.now());try{let f=new Date,k=In(f,U),z=_i(k);if(z){u(z),t($r(f)),e(ka(k));let $=ir(f),g=new Intl.DateTimeFormat("en-GB",{year:"numeric",timeZone:"Asia/Beirut"}).format(f),L=parseInt(g,10)||f.getFullYear();wi({gy:L,gm:$.month,gd:$.day})}}catch{}},60000);return()=>clearInterval(o)},[U]);let Ir=N.useMemo(()=>{let o=ki.filter((k)=>!zt.includes(k.id)),f=new Map;return o.forEach((k)=>f.set(k.id,k)),Qr.forEach((k)=>{if(!zt.includes(k.id))f.set(k.id,k)}),Array.from(f.values())},[Qr,zt]),Fr=N.useMemo(()=>{return Ir.filter((o)=>{if(E==="wilada"&&o.type!=="wilada")return!1;if(E==="wafat"&&o.type!=="wafat")return!1;if(E==="eid"&&o.type!=="eid")return!1;return!0})},[E,Ir]),ve=N.useMemo(()=>{let o=new Map;return Fr.forEach((f)=>{let k=`${f.month}-${f.day}`;if(!o.has(k))o.set(k,[]);o.get(k).push(f)}),o},[Fr]),Zi=N.useMemo(()=>{let o=_.trim().toLowerCase();if(!o)return[];return Ir.filter((f)=>{if(E==="wilada"&&f.type!=="wilada")return!1;if(E==="wafat"&&f.type!=="wafat")return!1;if(E==="eid"&&f.type!=="eid")return!1;return(f.title+" "+f.desc).toLowerCase().includes(o)}).sort((f,k)=>f.month-k.month||f.day-k.day)},[_,E,Ir]),Jl=N.useMemo(()=>{try{
-let FINAL=null;try{let raw=localStorage.getItem('_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){}
+  },Wl=()=>{return cr&&cr.length>0?cr:Aa},td=()=>{if(!Fi.trim()){T("اسم القسم مطلوب");return}let o=Wl(),k={id:Math.max(0,...o.map(($)=>$.id))+1,label:Fi.trim(),icon:Fa.trim()||"\uD83D\uDCC1"},z=[...o,k];St(z),Li((f)=>{let s=new Set(f);s.add(k.id);return s}),Ia(""),Ba("\uD83D\uDCC1"),T(`تمت إضافة القسم ${k.label} ✓`)},ld=(o)=>{if(o<=37){if(!confirm("هذا قسم أساسي، هل تريد حذفه؟ سيتم نقل مناسباته إلى مناسبات عامة."))return}let k=Wl().filter((z)=>z.id!==o);St(k),Qe((z)=>z.map(($)=>$.ownerGroupId===o?{...$,ownerGroupId:15}:$)),T("تم حذف القسم ✓")},ud=(o)=>{Oi(o.id),Qi(o.label),Ii(o.icon)},id=()=>{if(!$i)return;if(!Vi.trim()){T("الاسم مطلوب");return}let f=Wl().map((k)=>k.id===$i?{...k,label:Vi.trim(),icon:Qa.trim()||"\uD83D\uDCC1"}:k);St(f),Oi(null),Qi(""),Ii(""),T("تم تعديل القسم ✓")},Wa=(o,f)=>{let k=Wl(),z=k.findIndex((F)=>F.id===o);if(z===-1)return;let $=z+f;if($<0||$>=k.length)return;let g=[...k],[L]=g.splice(z,1);g.splice($,0,L),St(g)},od=(o)=>{Pt(!1),Tl(null),Ui(!0),Ln({title:"",day:v||1,month:p||1,type:"event",strength:"مشهورة",strengthDisplay:"مشهورة",ownerGroupId:o,desc:"",source:"",aamalEnabled:!0,aamalList:[]}),wt(""),Nt(""),ar(!0)},Xl=({ev:o})=>{if(!fe)return null;let f=o.strength;return s("div",{className:"mt-3 bg-gray-900/70 border border-white/10 rounded-xl p-2.5 space-y-2.5",children:[a("div",{className:"h-[1px] bg-white/10 w-full"}),a("div",{className:"text-[10px] font-bold text-white/50",children:"\uD83D\uDEE1️ لوحة الإدارة - تغيير سريع للقوة:"}),s("div",{className:"flex gap-1.5",children:[a("button",{onClick:(g)=>{g.stopPropagation(),Ki(o,"صحيحة")},className:`flex-1 h-8 rounded-full text-[11px] font-bold border transition ${f==="صحيحة"?"bg-emerald-600 border-emerald-500 text-white shadow":"bg-[#132a1a] border-white/10 text-white/60 hover:bg-white/10"}`,children:"صحيحة"}),a("button",{onClick:(g)=>{g.stopPropagation(),Ki(o,"مشهورة")},className:`flex-1 h-8 rounded-full text-[11px] font-bold border transition ${f==="مشهورة"?"bg-amber-500 border-amber-400 text-[#0a1f14] shadow":"bg-[#132a1a] border-white/10 text-white/60 hover:bg-white/10"}`,children:"مشهورة"}),a("button",{onClick:(g)=>{g.stopPropagation(),Ki(o,"على رواية")},className:`flex-1 h-8 rounded-full text-[11px] font-bold border transition ${f==="رواية"?"bg-orange-500 border-orange-400 text-white shadow":"bg-[#132a1a] border-white/10 text-white/60 hover:bg-white/10"}`,children:"على رواية"})]}),a("div",{className:"h-[1px] bg-white/5 w-full"}),s("div",{className:"grid grid-cols-2 gap-2",children:[s("button",{onClick:(g)=>{g.stopPropagation(),Ka(o)},className:"h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black border border-blue-500/50 shadow-lg shadow-blue-600/20 flex flex-col items-center justify-center gap-0.5 transition active:scale-95 leading-tight",children:[a("span",{children:"✏️"}),a("span",{children:"تعديل"})]}),s("button",{onClick:(g)=>{g.stopPropagation(),ed(o)},className:"h-11 rounded-full bg-red-600 hover:bg-red-700 text-white text-[11px] font-black border border-red-500/50 shadow-lg shadow-red-600/20 flex flex-col items-center justify-center gap-0.5 transition active:scale-95 leading-tight",children:[a("span",{children:"\uD83D\uDDD1️"}),a("span",{children:"حذف"})]})]})]})};N.useEffect(()=>{if(_.trim().length>=1)O(!0);else O(!1)},[_]),N.useEffect(()=>{try{let o=localStorage.getItem("hijriCorrection");if(o!==null){let f=parseInt(o,10);if(!isNaN(f)&&f>=-10&&f<=10)I(f)}}catch{}},[]),N.useEffect(()=>{try{localStorage.setItem("hijriCorrection",String(U))}catch{}},[U]),N.useEffect(()=>{try{let f=localStorage.getItem("customEvents_v2");if(f){let z=JSON.parse(f);if(Array.isArray(z))Qe(z)}let k=localStorage.getItem("deletedIds_v2");if(k){let z=JSON.parse(k);if(Array.isArray(z))Ri(z.filter(($)=>typeof $==="number"))}let _cg=localStorage.getItem("customOwnerGroups_v2");if(_cg){try{let _v=JSON.parse(_cg);if(Array.isArray(_v))St(_v)}catch{}}}catch{}},[]),N.useEffect(()=>{try{void 0}catch{}},[fe]),N.useEffect(()=>{try{localStorage.setItem("customEvents_v2",JSON.stringify(Qr))}catch{}},[Qr]),N.useEffect(()=>{try{localStorage.setItem("deletedIds_v2",JSON.stringify(zt))}catch{}},[zt]),N.useEffect(()=>{try{localStorage.setItem("customOwnerGroups_v2",JSON.stringify(cr))}catch{}},[cr]),N.useEffect(()=>{try{let o=localStorage.getItem("smartReminders");if(o){let f=JSON.parse(o);if(f&&typeof f==="object")As((k)=>({master:f.master??k.master,items:{...k.items,...f.items||{}}}))}}catch{}},[]),N.useEffect(()=>{try{localStorage.setItem("smartReminders",JSON.stringify(_t))}catch{}},[_t]),N.useEffect(()=>{try{let o=localStorage.getItem("eventReminders");if(o){let f=JSON.parse(o);if(Array.isArray(f))Ni(f.filter((k)=>typeof k==="number"))}}catch{}},[]),N.useEffect(()=>{try{localStorage.setItem("eventReminders",JSON.stringify(ke))}catch{}},[ke]),N.useEffect(()=>{let o=(k)=>{k.preventDefault(),j(k)},f=()=>{Wn(!0),j(null),or(!1)};window.addEventListener("beforeinstallprompt",o),window.addEventListener("appinstalled",f);try{let k=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===!0;Wn(!!k)}catch{}return()=>{window.removeEventListener("beforeinstallprompt",o),window.removeEventListener("appinstalled",f)}},[]),N.useEffect(()=>{let FINAL=null;try{let raw=localStorage.getItem('taqweem_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){} if(!FINAL)FINAL={hd:28,hm:2,hy:1448,hmn:"صفر المظفر",dt:"28 صفر المظفر 1448 هـ"};let dev=new Date();let dY=dev.getFullYear(),dM=dev.getMonth()+1,dD=dev.getDate();c(FINAL.hy);m(FINAL.hm);C(FINAL.hd);try{u(FINAL);}catch(e){} try{t($r(dev));}catch(e){} try{e(FINAL.dt);}catch(e){} let k=FINAL;;wi({gy:dY,gm:dM,gd:dD});Oe(dY);ie(dM);Ve(dD);},[]),N.useEffect(()=>{let o=setInterval(()=>{Ds(Date.now());try{let f=new Date,k=In(f,U),z=_i(k);if(z){u(z),t($r(f)),e(ka(k));let $=ir(f),g=new Intl.DateTimeFormat("en-GB",{year:"numeric",timeZone:"Asia/Beirut"}).format(f),L=parseInt(g,10)||f.getFullYear();wi({gy:L,gm:$.month,gd:$.day})}}catch{}},60000);return()=>clearInterval(o)},[U]);let Ir=N.useMemo(()=>{let o=ki.filter((k)=>!zt.includes(k.id)),f=new Map;return o.forEach((k)=>f.set(k.id,k)),Qr.forEach((k)=>{if(!zt.includes(k.id))f.set(k.id,k)}),Array.from(f.values())},[Qr,zt]),Fr=N.useMemo(()=>{return Ir.filter((o)=>{if(E==="wilada"&&o.type!=="wilada")return!1;if(E==="wafat"&&o.type!=="wafat")return!1;if(E==="eid"&&o.type!=="eid")return!1;return!0})},[E,Ir]),ve=N.useMemo(()=>{let o=new Map;return Fr.forEach((f)=>{let k=`${f.month}-${f.day}`;if(!o.has(k))o.set(k,[]);o.get(k).push(f)}),o},[Fr]),Zi=N.useMemo(()=>{let o=_.trim().toLowerCase();if(!o)return[];return Ir.filter((f)=>{if(E==="wilada"&&f.type!=="wilada")return!1;if(E==="wafat"&&f.type!=="wafat")return!1;if(E==="eid"&&f.type!=="eid")return!1;return(f.title+" "+f.desc).toLowerCase().includes(o)}).sort((f,k)=>f.month-k.month||f.day-k.day)},[_,E,Ir]),Jl=N.useMemo(()=>{try{
+let FINAL=null;try{let raw=localStorage.getItem('taqweem_final_unified');if(raw)FINAL=JSON.parse(raw);}catch(e){}
 if(!FINAL)FINAL={hd:28,hm:2,hy:1448,hmn:"صفر المظفر",len:30,hmName:"صفر المظفر"};
 let devNow=new Date();
 let DEVICE={gy:devNow.getFullYear(),gm:devNow.getMonth()+1,gd:devNow.getDate(),dow:devNow.getDay()};
-let HIJRI_MONTHS=["محرم الحرام","صفر المظفر","ربيع الأول","ربيع الثاني","جمادى الأولى","جمادى الآخرة","رجب الأصب","شعبان المعظم","رمضان المبارك","شوال المكرم","ذو القعدة الحرام","ذو الحجة الحرام"];
+let HIJRI_MONTHS = window.hijriMonthsCanonical || ['محرم الحرام','صفر المظفر','ربيع الأول','ربيع الثاني','جمادى الأولى','جمادى الآخرة','رجب الأصب','شعبان المعظم','رمضان المبارك','شوال المكرم','ذو القعدة الحرام','ذو الحجة الحرام'];
 function getHijriMonthName(hm){return HIJRI_MONTHS[(hm-1+12)%12];}
 function addGregorian(gy,gm,gd,offset){
  let d=new Date(gy,gm-1,gd);
@@ -1827,7 +1823,6 @@ function getActiveBox(){
 function setActiveBox(v){
    try{
     if(v===null || v===undefined || v===''){ v='najaf'; }
-    // FIX4: حفظ ذري — النطاق مع مدينة النطاق مع مدينة صلاة الصايغ في معاملة واحدة.
     var codeToSave = (v==='najaf') ? '107' : (function(){ try{ var _c = (window.getCurrentSayeghCode ? String(window.getCurrentSayeghCode()).trim() : ''); if(_c) return _c; var _s = localStorage.getItem('_selectedSayeghCode'); if(_s) return String(_s).trim(); var _sel=document.getElementById('sayegh-city-select'); if(_sel && _sel.value) return String(_sel.value).trim(); }catch(e){} return '107'; })();
     if(!codeToSave) codeToSave='107';
     localStorage.setItem('liveBoxActive', v);
@@ -2410,9 +2405,9 @@ window.setFetchBtnState=function(state){
 // === UNIFIED LIVE UPDATE - SINGLE SOURCE OF TRUTH - DO NOT DUPLICATE ===
 
 // ===== منطق موحد نظيف - تحديث حي + يدوي بنفس المسار =====
-window.hijriMonthsCanonical = window.hijriMonthsCanonical || ['محرم','صفر المظفر','ربيع الأول','ربيع الثاني','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
-window.HIJRI_MONTHS = window.HIJRI_MONTHS || window.hijriMonthsCanonical;
-window.ln = window.ln || ['محرم الحرام','صفر','ربيع الأول','ربيع الثاني','جمادى الأولى','جمادى الثانية','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+window.hijriMonthsCanonical = window.hijriMonthsCanonical || ['محرم الحرام','صفر المظفر','ربيع الأول','ربيع الثاني','جمادى الأولى','جمادى الآخرة','رجب الأصب','شعبان المعظم','رمضان المبارك','شوال المكرم','ذو القعدة الحرام','ذو الحجة الحرام'];
+window.HIJRI_MONTHS = window.hijriMonthsCanonical;
+window.ln = window.hijriMonthsCanonical;
 
 window.buildUnifiedFinalObj = function(hd, hm, hy, hmn){
  var canonical = window.hijriMonthsCanonical;
@@ -2434,7 +2429,7 @@ window.buildUnifiedFinalObj = function(hd, hm, hy, hmn){
 
 window._confirmFinalAndRefresh = function(expectedDay, statusElId, statusText){
   try{
-    var chk=null; try{ chk=JSON.parse(localStorage.getItem('_final_unified')||'null'); }catch(e){}
+    var chk=null; try{ chk=JSON.parse(localStorage.getItem('taqweem_final_unified')||'null'); }catch(e){}
     if(!chk || !chk.finalStr) return false;
     if(expectedDay){
       var _exp=String(expectedDay);
@@ -2445,7 +2440,6 @@ window._confirmFinalAndRefresh = function(expectedDay, statusElId, statusText){
       }
     }
     var el=document.getElementById(statusElId); if(el) el.textContent=statusText;
-    // FIX4: لا إعادة تحميل، ولا حارس 60 ثانية. العرض يتحدث عبر applyLiveUpdate و _Setters.
     return true;
   }catch(e){ return false; }
 };
@@ -2466,9 +2460,7 @@ window.applyLiveUpdate = function(objFinal, sourceLabel, displayStr){
   }
   // تخزين
   localStorage.setItem('taqweem_final_unified', JSON.stringify(cleanObj));
-  localStorage.setItem('_final_unified', JSON.stringify(cleanObj));
-  // FIX4: التحديث الحي لا يكتب فوق التجاوز اليدوي.
-  localStorage.setItem('_final_date', cleanObj.finalStr);
+   try{ localStorage.setItem('_last_successful_fetch_time', String(Date.now())); }catch(e){}
   window.FINAL_HIJRI = cleanObj;
   window.getFinalHijriForDate = function(){return cleanObj;};
   window.getFinalHijri = function(){return cleanObj;};
@@ -2793,7 +2785,7 @@ if(document.body) obs.observe(document.body,{childList:true,subtree:true});
    try{
     if(window.FINAL_HIJRI && window.FINAL_HIJRI.hd) final = window.FINAL_HIJRI;
     else {
-     var stored = localStorage.getItem('_final_unified') || localStorage.getItem('taqweem_final_unified');
+     var stored = localStorage.getItem('taqweem_final_unified');
      if(stored){ var o=JSON.parse(stored); if(o && o.hd) final=o; }
     }
    }catch(e){}
@@ -2927,7 +2919,7 @@ if(document.body) obs.observe(document.body,{childList:true,subtree:true});
 
 <script>
 // ===== مساعدات شاملة للهجري والميلادي - كل الصيغ واللغات والأرقام =====
-window.hijriMonthsCanonical = ['محرم','صفر المظفر','ربيع الأول','ربيع الثاني','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+window.hijriMonthsCanonical = window.hijriMonthsCanonical || ['محرم الحرام','صفر المظفر','ربيع الأول','ربيع الثاني','جمادى الأولى','جمادى الآخرة','رجب الأصب','شعبان المعظم','رمضان المبارك','شوال المكرم','ذو القعدة الحرام','ذو الحجة الحرام'];
 window.hijriMonthsMap = {'محرم':0,'المحرم':0,'Muharram':0,'Moharram':0,'صفر':1,'الصفر':1,'صفر المظفر':1,'صفرالمظفر':1,'صفر مظفر':1,'صفر الخير':1,'Safar':1,'Safar al-Muzaffar':1,'Safar al-Mudhaffar':1,'ربيع الأول':2,'ربيع الاول':2,'ربيع أول':2,'ربيع اول':2,'الربيع الأول':2,'ربيع 1':2,'Rabi al-Awwal':2,'Rabi al-Awal':2,'Rabi I':2,'Rabi 1':2,'Rabi al Awwal':2,'ربيع الثاني':3,'ربيع ثاني':3,'ربيع الآخر':3,'ربيع الاخر':3,'ربيع 2':3,'Rabi al-Thani':3,'Rabi al-Sani':3,'Rabi II':3,'Rabi 2':3,'جمادى الأولى':4,'جمادى الاولى':4,'جمادي الأولى':4,'جمادي الاولى':4,'جمادى أولى':4,'جمادى 1':4,'Jumada al-Ula':4,'Jumada al-Oula':4,'Jumada I':4,'جمادى الآخرة':5,'جمادى الاخرة':5,'جمادي الآخرة':5,'جمادي الاخرة':5,'جمادى الثانية':5,'جمادى 2':5,'Jumada al-Akhirah':5,'Jumada al-Akhira':5,'Jumada II':5,'رجب':6,'الرجب':6,'Rajab':6,'شعبان':7,'الشعبان':7,'Shaban':7,'Shaaban':7,'رمضان':8,'شهر رمضان':8,'Ramadan':8,'Ramadhan':8,'شوال':9,'Shawwal':9,'ذو القعدة':10,'ذو القعده':10,'ذي القعدة':10,'Dhu al-Qadah':10,'Dhul Qadah':10,'ذو الحجة':11,'ذو الحجه':11,'ذي الحجة':11,'Dhu al-Hijjah':11,'Dhul Hijjah':11,'Zul Hijjah':11,'1':0,'01':0,'2':1,'02':1,'3':2,'03':2,'4':3,'04':3,'5':4,'05':4,'6':5,'06':5,'7':6,'07':6,'8':7,'08':7,'9':8,'09':8,'10':9,'11':10,'12':11};
 window.toLatComprehensive = function(s){
  if(!s) return '';
@@ -3438,7 +3430,7 @@ const SOURCES_DIRECT = [];
 async function fetchDirect(targetUrl){try{let c=new AbortController();let t=setTimeout(()=>c.abort(),4500);let r=await fetch(targetUrl+"?_cb="+Date.now(),{cache:"no-store",signal:c.signal});clearTimeout(t);if(r.ok){let h=await r.text();if(h.length>800)return{html:h};}}catch(e){}for(let p of SOURCES_DIRECT){try{let url=p.tmpl+(p.encode?encodeURIComponent(targetUrl):targetUrl);let r=await fetch(url,{cache:"no-store"});if(!r.ok)continue;let txt=p.type==="json"?(await r.json()).contents||"":await r.text();if(txt.length>800)return{html:txt};}catch(e){}}return null;}
 function toWestern(s){const m={"٠":"0","١":"1","٢":"2","٣":"3","٤":"4","٥":"5","٦":"6","٧":"7","٨":"8","٩":"9"};return (s||"").toString().replace(/[٠-٩]/g,ch=>m[ch]||ch);}
 function strip(s){if(!s)return"";s=toWestern(s);s=s.replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي");return s.replace(/[^\u0600-\u06FF0-9\s]/g," ").replace(/\s+/g," ").trim().toLowerCase();}
-function getHijriFinal(){try{let f=null;if(window.getFinalHijri)f=window.getFinalHijri();else if(window.FINAL_HIJRI)f=window.FINAL_HIJRI;else if(window.FINAL)f=window.FINAL;if(f&&f.hy&&f.hm){return{y:parseInt(f.hy),m:parseInt(f.hm)-1,hy:f.hy,hm:f.hm,hd:f.hd,hmName:f.hmName||"",finalStr:f.finalStr||""};}}catch(e){}try{let raw=localStorage.getItem("_final_unified");if(raw){let obj=JSON.parse(raw);if(obj&&obj.hy&&obj.hm)return{y:parseInt(obj.hy),m:parseInt(obj.hm)-1,hy:obj.hy,hm:obj.hm,hd:obj.hd,hmName:obj.hmName||"",finalStr:obj.finalStr||""};}}catch(e){}return{y:1447,m:1,hy:1447,hm:2,hd:1,hmName:"صفر",finalStr:"2 صفر 1447"};}
+function getHijriFinal(){try{let f=null;if(window.getFinalHijri)f=window.getFinalHijri();else if(window.FINAL_HIJRI)f=window.FINAL_HIJRI;else if(window.FINAL)f=window.FINAL;if(f&&f.hy&&f.hm){return{y:parseInt(f.hy),m:parseInt(f.hm)-1,hy:f.hy,hm:f.hm,hd:f.hd,hmName:f.hmName||"",finalStr:f.finalStr||""};}}catch(e){}try{let raw=localStorage.getItem('taqweem_final_unified');if(raw){let obj=JSON.parse(raw);if(obj&&obj.hy&&obj.hm)return{y:parseInt(obj.hy),m:parseInt(obj.hm)-1,hy:obj.hy,hm:obj.hm,hd:obj.hd,hmName:obj.hmName||"",finalStr:obj.finalStr||""};}}catch(e){}return{y:1447,m:1,hy:1447,hm:2,hd:1,hmName:"صفر",finalStr:"2 صفر 1447"};}
 const MONTHS={0:["محرم"],1:["صفر"],2:["ربيع الاول","ربيع الأول"],3:["ربيع الثاني","ربيع الاخر"],4:["جمادى الاولى","جمادى الأولى"],5:["جمادى الاخرة","جمادى الآخرة"],6:["رجب"],7:["شعبان"],8:["رمضان"],9:["شوال"],10:["ذو القعدة","ذو القعده"],11:["ذو الحجة","ذو الحجه"]};
 function parseMsgs(h){let msgs=[];let re=/<div class="tgme_widget_message_wrap[^>]*>[\s\S]*?data-post="[^"]*\/(\d+)"[\s\S]*?<div class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>[\s\S]*?<time[^>]*datetime="([^"]+)"[^>]*>([^<]+)<\/time>/gi,m;while((m=re.exec(h))!==null){let id=parseInt(m[1]);let txt=m[2].replace(/<br.*?>/gi,"\n").replace(/<[^>]+>/g,"").trim();if(txt.length>30)msgs.push({id,text:txt,displayDate:m[4]});}return msgs;}
 function is48(t){let c=strip(t);if(!c.includes("الموضوع"))return false;return c.includes("رصد هلال")||c.includes("رصد الهلال")||c.includes("تعذر رؤيه هلال")||c.includes("تعذر رؤيه الهلال");}
@@ -4899,57 +4891,6 @@ let fetching=false;
   // أيضا عند تغيير مدينة نطاق مدينتك - مراقبة شاملة
   (function hookSayeghChange(){
     let lastSayeghCode = null;
-    // مراقبة دورية كل 800ms لكود مدينتك - FIXED: يزامن فوراً
-    setInterval(function(){ return; /* FIX4: حذف المراقبة الدورية. المزامنة عند التفعيل فقط عبر setActiveBox الذري. */
-      try{
-        let active=getActiveBox();
-        if(active!=='city') return;
-        let curCode = null;
-        if(window.getCurrentSayeghCode) curCode = window.getCurrentSayeghCode();
-        if(!curCode){
-          let sel=document.getElementById('sayegh-city-select');
-          if(sel && sel.value) curCode=sel.value;
-        }
-        if(!curCode) return;
-        curCode=String(curCode).trim();
-        // FIX: أول مرة احفظ واذا مدينة الصلاة مختلفة حدث فوراً
-        if(lastSayeghCode===null){
-          lastSayeghCode=curCode;
-          let prayerDef=getPrayerDef();
-          if(prayerDef!==curCode){
-            setPrayerDef(curCode);
-            if(window.fetchPrayersAuto) window.fetchPrayersAuto(curCode);
-            console.log('✅ Prayer sync: initial sync '+curCode+' -> prayer');
-          }
-          return;
-        }
-        if(curCode!==lastSayeghCode){
-          let prev=lastSayeghCode;
-          lastSayeghCode=curCode;
-          // غيّر مدينة الصلاة تلقائياً مهما كانت
-          setPrayerDef(curCode);
-          if(window.fetchPrayersAuto) window.fetchPrayersAuto(curCode);
-          console.log('✅ Prayer sync: sayegh city changed '+prev+' -> '+curCode+' => prayer updated');
-        } else {
-          // حتى لو الكود نفسه لكن صلاة مختلفة (مثلاً كانت نجف)، حدث
-          let prayerDef=getPrayerDef();
-          if(prayerDef!==curCode){
-            setPrayerDef(curCode);
-            if(window.fetchPrayersAuto) window.fetchPrayersAuto(curCode);
-            console.log('✅ Prayer sync: forced sync prayer '+prayerDef+' -> '+curCode);
-          }
-        }
-        // أيضا إذا كانت مدينة الصلاة مختلفة عن مدينتك الحالية (حتى لو last لم يتغير)
-        let prayerDef=getPrayerDef();
-        if(prayerDef!==curCode){
-          // فقط إذا المستخدم لم يغير يدوياً لمدينة ثالثة؟ حسب الطلب نحدث تلقائياً عند تغيير نطاق مدينتك
-          // نحدث فقط إذا كان prayerDef يساوي last المعروف أو النجف
-          if(prayerDef===lastSayeghCode || prayerDef==='107' || !prayerDef){
-            // لا نفعل هنا، التحديث يتم عند تغير الكود فقط لتجنب الكتابة فوق اختيار يدوي
-          }
-        }
-      }catch(e){}
-    }, 800);
 
     // مراقبة input البحث
     let tries=0;
@@ -5200,7 +5141,7 @@ let fetching=false;
      // ===== منطق الأيام =====
      var hd = 1;
      try{
-      var fin = window.FINAL_HIJRI || JSON.parse(localStorage.getItem('_final_unified')||'{}');
+      var fin = window.FINAL_HIJRI || JSON.parse(localStorage.getItem('taqweem_final_unified')||'{}');
       if(fin && fin.hd) hd = parseInt(fin.hd);
      }catch(e){}
      var now = new Date();
@@ -5282,7 +5223,6 @@ let fetching=false;
 </script>
 
 <script>
-// === FIX: تصدير بطاقة الشبكة + تحسين تصدير بطاقة اليوم للـ APK ===
 (function(){
  window.exportNetworkCardAPK = async function(){
   try{
@@ -5362,11 +5302,10 @@ let fetching=false;
 
 
 <script>
-// === FIX: منطق التكثيف للواجهة الأمامية (مرة بالنهار + 28-30 كل نص ساعة 16-23 بتوقيت الجهاز) ===
 (function(){
  function getHd(){
   try{
-   var fin = window.FINAL_HIJRI || JSON.parse(localStorage.getItem('_final_unified')||'{}');
+   var fin = window.FINAL_HIJRI || JSON.parse(localStorage.getItem('taqweem_final_unified')||'{}');
    if(fin && fin.hd) return parseInt(fin.hd);
   }catch(e){}
   return 1;
@@ -6158,7 +6097,6 @@ button.old-export-hidden {
  var ov=document.getElementById('reminder-picker-overlay');
  if(ov) ov.addEventListener('click', function(e){ if(e.target===ov) closeReminderPicker(); });
 
- // FIX: اجعل كل ازرار ذكرني في الصفحة تفتح الـ picker مباشرة حتى لو كانت داخل التحديث الحي
  function patchReminderButtons(){
   try{
    // اذا React بيعيد الرسم، نراقب
@@ -6418,7 +6356,6 @@ window.openQuranSystem = async function(){
     document.body.style.overflow='hidden';
     let ifr=ov.querySelector('#q-iframe');
     if(ifr){
-      // FIX: Always use src='quran.html' so fetch('./quran.db') works inside iframe (srcdoc breaks relative paths)
       ifr.src='quran.html?v=' + Date.now();
     }
     document.getElementById('q-close').onclick=function(){ ov.remove(); document.body.style.overflow=''; };
@@ -6443,7 +6380,6 @@ window.openQuranSystem = async function(){
     '_prayer_default_city_v3',
     'sayegh_dynamic_cities_v3',
     '_cities_master_cache_v1',
-    '_final_unified',
     'taqweem_final_unified',
     '_last_successful_fetch_time',
     '_first_auto_fetch_done',
@@ -6543,7 +6479,6 @@ window.openQuranSystem = async function(){
       tries++;
       // Hook setActiveBox
       if(window.setActiveBox){
-        // FIX4: لا تغليف ثان. الحفظ الذري في setActiveBox الأساسي. الكود بعد return غير منفذ.
         clearInterval(iv); return; let orig = window.setActiveBox;
         window.setActiveBox = function(v){
           try{ orig(v); }catch(e){ try{ setActiveBox(v); }catch(e2){} }
@@ -6651,7 +6586,7 @@ window.openQuranSystem = async function(){
     if(window.getExpectedPrayerCode || window.getPrayerDef){
       // Wrap prayer def setter to sync with box
       let origSetActive = window.setActiveBox;
-      if(origSetActive && !origSetActive._prayerHooked){ // FIX4: لا تغليف ثان — الحفظ الذري يكفي. الكود بعد return غير منفذ. clearInterval(iv); return;
+      if(origSetActive && !origSetActive._prayerHooked){
         window.setActiveBox = function(v){
           try{ origSetActive(v); }catch(e){ try{ setActiveBox(v); }catch(e2){} }
           setTimeout(function(){
@@ -6681,9 +6616,9 @@ window.openQuranSystem = async function(){
 <script id="apk-step2-long-fetch">
 (function(){
   console.log('⏳ Step2 - Long fetch 100s x 3 attempts');
-  const FETCH_TIMEOUT_MS = 30000; // FIX4: محاولة واحدة 30 ثانية، لا 100 ثانية × 3
-  const RETRY_GAP_MS = 0; // FIX4: لا فاصل بين دورات، محاولة واحدة فقط
-  const MAX_ATTEMPTS = 1; // FIX4: محاولة واحدة، لا دورات
+  const FETCH_TIMEOUT_MS = 30000;
+  const RETRY_GAP_MS = 0;
+  const MAX_ATTEMPTS = 1;
 
   // حفظ الدالة الأصلية
   let originalAutoFetch = null;
@@ -6853,46 +6788,6 @@ window.openQuranSystem = async function(){
 </script>
 
 
-<script id="apk-step2-last-success-hook">
-(function(){
-  // راقب كل مرة يتم فيها تحديث التاريخ بنجاح
-  let originalApply = window.applyLiveUpdate;
-  if(originalApply){
-    window.applyLiveUpdate = function(objFinal, sourceLabel, displayStr){
-      try{ originalApply(objFinal, sourceLabel, displayStr); }catch(e){ try{ originalApply(objFinal, sourceLabel, displayStr); }catch(e2){} }
-      try{
-        // اعتبره نجاح
-        localStorage.setItem('_last_successful_fetch_time', String(Date.now()));
-        if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){
-          window.Capacitor.Plugins.Preferences.set({key:'_last_successful_fetch_time', value:String(Date.now())});
-        }
-        console.log('✅ Last successful fetch time updated', new Date().toISOString());
-      }catch(e){}
-    };
-  }else{
-    // إذا لم تكن موجودة بعد، حاول لاحقاً
-    let tries=0;
-    let iv=setInterval(function(){
-      tries++;
-      if(window.applyLiveUpdate && !window.applyLiveUpdate._hooked){
-        let orig = window.applyLiveUpdate;
-        window.applyLiveUpdate = function(objFinal, sourceLabel, displayStr){
-          try{ orig(objFinal, sourceLabel, displayStr); }catch(e){}
-          try{
-            localStorage.setItem('_last_successful_fetch_time', String(Date.now()));
-            if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){
-              window.Capacitor.Plugins.Preferences.set({key:'_last_successful_fetch_time', value:String(Date.now())});
-            }
-          }catch(e){}
-        };
-        window.applyLiveUpdate._hooked=true;
-        clearInterval(iv);
-      }
-      if(tries>100) clearInterval(iv);
-    },500);
-  }
-})();
-</script>
 
 
 <script id="apk-step3-background-service">
@@ -6905,7 +6800,7 @@ window.openQuranSystem = async function(){
   function getHijriDay(){
     try{
       if(window.FINAL_HIJRI && window.FINAL_HIJRI.hd) return parseInt(window.FINAL_HIJRI.hd);
-      let stored = localStorage.getItem('_final_unified') || localStorage.getItem('taqweem_final_unified');
+      let stored = localStorage.getItem('taqweem_final_unified');
       if(stored){
         let o=JSON.parse(stored);
         if(o && o.hd) return parseInt(o.hd);
@@ -7127,7 +7022,6 @@ window.openQuranSystem = async function(){
     document.body.style.overflow='hidden';
     let ifr=ov.querySelector('#q-iframe');
     if(ifr){
-      // FIX: Always use src='quran.html' so fetch('./quran.db') works inside iframe (srcdoc breaks relative paths)
       ifr.src='quran.html?v=' + Date.now();
     }
     document.getElementById('q-close').onclick=function(){ ov.remove(); document.body.style.overflow=''; };
