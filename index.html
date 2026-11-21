@@ -3584,7 +3584,7 @@ var _origApply=window.applyMuteStateForAll;window.applyMuteStateForAll=function(
   }catch(e){}
  }
  function getDef(){try{return localStorage.getItem(LS_DEFAULT)||null;}catch(e){return null;}}
- function setDef(c){try{localStorage.setItem(LS_DEFAULT,c);}catch(e){} try{ var _cs=String(c||'').trim(); if(_cs && _cs!=='107' && window._saveSayeghCityAtomic){ var _curS=String(window._selectedSayeghCode||localStorage.getItem('_selectedSayeghCode')||'').trim(); if(_curS!==_cs) window._saveSayeghCityAtomic(_cs); } }catch(e){} }catch(e){}}
+ function setDef(c){try{localStorage.setItem(LS_DEFAULT,c);}catch(e){} try{ var _cs=String(c||'').trim(); if(_cs && _cs!=='107' && window._saveSayeghCityAtomic){ var _curS=String(window._selectedSayeghCode||localStorage.getItem('_selectedSayeghCode')||'').trim(); if(_curS!==_cs) window._saveSayeghCityAtomic(_cs); } }catch(e){} }
  function todayKey(){let d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
  function getCache(code){try{let k=LS_CACHE+code+'_'+todayKey();let s=localStorage.getItem(k);if(s)return JSON.parse(s);}catch(e){}return null;}
  function setCache(code,data){try{let k=LS_CACHE+code+'_'+todayKey();localStorage.setItem(k,JSON.stringify({data:data}));}catch(e){}}
@@ -4761,9 +4761,9 @@ let fetching=false;
  }
 
  window.openPrayerSystem=function(){
-  let def=getDef();if(!def){openCitySelector(null);return;}
-  let cache=getCache(def);openPrayerModal(def,cache);
- };
+   let def=getDef();if(!def){openCitySelector(null);return;}
+   let cache=getCache(def);openPrayerModal(def,cache);
+  };
  try{
   let obs=new MutationObserver(()=>{
    document.querySelectorAll('button').forEach(b=>{
@@ -4829,7 +4829,7 @@ let fetching=false;
   }catch(e){}
  }
  function startGMTScheduler(){checkAndFetch();setInterval(checkAndFetch,60000);}
- function initAuto(){var tries=0;var iv=setInterval(function(){tries++;if(window.fetchSayeghBridge){clearInterval(iv);startGMTScheduler();}if(tries>60) clearInterval(iv);},1000);}
+ function initAuto(){ if(window.fetchSayeghBridge){ startGMTScheduler(); } else { setTimeout(function(){ if(window.fetchSayeghBridge) startGMTScheduler(); }, 1000); } }
  // Expose for APK background
  window.fetchPrayersAuto = fetchPrayersAuto;
  window.checkAndFetchBackgroundPrayer = checkAndFetchBackground;
@@ -4930,12 +4930,9 @@ let fetching=false;
 
   // حقن التنبيه في مودال الصلاة
   (function hookPrayerModal(){
-    let tries=0;
-    let iv=setInterval(function(){
-      tries++;
-      if(window.openPrayerModal){
-        clearInterval(iv);
-        let orig=window.openPrayerModal;
+     if(!window.openPrayerModal) return;
+     if(window.openPrayerModal._mismatchHooked) return;
+     let orig=window.openPrayerModal;
         window.openPrayerModal = function(code,cached){
           // استدعاء الأصلي
           let result=orig(code,cached);
@@ -4962,12 +4959,9 @@ let fetching=false;
             }catch(e){console.log('mismatch check error',e);}
           }, 400);
           return result;
-        };
-        console.log('✅ Prayer sync: openPrayerModal hooked for mismatch warning');
-      }
-      if(tries>200) clearInterval(iv);
-    },300);
-  })();
+        };console.log('✅ Prayer sync: openPrayerModal hooked for mismatch warning');
+     window.openPrayerModal._mismatchHooked = true;
+   })();
 
   // تأكد أن sharePrayerAsImage لا يلتقط التنبيه (هو لا يلتقطه لأنه يلتقط p-cards فقط، لكن نتأكد)
   console.log('✅ Prayer Najaf sync fix loaded - default Najaf, auto sync with box, mismatch warning (no print in share)');
