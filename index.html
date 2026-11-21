@@ -27,6 +27,13 @@
   window._hijriMonthNames = 'محرم|المحرم|Muharram|Moharram|صفر|الصفر|صفر المظفر|صفرالمظفر|صفر مظفر|صفر الخير|Safar|Safar al-Muzaffar|Safar al-Mudhaffar|ربيع الأول|ربيع الاول|ربيع أول|ربيع اول|الربيع الأول|ربيع 1|Rabi al-Awwal|Rabi al-Awal|Rabi I|Rabi 1|Rabi al Awwal|ربيع الثاني|ربيع ثاني|ربيع الآخر|ربيع الاخر|ربيع 2|Rabi al-Thani|Rabi al-Sani|Rabi II|Rabi 2|جمادى الأولى|جمادى الاولى|جمادي الأولى|جمادي الاولى|جمادى أولى|جمادى 1|Jumada al-Ula|Jumada al-Oula|Jumada I|جمادى الآخرة|جمادى الاخرة|جمادي الآخرة|جمادي الاخرة|جمادى الثانية|جمادى 2|Jumada al-Akhirah|Jumada al-Akhira|Jumada II|رجب|الرجب|Rajab|شعبان|الشعبان|Shaban|Shaaban|رمضان|شهر رمضان|Ramadan|Ramadhan|شوال|Shawwal|ذو القعدة|ذو القعده|ذي القعدة|Dhu al-Qadah|Dhul Qadah|ذو الحجة|ذو الحجه|ذي الحجة|Dhu al-Hijjah|Dhul Hijjah|Zul Hijjah';
   window._hijriMonths = '(' + window._hijriMonthNames + '|1|2|3|4|5|6|7|8|9|10|11|12|01|02|03|04|05|06|07|08|09)';
   window._hijriMonthNameRegex = function(){ return new RegExp('(' + window._hijriMonthNames + ')'); };
+  /* v11: دوال صغيرة قانونية - toLat و getActiveBox فقط، من دون لمس saveCities ولا أيقونات القران/الخيرة */
+  window._toLat = function(s){ return window.toWesternDigits ? window.toWesternDigits(s==null?'':s) : (s||''); };
+  window._getActiveBox = function(){ try{ var v=localStorage.getItem('liveBoxActive'); if(v===null || v===undefined || v===''){ return 'najaf'; } return v; }catch(e){ return 'najaf'; } };
+  /* v12: بديل نظيف لـ Patch 12h - من دون تغليف localStorage.setItem */
+  window._markSuccessfulFetch = function(){ try{ localStorage.setItem('_last_successful_fetch_time', String(Date.now())); }catch(e){} };
+  /* v13: بديل نظيف لـ Patch Notification - من دون تغليف window.Notification */
+  window._notify = function(title, body){ try{ if(window.apkNotify) return window.apkNotify(title, body, Math.floor(Math.random()*100000)); if("Notification" in window && Notification.permission==="granted"){ new Notification(title,{body:body}); return true; } }catch(e){} return false; };
   try{
     const orig = Intl.NumberFormat;
     Intl.NumberFormat = function(locales, opts){
@@ -256,26 +263,7 @@ html,body{background:#0a1f14;margin:0;padding:0;min-height:100vh}
 })();
 </script>
 
-<script>
-// === Patch 12h: تحديث وقت آخر اتصال ناجح تلقائيا ===
-(function(){
- try{
-  var origSetItem = localStorage.setItem;
-  localStorage.setItem = function(k,v){
-   try{
-    origSetItem.call(localStorage,k,v);
-    if(k==='taqweem_final_unified'){
-     // نجح تحديث التاريخ = اتصال ناجح
-     origSetItem.call(localStorage,'_last_successful_fetch_time', String(Date.now()));
-     console.log('✅ last_successful_fetch_time updated');
-    }
-   }catch(e){
-    try{ origSetItem.call(localStorage,k,v); }catch(e2){}
-   }
-  };
- }catch(e){}
-})();
-</script>
+<!-- v12: حُذف Patch 12h - كان يغلّف localStorage.setItem كله، ويثبت نجاحا وهميا عند تهيئة القيمة الافتراضية. التحديث الحقيقي بقي صريحا في مكان الحفظ (2508/2509) وفي الخلفية، وعبر window._markSuccessfulFetch -->
 
 
 
@@ -582,7 +570,7 @@ Error generating stack: `+u.message+`
       var perm=await LN.checkPermissions();
       if(perm.display==='granted'){
         T("التنبيهات مفعلة ✓");
-        try{new Notification("التقويم الشامل",{body:"التنبيهات تعمل بنجاح 🌙"})}catch{}
+        try{ if(window._notify) window._notify("التقويم الشامل","التنبيهات تعمل بنجاح 🌙"); else new Notification("التقويم الشامل",{body:"التنبيهات تعمل بنجاح 🌙"}); }catch{}
         return;
       }
       if(confirm("🔔 تفعيل الإشعارات؟\n\nللسماح بتذكيرك بالمناسبات قبل يوم ويومين، نحتاج إذن الإشعارات. هل تسمح؟")){
@@ -590,7 +578,7 @@ Error generating stack: `+u.message+`
         if(req.display==='granted'){
           if(Ql) try{Ql('granted')}catch(e){}
           T("تم تفعيل التنبيهات ✓");
-          try{new Notification("التقويم الشامل",{body:"سيتم تذكيرك بالمناسبات القادمة"})}catch{}
+          try{ if(window._notify) window._notify("التقويم الشامل","سيتم تذكيرك بالمناسبات القادمة"); else new Notification("التقويم الشامل",{body:"سيتم تذكيرك بالمناسبات القادمة"}); }catch{}
         }else{
           T("لم يتم تفعيل التنبيهات");
           alert("يمكنك تفعيل الإشعارات لاحقاً من إعدادات التطبيق > الإشعارات");
@@ -599,13 +587,13 @@ Error generating stack: `+u.message+`
       return;
     }
     if(!("Notification"in window)){T("التنبيهات غير مدعومة في هذا المتصفح");return}
-    if(Notification.permission==="granted"){T("التنبيهات مفعلة ✓");try{new Notification("التقويم الشامل",{body:"التنبيهات تعمل بنجاح 🌙"})}catch{}return}
+    if(Notification.permission==="granted"){T("التنبيهات مفعلة ✓");try{ if(window._notify) window._notify("التقويم الشامل","التنبيهات تعمل بنجاح 🌙"); else new Notification("التقويم الشامل",{body:"التنبيهات تعمل بنجاح 🌙"}); }catch{}return}
     if(Notification.permission==="denied"){T("تم حظر التنبيهات من إعدادات المتصفح");alert("تم حظر التنبيهات. فعلها من إعدادات المتصفح > الأذونات");return}
     if(Notification.permission==="default"){
       if(confirm("🔔 تفعيل الإشعارات؟\n\nهل تسمح للتقويم بتذكيرك بالمناسبات؟")){
         let o=await Notification.requestPermission();
         if(Ql) try{Ql(o)}catch(e){}
-        if(o==="granted"){T("تم تفعيل التنبيهات ✓");try{new Notification("التقويم الشامل",{body:"سيتم تذكيرك بالمناسبات القادمة"})}catch{}}
+        if(o==="granted"){T("تم تفعيل التنبيهات ✓");try{ if(window._notify) window._notify("التقويم الشامل","سيتم تذكيرك بالمناسبات القادمة"); else new Notification("التقويم الشامل",{body:"سيتم تذكيرك بالمناسبات القادمة"}); }catch{}}
         else T("لم يتم تفعيل التنبيهات");
       }
     }
@@ -651,7 +639,7 @@ Error generating stack: `+u.message+`
  if(Notification.permission==="denied"){T("تم حظر التنبيهات من المتصفح");return}
  if(Notification.permission!=="granted")try{let k=await Notification.requestPermission();if(Ql(k),k!=="granted"){T("لم يتم تفعيل التذكير");return}}catch{T("تعذر طلب إذن التنبيهات");return}
  Ni((k)=>[...k,o.id]),T("تم تفعيل التذكير");
- try{new Notification(o.title,{body:`سيتم تذكيرك قبل يوم من ${o.title}`})}catch{}
+ try{ if(window._notify) window._notify(o.title,`سيتم تذكيرك قبل يوم من ${o.title}`); else new Notification(o.title,{body:`سيتم تذكيرك قبل يوم من ${o.title}`}); }catch{}
 },
 
 Ka=(o)=>{let f=o.ownerGroupId??15;Tl(o),Ui(!1);let k=o.aamal||[],z=o.aamalEnabled!==!1;Ln({title:o.title,day:o.day,month:o.month,type:o.type,strength:o.strength,strengthDisplay:o.strength==="رواية"?"على رواية ذكرها المؤرخون":o.strength,ownerGroupId:o.ownerGroupId??f,desc:o.desc,source:o.source||"",aamalEnabled:z,aamalList:k.length>0?k:Ca(o).aamal||[]}),wt(""),Nt(""),ar(!0)},Za=()=>{Tl(null),Ui(!0),Ln({title:"",day:v||1,month:p||1,type:"event",strength:"مشهورة",strengthDisplay:"مشهورة",ownerGroupId:15,desc:"",source:"",aamalEnabled:!0,aamalList:[]}),wt(""),Nt(""),ar(!0)},nd=()=>{if(!K.title.trim()){T("العنوان مطلوب");return}if(K.day<1||K.day>30){T("اليوم يجب أن يكون بين 1 و 30");return}let o=K.strengthDisplay==="صحيحة"?"صحيحة":K.strengthDisplay==="مشهورة"?"مشهورة":"رواية",f={id:Va?Va.id:Math.max(0,...ki.map((k)=>k.id),...Qr.map((k)=>k.id))+1,day:K.day,month:K.month,title:K.title.trim(),type:K.type,strength:o,desc:K.desc.trim()||"مناسبة شيعية",source:K.source.trim(),ownerGroupId:K.ownerGroupId};if(K.aamalEnabled)if(K.aamalList&&K.aamalList.length>0)f.aamal=K.aamalList,f.aamalSource=K.source||"محرر يدوياً",f.aamalEnabled=!0;else{let k=Ca(f);f.aamal=k.aamal,f.aamalSource=k.aamalSource,f.aamalEnabled=!0}else f.aamal=[],f.aamalEnabled=!1;if(Kl)Qe((k)=>[...k,f]),T("تمت إضافة المناسبة ✓");else Qe((k)=>{if(k.find(($)=>$.id===f.id))return k.map(($)=>$.id===f.id?f:$);return[...k,f]}),T("تم تحديث المناسبة ✓");ar(!1),Tl(null)},ed=(o)=>{if(!confirm(`هل أنت متأكد من حذف ${o.title}؟`))return;Ri((f)=>f.includes(o.id)?f:[...f,o.id]),Qe((f)=>f.filter((k)=>k.id!==o.id)),T(`تم حذف ${o.title} ✓`)},ah=(o)=>{let f=Math.max(0,...ki.map((z)=>z.id),...Qr.map((z)=>z.id))+1,k={...o,id:f,title:o.title+" (نسخة)"};Qe((z)=>[...z,k]),T("تم نسخ المناسبة ✓")},Ki=(o,f)=>{let k=f.includes("صحيحة")?"صحيحة":f.includes("مشهورة")?"مشهورة":"رواية",$={...o,strength:k};Qe((g)=>{if(g.find((F)=>F.id===o.id))return g.map((F)=>F.id===o.id?$:F);return[...g,$]}),T(`تم تغيير القوة إلى ${k} ✓`)},rd=()=>{ 
@@ -1813,6 +1801,7 @@ window._stopLive=false;
 
 // النجف مفعل افتراضياً
 function getActiveBox(){
+   if(window._getActiveBox) return window._getActiveBox();
    try{
     var v=localStorage.getItem('liveBoxActive');
     if(v===null || v===undefined || v===''){ return 'najaf'; }
@@ -2154,7 +2143,7 @@ window.updateSayeghPreview=function(){var pre=document.getElementById('sayegh-ur
 window.getCurrentSayeghCode=function(){try{var _c=window._selectedSayeghCode||localStorage.getItem('_selectedSayeghCode')||'107'; return String(_c).trim();}catch(e){return '107';}};
 window.addSayeghCity=function(){
  var nameEl=document.getElementById('inp-city-name');var codeEl=document.getElementById('inp-city-code');var addBtn=document.getElementById('btn-add-city');
- function toLatin(s){ return window.toWesternDigits ? window.toWesternDigits(s==null?'':s) : (s||''); }
+ function toLatin(s){ return window._toLat ? window._toLat(s) : (s||''); }
  var name=(nameEl.value||'').trim();var code=toLatin((codeEl.value||'').trim());
  if(!name||!code){alert('اكتب الاسم والكود');return;}
  if(!/^\d+$/.test(code)){alert('الكود أرقام فقط');return;}
@@ -2384,7 +2373,7 @@ window.fetchSayeghBridge = async function(code){
 
 window.parseHijriMiladi=function(html){
  try{
- function toLat(s){ return window.toWesternDigits ? window.toWesternDigits(s==null?'':s) : (s||''); }
+ function toLat(s){ return window._toLat ? window._toLat(s) : (s||''); }
  var txt=toLat(html);
  var hijri=null, miladi=null;
  var hijriMonths=window._hijriMonths;
@@ -3465,7 +3454,7 @@ setTimeout(function(){ window._bindEstehlalNajaf(); }, 2000);
 (function(){
 const SOURCES_DIRECT = [];
 async function fetchDirect(targetUrl){try{let r;if(window._fetchUnified){r=await window._fetchUnified(targetUrl+"?_cb="+Date.now(),{cache:"no-store"},4500);}else{let c=new AbortController();let t=setTimeout(()=>c.abort(),4500);r=await fetch(targetUrl+"?_cb="+Date.now(),{cache:"no-store",signal:c.signal});clearTimeout(t);}if(r&&r.ok){let h=await r.text();if(h.length>800)return{html:h};}}catch(e){}for(let p of SOURCES_DIRECT){try{let url=p.tmpl+(p.encode?encodeURIComponent(targetUrl):targetUrl);let r=await fetch(url,{cache:"no-store"});if(!r.ok)continue;let txt=p.type==="json"?(await r.json()).contents||"":await r.text();if(txt.length>800)return{html:txt};}catch(e){}}return null;}
-function toWestern(s){ return window.toWesternDigits ? window.toWesternDigits(s==null?"":s) : (s||""); }
+function toWestern(s){ return window._toLat ? window._toLat(s) : (s||""); }
 function strip(s){ return window._normalizeArabic ? window._normalizeArabic(s) : (s||""); }
 function getHijriFinal(){try{let f=null;if(window.getFinalHijri)f=window.getFinalHijri();else if(window.FINAL_HIJRI)f=window.FINAL_HIJRI;else if(window.FINAL)f=window.FINAL;if(f&&f.hy&&f.hm){return{y:parseInt(f.hy),m:parseInt(f.hm)-1,hy:f.hy,hm:f.hm,hd:f.hd,hmName:f.hmName||"",finalStr:f.finalStr||""};}}catch(e){}try{let raw=localStorage.getItem('taqweem_final_unified');if(raw){let obj=JSON.parse(raw);if(obj&&obj.hy&&obj.hm)return{y:parseInt(obj.hy),m:parseInt(obj.hm)-1,hy:obj.hy,hm:obj.hm,hd:obj.hd,hmName:obj.hmName||"",finalStr:obj.finalStr||""};}}catch(e){}return{y:1447,m:1,hy:1447,hm:2,hd:1,hmName:"صفر",finalStr:"2 صفر 1447"};}
 const MONTHS={0:["محرم"],1:["صفر"],2:["ربيع الاول","ربيع الأول"],3:["ربيع الثاني","ربيع الاخر"],4:["جمادى الاولى","جمادى الأولى"],5:["جمادى الاخرة","جمادى الآخرة"],6:["رجب"],7:["شعبان"],8:["رمضان"],9:["شوال"],10:["ذو القعدة","ذو القعده"],11:["ذو الحجة","ذو الحجه"]};
@@ -4828,6 +4817,7 @@ let fetching=false;
   const LS_ACTIVE='liveBoxActive';
 
   function getActiveBox(){
+    if(window._getActiveBox) return window._getActiveBox();
     try{
       let v=localStorage.getItem(LS_ACTIVE);
       if(!v) return 'najaf';
@@ -5224,19 +5214,7 @@ let fetching=false;
   }catch(e){ console.log("bg err",e); }
  }
  setTimeout(initBg,3000);
- // Patch Notification to use apkNotify too
- setTimeout(function(){
-  if(window.isNativeAPK() && !window._notifPatched){
-   window._notifPatched=true;
-   const Orig=window.Notification;
-   window.Notification=function(t,o){
-    try{ window.apkNotify(t, o&&o.body?o.body:"", Math.floor(Math.random()*10000)); }catch(e){}
-    try{ if(Orig && Notification.permission==="granted") return new Orig(t,o); }catch(e){}
-    return {close:function(){}};
-   };
-   try{ window.Notification.permission = Orig?Orig.permission:"granted"; window.Notification.requestPermission = Orig?Orig.requestPermission.bind(Orig):function(){return Promise.resolve("granted");}; }catch(e){}
-  }
- },2500);
+  /* v13: حُذف Patch Notification - كان يغلّف window.Notification كله بعد 2500ms، ويكسر instanceof وpermission. الاشعارات التجريبية صارت تستدعي window._notify صريحا، وapkNotify بقي هو القانوني للـ APK والويب */
 })();
 </script>
 
