@@ -18,6 +18,8 @@
   window._extractHijriYear = function(s){ if(!s) return null; var m=String(s).match(/14\d\d/); return m?parseInt(m[0],10):null; };
   /* v6: خريطة أشهر 1-12 مشتقة من القانونية 0-11 - لا خريطة ثانية */
   window._getHijriMonth1Based = function(){ var out={}; var base=window.hijriMonthsMap||{}; for(var k in base){ if(Object.prototype.hasOwnProperty.call(base,k)) out[k]=base[k]+1; } return out; };
+  /* v7: جالب قانوني واحد - fetch مع مهلة، من دون تكرار AbortController */
+  window._fetchUnified = async function(url, opts, timeoutMs){ var timeout=timeoutMs||4500; var c=new AbortController(); var t=setTimeout(function(){ try{c.abort();}catch(e){} }, timeout); try{ var r=await fetch(url, Object.assign({cache:"no-store", signal:c.signal}, opts||{})); return r; } finally{ clearTimeout(t); } };
   try{
     const orig = Intl.NumberFormat;
     Intl.NumberFormat = function(locales, opts){
@@ -2370,9 +2372,7 @@ window.fetchSayeghBridge = async function(code){
   }catch(e){}
   return null;
 };
-/* جلب النجف: اتصال مباشر فقط. */
-window._najafDirect = [];
-window.fetchNajafDirect = async function(){ return null; };
+/* v8: حُذف الجلب المباشر الميت للنجف - الجسر هو المعتمد */
 
 
 window.parseHijriMiladi=function(html){
@@ -3457,7 +3457,7 @@ setTimeout(function(){ window._bindEstehlalNajaf(); }, 2000);
 <script id="sayegh-city-full-logic">
 (function(){
 const SOURCES_DIRECT = [];
-async function fetchDirect(targetUrl){try{let c=new AbortController();let t=setTimeout(()=>c.abort(),4500);let r=await fetch(targetUrl+"?_cb="+Date.now(),{cache:"no-store",signal:c.signal});clearTimeout(t);if(r.ok){let h=await r.text();if(h.length>800)return{html:h};}}catch(e){}for(let p of SOURCES_DIRECT){try{let url=p.tmpl+(p.encode?encodeURIComponent(targetUrl):targetUrl);let r=await fetch(url,{cache:"no-store"});if(!r.ok)continue;let txt=p.type==="json"?(await r.json()).contents||"":await r.text();if(txt.length>800)return{html:txt};}catch(e){}}return null;}
+async function fetchDirect(targetUrl){try{let r;if(window._fetchUnified){r=await window._fetchUnified(targetUrl+"?_cb="+Date.now(),{cache:"no-store"},4500);}else{let c=new AbortController();let t=setTimeout(()=>c.abort(),4500);r=await fetch(targetUrl+"?_cb="+Date.now(),{cache:"no-store",signal:c.signal});clearTimeout(t);}if(r&&r.ok){let h=await r.text();if(h.length>800)return{html:h};}}catch(e){}for(let p of SOURCES_DIRECT){try{let url=p.tmpl+(p.encode?encodeURIComponent(targetUrl):targetUrl);let r=await fetch(url,{cache:"no-store"});if(!r.ok)continue;let txt=p.type==="json"?(await r.json()).contents||"":await r.text();if(txt.length>800)return{html:txt};}catch(e){}}return null;}
 function toWestern(s){ return window.toWesternDigits ? window.toWesternDigits(s==null?"":s) : (s||""); }
 function strip(s){ return window._normalizeArabic ? window._normalizeArabic(s) : (s||""); }
 function getHijriFinal(){try{let f=null;if(window.getFinalHijri)f=window.getFinalHijri();else if(window.FINAL_HIJRI)f=window.FINAL_HIJRI;else if(window.FINAL)f=window.FINAL;if(f&&f.hy&&f.hm){return{y:parseInt(f.hy),m:parseInt(f.hm)-1,hy:f.hy,hm:f.hm,hd:f.hd,hmName:f.hmName||"",finalStr:f.finalStr||""};}}catch(e){}try{let raw=localStorage.getItem('taqweem_final_unified');if(raw){let obj=JSON.parse(raw);if(obj&&obj.hy&&obj.hm)return{y:parseInt(obj.hy),m:parseInt(obj.hm)-1,hy:obj.hy,hm:obj.hm,hd:obj.hd,hmName:obj.hmName||"",finalStr:obj.finalStr||""};}}catch(e){}return{y:1447,m:1,hy:1447,hm:2,hd:1,hmName:"صفر",finalStr:"2 صفر 1447"};}
@@ -4804,7 +4804,7 @@ let fetching=false;
   }catch(e){}
  }
  function startGMTScheduler(){ if(window._registerSchedulerJob) window._registerSchedulerJob('prayer', checkAndFetch, 60000, 0); else {checkAndFetch(); setInterval(checkAndFetch,60000);} }
- function initAuto(){var tries=0;var iv=setInterval(function(){tries++;if(window.fetchSayeghBridge){clearInterval(iv);startGMTScheduler();}if(tries>60) clearInterval(iv);},1000);}
+ function initAuto(){if(window.fetchSayeghBridge){startGMTScheduler();return;}setTimeout(function(){if(window.fetchSayeghBridge) startGMTScheduler();},2000);}
  // Expose for APK background
  window.fetchPrayersAuto = fetchPrayersAuto;
  window.checkAndFetchBackgroundPrayer = checkAndFetchBackground;
