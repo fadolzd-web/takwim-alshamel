@@ -2492,9 +2492,9 @@ window.applyLiveUpdate = function(objFinal, sourceLabel, displayStr){
      try{ localStorage.setItem('_sayegh_hijri_year_cache', JSON.stringify({hy:cleanObj.hy, hm:cleanObj.hm, hd:cleanObj.hd, ts:Date.now()})); }catch(e){}
    }catch(e){}
 
-  // تخزين
+  // تخزين v16: LAST + تاريخ اليوم يتحدثان فقط على النجاح، لا على المحاولة
   localStorage.setItem('taqweem_final_unified', JSON.stringify(cleanObj));
-   try{ localStorage.setItem('_last_successful_fetch_time', String(Date.now())); }catch(e){}
+   try{ localStorage.setItem('_last_successful_fetch_time', String(Date.now())); localStorage.setItem('_last_fetch_date_str', new Date().toISOString().slice(0,10)); }catch(e){}
   window.FINAL_HIJRI = cleanObj;
   // تحديث فوري للهيدر العلوي قبل React - إصلاح البطء (الحي كان يتأخر نص دقيقة)
   try{
@@ -2589,6 +2589,45 @@ window._normalizeHijriMonth = function(name){
     return null;
   }catch(e){ return null; }
 };
+
+// ===== v17: اتصال الهجري يحدث صلاة الصايغ - بشرط التصحيح =====
+// القاعدة: لا نكتب صلاة إلا إذا كانت لنفس يوم جهازك (diff===0)
+// إذا كان الموقع متقدم أو متأخر يوم (diff 1 أو -1) نكتب الهجري المصحح فقط، ولا نكتب الصلاة لأنها لغير يوم
+// هذا يمنع خلط نتيجة مبارح من الصايغ مع نتيجة بكرا من النجومي
+window._v17_writeSayeghPrayerCache = function(code, br, diff){
+  try{
+    if(!br || !br.prayers) return false;
+    if(diff !== 0) return false;
+    var c = window.toWesternDigits ? window.toWesternDigits(String(code)) : String(code);
+    if(!/^\d+$/.test(c)) return false;
+    try{
+      if(br.miladi && window.parseGregorianDate){
+        var sd = window.parseGregorianDate(br.miladi);
+        if(sd){
+          var dd = new Date(); dd.setHours(0,0,0,0);
+          sd.setHours(0,0,0,0);
+          var ddiff = Math.round((sd-dd)/(1000*60*60*24));
+          if(!isNaN(ddiff) && ddiff !== 0) return false;
+        }
+      }
+    }catch(e){}
+    var td = (window.fmtToday||function(){return {hijri:'',greg:'',dayName:''};})();
+    var hijriUnified = (window.formatHijriUnified||function(s){return s;})(br.hijri||td.hijri, td.dayName);
+    var miladiUnified = (window.formatMiladiUnified||function(s){return s;})(br.miladi||td.greg, td.dayName);
+    var res = {hijri:hijriUnified, miladi:miladiUnified, prayers:br.prayers, hijriRaw:br.hijri, miladiRaw:br.miladi};
+    var dLocal = new Date();
+    var todayLocal = dLocal.getFullYear()+'-'+(dLocal.getMonth()+1)+'-'+dLocal.getDate();
+    try{ localStorage.setItem('_prayer_cache_v3_'+c+'_'+todayLocal, JSON.stringify({data:res})); }catch(e){}
+    try{
+      var g = new Date();
+      var todayGMT = g.getUTCFullYear()+'-'+(g.getUTCMonth()+1)+'-'+g.getUTCDate();
+      localStorage.setItem('_prayer_auto_gmt_last_'+todayGMT,'1');
+    }catch(e){}
+    try{ localStorage.setItem('_prayer_default_city_v3', c); }catch(e){}
+    return true;
+  }catch(e){ return false; }
+};
+
 window.fetchSayeghBeirut=async function(){
  if(window._boxState.boxesMuted.madina){
   /* الضغطة الصريحة على زر الصايغ نفسه هي تفعيل لنطاق الصايغ. الشروط الصارمة للتاريخ تبقى كما هي في الأسفل. */
@@ -2680,6 +2719,8 @@ window.fetchSayeghBeirut=async function(){
   var mName=(_pc&&_pc.monthIdx>=0?(window.hijriMonthsCanonical[_pc.monthIdx]||null):null);  if(!mName){ var _mm=_cleanSayegh.match(window._hijriMonthNameRegex()); mName=_mm?_mm[0]:null; } if(!mName){ document.getElementById('sayegh-beirut-status').textContent='❌ شهر غير معروف من الصايغ — لم يتم التحديث'; window.setFetchBtnState('idle'); applyBoxMute(); return; }
   var _hmNorm = window._normalizeHijriMonth ? window._normalizeHijriMonth(mName) : null; var _hmFinal = _hmNorm || map[mName] || 0; if(!_hmFinal){ document.getElementById('sayegh-beirut-status').textContent='❌ شهر غير معروف: '+mName+' — لم يتم التحديث'; window.setFetchBtnState('idle'); applyBoxMute(); return; } var _built=window.buildUnifiedFinalObj?window.buildUnifiedFinalObj(d,_hmFinal,y,mName):{hd:d,hm:_hmFinal,hy:y,hmn:mName,finalStr:d+' '+mName+' '+y+' هـ',dt:d+' '+mName+' '+y+' هـ'}; var _finalDisplay=_built.finalStr; var obj={hd:d,hm:_hmFinal,hy:y,hmn:mName,finalStr:_finalDisplay,dt:_finalDisplay,len:30}; 
   window.applyLiveUpdate(obj, 'الصايغ - بيروت', _finalDisplay);
+   // v17: اتصال الهجري يحدث صلاة الصايغ لنفس المدينة - فقط إذا diff===0 (التصحيح)
+   try{ if(diff===0 && br0 && br0.prayers){ window._v17_writeSayeghPrayerCache(code, br0, diff); } }catch(e){}
   document.getElementById('sayegh-beirut-status').textContent='✅ تم التحديث النهائي: '+_finalDisplay+' | المصدر: '+(finalMethod==='api'?'API - دون فحص الوقت':'HTML Fallback - مع فحص ميلادي')+' | السنة من API الصايغ';
   window._confirmFinalAndRefresh(_finalDisplay, 'sayegh-beirut-status', '✅ تم التحديث النهائي: '+_finalDisplay+' (موحد ✅) | المصدر: '+(finalMethod==='api'?'API - دون فحص الوقت':'HTML Fallback - مع فحص ميلادي'));
   /* najaf box display removed - لا يفتح نطاق النجف عند جلب مدينتك */
@@ -2738,7 +2779,8 @@ setTimeout(bindLive,1500);
 var obs=new MutationObserver(bindLive);
 if(document.body) obs.observe(document.body,{childList:true,subtree:true});
 
-// ===== نظام الجلب التلقائي النهائي - أول فتح + يومياً 12 ظهراً + تكثيف 28/29/30 =====
+// ===== نظام الجلب التلقائي v16 - أول فتح + تبديل اليوم + استهلال 28/29/30 من 16 لـ 00 =====
+ // v16: حذف نهائي - لا 12 ساعة ولا 12-23، لا ترقيعات قديمة، قرار واحد نظيف
 (function(){
  window.autoFetchActiveBoxGlobal=async function autoFetchActiveBox(reason){
   try{
@@ -2768,50 +2810,28 @@ if(document.body) obs.observe(document.body,{childList:true,subtree:true});
   }catch(e){}
  }
 
- // 2- يومياً مرة واحدة 12 ظهراً
- // 3- تكثيف أيام 28/29/30 كل نصف ساعة من 4 عصراً حتى 9 ليلاً
+ // v16: تنظيف ترقيعات قديمة مرة واحدة - حذف مفاتيح 12 ساعة و 12 ظهرا من التخزين
+ function cleanupOldFetchKeys(){
+  try{
+   if(localStorage.getItem('_v16_fetch_cleanup_done')) return;
+   var toRemove=[];
+   for(var i=0;i<localStorage.length;i++){
+    var k=localStorage.key(i);
+    if(k && (k.indexOf('_auto_fetch_12h_')===0 || k.indexOf('_auto_fetch_noon_')===0)) toRemove.push(k);
+   }
+   for(var j=0;j<toRemove.length;j++){ try{ localStorage.removeItem(toRemove[j]); }catch(e){} }
+   localStorage.setItem('_v16_fetch_cleanup_done','1');
+  }catch(e){}
+ }
+
+ // v16: استهلال فقط - 28/29/30 من 16:00 لـ 00:00 كل نص ساعة
+ // لا 12 ساعة، لا 12-23، لا فحص عام
  function dailyAndIstihlalCheck(){
   try{
    var now = new Date();
    var h = now.getHours();
    var m = now.getMinutes();
    var todayStr = now.getFullYear()+'-'+(now.getMonth()+1)+'-'+now.getDate();
-
-   // --- 0- منطق 12 ساعة منذ آخر اتصال ناجح (جديد - بصمت) ---
-   try{
-    var last12 = parseInt(localStorage.getItem('_last_successful_fetch_time')||'0');
-    if(last12>0){
-     var diffMs = now.getTime() - last12;
-     var twelveHours = 12*60*60*1000;
-     var key12h = '_auto_fetch_12h_'+todayStr+'_'+h;
-     // إذا مر 12 ساعة ولم نجلب بهذه الساعة
-     if(diffMs >= twelveHours && !localStorage.getItem(key12h)){
-      // حماية: لا تكرر أكثر من مرة كل 12 ساعة
-      localStorage.setItem(key12h,'1');
-      console.log('⏰ 12h fetch triggered diff='+(diffMs/3600000).toFixed(1)+'h');
-      autoFetchActiveBox('⏰ تحديث 12 ساعة');
-      // لا نحدث last هنا، يتحدث عند نجاح الاتصال نفسه
-     }
-    } else {
-     // أول مرة: إذا ما في سجل، اعتبره كأنه مر 12 ساعة بعد أول فتح بساعة
-     var firstDone = localStorage.getItem('_first_auto_fetch_done');
-     if(firstDone && !localStorage.getItem('_last_successful_fetch_time')){
-      // سيتم تعيينه عند أول نجاح fetch
-     }
-    }
-   }catch(e12){}
-
-   // --- الجلب اليومي 12 ظهراً (محسن - توقيت الجهاز - بصمت) ---
-   var keyNoon = '_auto_fetch_noon_'+todayStr;
-   if(h>=12 && h<23 && !localStorage.getItem(keyNoon)){
-    // محسن: طول فترة بعد الظهر مسموحة، ليس فقط m<10
-    // هذا يصلح مشكلة إذا فتح التطبيق 12:30 بعد ما كان مسكر 12:00
-    localStorage.setItem(keyNoon,'1');
-    console.log('⏰ Daily noon fetch (improved) at '+h+':'+m);
-    autoFetchActiveBox('⏰ يومي 12 ظهراً');
-   }
-
-   // --- تكثيف آخر الشهر 28/29/30 ---
    var final = null;
    try{
     if(window.FINAL_HIJRI && window.FINAL_HIJRI.hd) final = window.FINAL_HIJRI;
@@ -2820,34 +2840,30 @@ if(document.body) obs.observe(document.body,{childList:true,subtree:true});
      if(stored){ var o=JSON.parse(stored); if(o && o.hd) final=o; }
     }
    }catch(e){}
-
-   if(final){
-    var hijriDay = parseInt(final.hd)||0;
-    // فقط إذا اليوم 28 أو 29 أو 30
-    if(hijriDay===28 || hijriDay===29 || hijriDay===30){
-     // من 4 عصراً (16) حتى 9 ليلاً (21) كل نصف ساعة
-     if(h>=16 && h<=21){
-      if(m===0 || m===30 || (m<5)){ // على رأس الساعة أو نصفها (سماح 5 دقائق)
-       var slot = h + ':' + (m<15?'00':'30');
-       var keyIstihlal = '_istihlal_'+final.hy+'-'+final.hm+'-'+hijriDay+'_'+todayStr+'_'+slot;
-       if(!localStorage.getItem(keyIstihlal)){
-        localStorage.setItem(keyIstihlal,'1');
-        console.log('🌙 Istihlal intensified fetch day '+hijriDay+' at '+slot);
-        autoFetchActiveBox('🌙 استهلال يوم '+hijriDay+' - '+slot);
-        // إذا ثبت وقلب إلى 1، في المرة القادمة hijriDay سيصبح 1 ولن يدخل هذا الشرط -> يرجع عادي
-       }
-      }
-     }
-    }
-   }
+   if(!final) return;
+   var hijriDay = parseInt(final.hd)||0;
+   if(hijriDay!==28 && hijriDay!==29 && hijriDay!==30) return;
+   // نافذة v16: 16:00 لـ 23:30 + slot 00:00
+   var inWindow = (h>=16 && h<=23) || (h===0 && m===0);
+   if(!inWindow) return;
+   if(!(m===0 || m===30 || (m<5))) return; // على رأس الساعة أو نصفها (سماح 5 دقائق)
+   var slot = h + ':' + (m<15?'00':'30');
+   if(h===0 && m===0) slot = '0:00';
+   var keyIstihlal = '_istihlal_'+final.hy+'-'+final.hm+'-'+hijriDay+'_'+todayStr+'_'+slot;
+   if(localStorage.getItem(keyIstihlal)) return;
+   localStorage.setItem(keyIstihlal,'1');
+   console.log('🌙 Istihlal v16 day '+hijriDay+' at '+slot);
+   autoFetchActiveBox('🌙 استهلال يوم '+hijriDay+' - '+slot);
+   // إذا ثبت وقلب إلى 1، في المرة القادمة hijriDay سيصبح 1 ولن يدخل هذا الشرط
   }catch(e){ console.log('daily check error', e); }
  }
 
- // تشغيل المجدول
+ // v16: مجدول استهلال فقط - فحص كل 5 دقائق، أول فحص بعد 5 ثوان
+ // لا مجدول عام، لا فحص كل دقيقة
  function startScheduler(){
-  // مجدول موحد: فحص كل دقيقة، أول فحص بعد 5 ثوان
-  if(window._registerSchedulerJob) window._registerSchedulerJob('daily', dailyAndIstihlalCheck, 60000, 5000);
-  else { setInterval(dailyAndIstihlalCheck, 60000); setTimeout(dailyAndIstihlalCheck, 5000); }
+  cleanupOldFetchKeys();
+  if(window._registerSchedulerJob) window._registerSchedulerJob('istihlal', dailyAndIstihlalCheck, 300000, 5000);
+  else { setInterval(dailyAndIstihlalCheck, 300000); setTimeout(dailyAndIstihlalCheck, 5000); }
  }
 
  if(document.readyState==='loading'){
@@ -3223,6 +3239,28 @@ window.fetchNajaf = async function(){
      var _hmNorm2 = window._normalizeHijriMonth ? window._normalizeHijriMonth(mNameFinal) : null; var _hmFinal2 = _hmNorm2 || mapFinal[mNameFinal] || 0; if(!_hmFinal2){ setStatus('❌ شهر غير معروف: '+mNameFinal+' — لم يتم التحديث'); setNajafFetchBtnState('idle'); return; } var objFinal={hd:dFinal,hm:_hmFinal2,hy:yFinal,hmn:mNameFinal,finalStr:hijriToFinal+(hijriToFinal.includes('هـ')?'':' هـ'),dt:hijriToFinal+(hijriToFinal.includes('هـ')?'':' هـ'),len:30,hmName:mNameFinal};
      var displaySrc2 = 'مركز البحوث والدراسات الفلكية';
      window.applyLiveUpdate(objFinal, displaySrc2, hijriToFinal);
+      // v17: اتصال الهجري (النجف - نجومي) يحدث صلاة الصايغ للنجف 107 - بشرط التصحيح
+      // لا نكتب صلاة الصايغ من هجري النجومي، بل نجلب جسر الصايغ لـ 107 ونكتب صلاته فقط إذا كان لنفس يوم جهازك
+      // إذا كان هجري النجومي مصحح (diffDays != 0) لا نكتب الصلاة أبدا، حتى لا نخلط مبارح مع بكرا
+      try{
+        if(diffDays===0 && window.fetchSayeghBridge){
+          var brNajafSayegh = await window.fetchSayeghBridge('107');
+          if(brNajafSayegh && brNajafSayegh.prayers){
+            var sDiff = 0;
+            try{
+              if(brNajafSayegh.miladi && window.parseGregorianDate){
+                var sDate = window.parseGregorianDate(brNajafSayegh.miladi);
+                if(sDate){
+                  var devD = new Date(); devD.setHours(0,0,0,0); sDate.setHours(0,0,0,0);
+                  sDiff = Math.round((sDate-devD)/(1000*60*60*24));
+                  if(isNaN(sDiff)) sDiff = 0;
+                }
+              }
+            }catch(e){ sDiff = 0; }
+            if(sDiff===0){ window._v17_writeSayeghPrayerCache('107', brNajafSayegh, 0); }
+          }
+        }
+      }catch(e){}
      document.getElementById('najaf-status').textContent='✅ تم التحديث النهائي ['+displaySrc2+']: '+hijriToFinal+' (موحد ✅)';
      window._confirmFinalAndRefresh(hijriToFinal, 'najaf-status', '✅ تم التحديث النهائي ['+displaySrc2+']: '+hijriToFinal+' (موحد ✅)');
      /* reload removed surgically - auto update via _Setters */ try{ var keepBox=document.getElementById('najaf-result-inside'); if(keepBox) keepBox.style.display='block'; }catch(e){}
@@ -4260,7 +4298,8 @@ let fetching=false;
    function njP_esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
    function njP_todayStr(){let d=new Date();return d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0');}
    function njP_todayKey(){let d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
-   function njP_cacheKey(){return '_prayer_nojumi_cache_v1_'+njP_cur.lat+'_'+njP_cur.lng+'_'+njP_todayKey();}
+   function njP_dateKey(){ try{ var v=(njP_dateInp&&njP_dateInp.value||'').trim(); if(v){ return v.replace(/\//g,'-').replace(/\s+/g,''); } }catch(e){} return njP_todayKey(); }
+    function njP_cacheKey(){return '_prayer_nojumi_cache_v1_'+njP_cur.lat+'_'+njP_cur.lng+'_'+njP_dateKey();} // v17: الكاش حسب التاريخ المختار، حتى لا تكتب أوقات بكرا فوق كاش اليوم
    function njP_getCache(){try{let s=localStorage.getItem(njP_cacheKey());if(s)return JSON.parse(s);}catch(e){}return null;}
    function njP_setCache(v){try{localStorage.setItem(njP_cacheKey(), JSON.stringify(v));}catch(e){}}
    function njP_shortName(full){try{let s=String(full||'').split(',')[0].trim();return s||full;}catch(e){return full;}}
@@ -4769,7 +4808,14 @@ let fetching=false;
  function toWestern(s){ if(s==null) return s; return window.toWesternDigits ? window.toWesternDigits(s) : String(s); }
  function setCacheAuto(code,data){try{var k=CACHE_PREFIX+toWestern(code)+'_'+todayKeyLocal();localStorage.setItem(k,JSON.stringify({data:data}));}catch(e){}}
  async function fetchPrayersAuto(code){
-  if(fetchingAuto) return null;fetchingAuto=true;
+   // v17: إذا كان كاش الصلاة لليوم موجودا من جلبة الهجري، لا نعمل اتصالا ثانيا
+   try{
+     var _tc = new Date(); var _tk = _tc.getFullYear()+'-'+(_tc.getMonth()+1)+'-'+_tc.getDate();
+     var _ck = CACHE_PREFIX+toWestern(code)+'_'+_tk;
+     var _cs = localStorage.getItem(_ck);
+     if(_cs){ var _cj = JSON.parse(_cs); if(_cj && _cj.data && _cj.data.prayers) return _cj.data; }
+   }catch(e){}
+   if(fetchingAuto) return null;fetchingAuto=true;
   try{
    if(!window.fetchSayeghBridge) return null;
     var br=await window.fetchSayeghBridge(code);
@@ -5892,7 +5938,7 @@ button.old-export-hidden {
 
 
 <script>
-// === Background Fetch للـ APK - بصمت - 12 ساعة + 12 ظهراً + صلاة ===
+// === Background Fetch للـ APK - بصمت - v16: استهلال فقط + صلاة ===
 (function(){
  async function initBackgroundFetchAPK(){
   try{
@@ -5907,7 +5953,7 @@ button.old-export-hidden {
    const onFetch = async (taskId)=>{
     try{
      console.log('[BackgroundFetch] event: '+taskId);
-     // نفس منطق dailyAndIstihlalCheck + 12h + prayer
+     // v16: استهلال فقط + صلاة، لا 12 ساعة ولا 12 ظهرا
      try{
       if(window.dailyAndIstihlalCheck) window.dailyAndIstihlalCheck();
      }catch(e){}
@@ -5915,19 +5961,7 @@ button.old-export-hidden {
       if(window.checkAndFetchBackgroundPrayer) window.checkAndFetchBackgroundPrayer();
       else if(window.checkAndFetchBackground) window.checkAndFetchBackground();
      }catch(e){}
-     // فحص 12 ساعة إضافي
-     try{
-      var now = new Date();
-      var last12 = parseInt(localStorage.getItem('_last_successful_fetch_time')||'0');
-      if(last12>0 && (now.getTime()-last12)>=12*60*60*1000){
-       var todayStr = now.getFullYear()+'-'+(now.getMonth()+1)+'-'+now.getDate();
-       var key12h = '_auto_fetch_12h_'+todayStr+'_'+now.getHours();
-       if(!localStorage.getItem(key12h) && window.autoFetchActiveBoxGlobal){
-        localStorage.setItem(key12h,'1');
-        window.autoFetchActiveBoxGlobal('⏰ خلفية 12 ساعة - APK');
-       }
-      }
-     }catch(e12){}
+     // v16: حذف فحص 12 ساعة الخلفي نهائيا
      // مهم جداً: إنهاء المهمة
      BackgroundFetch.finish(taskId);
     }catch(e){
@@ -5950,7 +5984,7 @@ button.old-export-hidden {
     requiredNetworkType: 0
    }, onFetch, onTimeout);
 
-   // تسجيل مهمة خلفية إضافية لـ 12 ظهراً (اختياري)
+   // v16: لا مهمة 12 ظهرا
    console.log('✅ BackgroundFetch configured - silent 15min interval');
 
   }catch(e){ console.log('BackgroundFetch init error', e); }
@@ -6129,24 +6163,23 @@ button.old-export-hidden {
 })();
 </script>
 <script>
-// GOLDEN SMART UPDATE - 12h + prayer + auto connect
+// GOLDEN SMART UPDATE v16 - أول تشغيل + تبديل اليوم فقط + صلاة
+// v16: حذف 12 ساعة نهائيا، LAST يتحدث فقط على النجاح في applyLiveUpdate، لا يتحدث هنا على المحاولة
 (function(){
- var LAST='_last_successful_fetch_time';
- var H12=12*60*60*1000;
  function smartUpdate(reason){
   try{
-   var now=Date.now();
-   var last=parseInt(localStorage.getItem(LAST)||'0',10);
-   var diff=now-last;
+   var today=new Date().toISOString().slice(0,10);
+   var last=parseInt(localStorage.getItem('_last_successful_fetch_time')||'0',10);
+   var ld=null; try{ ld=localStorage.getItem('_last_fetch_date_str'); }catch(e){}
    var should=false, txt='';
    if(last===0){ should=true; txt='أول تشغيل'; }
-   else if(diff>=H12){ should=true; txt=Math.floor(diff/3600000)+' ساعة'; }
-   else{ try{ var today=new Date().toISOString().slice(0,10); var ld=localStorage.getItem('_last_fetch_date_str'); if(ld&&ld!==today){ should=true; txt='يوم جديد'; } }catch(e){} }
+   else if(!ld || ld!==today){ should=true; txt='يوم جديد'; }
    if(!should) return;
-   console.log('GOLDEN smart', reason, txt);
-   try{ if(window.dailyAndIstihlalCheck) window.dailyAndIstihlalCheck(); if(window.autoFetchActiveBoxGlobal) window.autoFetchActiveBoxGlobal('🔄 '+txt); }catch(e){}
+   console.log('GOLDEN smart v16', reason, txt);
+   // v16: لا ننادي dailyAndIstihlalCheck هنا، الاستهلال له مجدول مستقل، حتى لا يصير اتصالين
+   try{ if(window.autoFetchActiveBoxGlobal) window.autoFetchActiveBoxGlobal('🔄 '+txt); }catch(e){}
    try{ var city=null; if(window.getPrayerCityCode) city=window.getPrayerCityCode(); if(!city) city=localStorage.getItem('_prayer_default_city_v3'); if(city && window.fetchPrayersAuto) window.fetchPrayersAuto(city); else if(city && window.checkAndFetchBackgroundPrayer) window.checkAndFetchBackgroundPrayer(); }catch(e){}
-   try{ localStorage.setItem(LAST, String(now)); localStorage.setItem('_last_fetch_date_str', new Date().toISOString().slice(0,10)); }catch(e){}
+   // v16: لا نحدث LAST ولا _last_fetch_date_str هنا، يتحدثان فقط على النجاح في applyLiveUpdate
   }catch(e){ console.log('smart err', e); }
  }
  function init(){ setTimeout(function(){ smartUpdate('open'); },2000); }
@@ -6690,48 +6723,49 @@ window.openQuranSystem = async function(){
       window.autoFetchActiveBoxGlobal = autoFetchWithRetry;
       console.log('✅ autoFetchActiveBoxGlobal overridden with long 100s retry logic');
 
-      // منطق فتح التطبيق بعد غياب طويل
+      // v16: فتح التطبيق - تبديل اليوم فقط، حذف 12 ساعة نهائيا
       setTimeout(function(){
         try{
+          let today = new Date().toISOString().slice(0,10);
+          let ld = localStorage.getItem('_last_fetch_date_str');
           let last = parseInt(localStorage.getItem('_last_successful_fetch_time')||'0');
-          let now = Date.now();
-          let diffHours = (now - last) / (1000*60*60);
-          if(last===0 || diffHours >= 12){
-            console.log(`🚀 App opened after ${diffHours.toFixed(1)}h, forcing fetch`);
-            autoFetchWithRetry(last===0 ? '🚀 أول فتح - انتظار طويل' : `⏰ فتح بعد ${diffHours.toFixed(0)} ساعة غياب`);
+          if(last===0 || !ld || ld!==today){
+            console.log('🚀 App opened new day v16, forcing fetch');
+            autoFetchWithRetry(last===0 ? '🚀 أول فتح' : '📅 يوم جديد');
           }
         }catch(e){}
       },2000);
   }
   if(window._waitForFn) window._waitForFn('autoFetchActiveBoxGlobal', doOverrideAutoFetch); else doOverrideAutoFetch();
 
-  // عند رجوع التطبيق من الخلفية (resume)
+  // v16: عند رجوع التطبيق - تبديل اليوم فقط، حذف 12 ساعة
   document.addEventListener('visibilitychange', function(){
     if(!document.hidden){
       setTimeout(function(){
         try{
+          let today = new Date().toISOString().slice(0,10);
+          let ld = localStorage.getItem('_last_fetch_date_str');
           let last = parseInt(localStorage.getItem('_last_successful_fetch_time')||'0');
-          let now = Date.now();
-          let diffHours = (now - last) / (1000*60*60);
-          if(last===0 || diffHours >= 12){
-            console.log('👁️ App resumed after long absence, fetching');
-            if(window.autoFetchActiveBoxGlobal) window.autoFetchActiveBoxGlobal(`👁️ عودة بعد ${diffHours.toFixed(0)} ساعة`);
+          if(last===0 || !ld || ld!==today){
+            console.log('👁️ App resumed new day v16, fetching');
+            if(window.autoFetchActiveBoxGlobal) window.autoFetchActiveBoxGlobal('👁️ يوم جديد');
           }
         }catch(e){}
       },1000);
     }
   });
 
-  // Capacitor App resume event (APK)
+  // v16: Capacitor App resume - تبديل اليوم فقط، حذف 12 ساعة
   if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App){
     window.Capacitor.Plugins.App.addListener('appStateChange', function(state){
       if(state && state.isActive){
         setTimeout(function(){
           try{
+            let today = new Date().toISOString().slice(0,10);
+            let ld = localStorage.getItem('_last_fetch_date_str');
             let last = parseInt(localStorage.getItem('_last_successful_fetch_time')||'0');
-            let diffHours = (Date.now() - last) / (1000*60*60);
-            if(last===0 || diffHours >= 12){
-              if(window.autoFetchActiveBoxGlobal) window.autoFetchActiveBoxGlobal(`📱 عودة APK بعد ${diffHours.toFixed(0)} ساعة`);
+            if(last===0 || !ld || ld!==today){
+              if(window.autoFetchActiveBoxGlobal) window.autoFetchActiveBoxGlobal('📱 يوم جديد');
             }
           }catch(e){}
         },1500);
@@ -6749,8 +6783,9 @@ window.openQuranSystem = async function(){
 (function(){
   console.log('🌙 Step3 - Background Service for APK');
   const BACKGROUND_FETCH_TASK_ID = 'com.taqwim.hijri.fetch';
-  const MIN_FETCH_INTERVAL = 12 * 60; // 12 ساعة بالدقائق - للأيام العادية
-  const INTENSIVE_INTERVAL = 30; // 30 دقيقة لأيام 28-29-30
+  // v16: حذف 12 ساعة نهائيا - الخلفية للاستهلال فقط
+  const INTENSIVE_INTERVAL = 30; // 30 دقيقة لأيام 28-29-30 من 16 لـ 00
+  const IDLE_INTERVAL = 24 * 60; // 24 ساعة - أيام عادية، لا حاجة للخلفية، تبديل اليوم على الفتح يكفي
 
   function getHijriDay(){
     try{
@@ -6772,7 +6807,17 @@ window.openQuranSystem = async function(){
   async function backgroundFetchTask(taskId){
     console.log(`[BackgroundFetch] Task ${taskId} started, intensive=${isIntensiveDay()}`);
     try{
-      // استخدم نفس منطق الخطوة 2 الطويل
+      // v16: خلفية للاستهلال فقط + تبديل اليوم، لا 12 ساعة
+      var _nowBg = new Date();
+      var _hBg = _nowBg.getHours();
+      var _inIstihlalWindow = isIntensiveDay() && ((_hBg>=16 && _hBg<=23) || (_hBg===0));
+      var _todayBg = _nowBg.toISOString().slice(0,10);
+      var _ldBg = null; try{ _ldBg = localStorage.getItem('_last_fetch_date_str'); }catch(e){}
+      var _dayChangedBg = !_ldBg || _ldBg!==_todayBg;
+      if(!_inIstihlalWindow && !_dayChangedBg){
+        console.log('[BackgroundFetch] v16 skip - not istihlal and no day change');
+        return true;
+      }
       if(window.autoFetchActiveBoxGlobal){
         await window.autoFetchActiveBoxGlobal('🌙 خلفية - ' + new Date().toLocaleString());
       }else if(window.checkAndFetchBackgroundPrayer){
@@ -6794,7 +6839,7 @@ window.openQuranSystem = async function(){
         console.log('Found Capacitor BackgroundFetch plugin');
 
         let status = await BackgroundFetch.configure({
-          minimumFetchInterval: isIntensiveDay() ? INTENSIVE_INTERVAL : MIN_FETCH_INTERVAL,
+          minimumFetchInterval: isIntensiveDay() ? INTENSIVE_INTERVAL : IDLE_INTERVAL,
           stopOnTerminate: false, // يستمر حتى لو المستخدم سكر التطبيق
           startOnBoot: true, // يبدأ عند تشغيل الجهاز
           enableHeadless: true,
@@ -6816,7 +6861,7 @@ window.openQuranSystem = async function(){
         // تعديل الفترة حسب اليوم الهجري كل ساعة
         setInterval(async ()=>{
           try{
-            let newInterval = isIntensiveDay() ? INTENSIVE_INTERVAL : MIN_FETCH_INTERVAL;
+            let newInterval = isIntensiveDay() ? INTENSIVE_INTERVAL : IDLE_INTERVAL;
             await BackgroundFetch.configure({minimumFetchInterval: newInterval});
             console.log('BackgroundFetch interval updated to',newInterval,'intensive=',isIntensiveDay());
           }catch(e){}
@@ -6843,7 +6888,7 @@ window.openQuranSystem = async function(){
         try{
           let reg = await navigator.serviceWorker.ready;
           await reg.periodicSync.register(BACKGROUND_FETCH_TASK_ID, {
-            minInterval: (isIntensiveDay() ? 30 : 12*60)*60*1000
+            minInterval: (isIntensiveDay() ? 30 : 24*60)*60*1000
           });
         }catch(e){ console.log('Periodic Sync not supported',e); }
       }
