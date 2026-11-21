@@ -73,46 +73,10 @@
   }catch(e){}
 
   // 3- جعل MASTER_CITIES نفسه يبدأ بالنجف - هذا هو الجذر
-  if(!window.MASTER_CITIES || window.MASTER_CITIES.length===0) window.MASTER_CITIES = [NAJAF_CITY];
-  if(!window._masterCitiesCache || window._masterCitiesCache.length===0) window._masterCitiesCache = [NAJAF_CITY];
-  if(!window._sayeghCities || window._sayeghCities.length===0) window._sayeghCities = [NAJAF_CITY];
+  window.MASTER_CITIES = [NAJAF_CITY];
+  window._masterCitiesCache = [NAJAF_CITY];
+  window._sayeghCities = [NAJAF_CITY];
   window._selectedSayeghCode = (function(){ try{ return localStorage.getItem('_selectedSayeghCode')||NAJAF_CODE; }catch(e){ return NAJAF_CODE; } })();
-
-  // 4- اعتراض تحميل cities.json من الشبكة وإرجاع النجف أولاً
-  try{
-    const origFetch = window.fetch;
-    window.fetch = function(input, init){
-      try{
-        let url = typeof input === 'string' ? input : input.url || '';
-        if(url.includes('cities.json') || url.includes('MASTER_CITIES') || url.includes('/cities')){
-          console.log('Intercepted cities.json -> Najaf 107');
-          // نرجع قائمة فيها النجف أولاً ثم باقي المدن الأصلية إن وجدت
-          return origFetch(input, init).then(res=>{
-            return res.clone().json().then(data=>{
-              try{
-                if(Array.isArray(data)){
-                  let filtered = data.filter(c=>String(c.code)!=='1'); // احذف الكويت
-                  if(!filtered.some(c=>String(c.code)===NAJAF_CODE)) filtered.unshift(NAJAF_CITY);
-                  else {
-                    // اجعل النجف أولاً
-                    filtered = [NAJAF_CITY].concat(filtered.filter(c=>String(c.code)!==NAJAF_CODE));
-                  }
-                  window.MASTER_CITIES = filtered;
-                  window._masterCitiesCache = filtered;
-                  return new Response(JSON.stringify(filtered), {status:200, headers:{'Content-Type':'application/json'}});
-                }
-              }catch(e){}
-              return res;
-            }).catch(()=>res);
-          }).catch(()=>{
-            // إذا فشل التحميل، ارجع النجف فقط
-            return new Response(JSON.stringify([NAJAF_CITY]), {status:200, headers:{'Content-Type':'application/json'}});
-          });
-        }
-      }catch(e){}
-      return origFetch(input, init);
-    };
-  }catch(e){}
 
   // 5- تسريع الفتح: تأخير أي اتصال ثقيل حتى بعد 4 ثواني
   window._FAST_OPEN = true;
@@ -1389,6 +1353,7 @@ observer.observe(document.body, {childList:true, subtree:true});
  ;
  function syncEditBtns(){ try{ var cu=getCU(); var found=null; try{ found=findCalendarButtons(); }catch(e){} var addBtn=found?found.add:null; var showEdit=!!cu && !!addBtn && addBtn.style.display!=='none'; var all=document.querySelectorAll('button'); for(var i=0;i<all.length;i++){ var b=all[i]; if(b.id==='cal-accounts-btn'||b.id==='top-logout-btn'||b.id==='close-acc-btn'||b.id==='login-btn'||b.id==='close-login-btn'||b.id==='add-acc-btn') continue; var t=(b.textContent||'').trim(); if((t==='تعديل'||t==='حذف'||t.indexOf('✏️ تعديل')!==-1||t.indexOf('🗑️ حذف')!==-1) && (b.className.indexOf('h-8')!==-1||b.style.height==='28px'||b.className.indexOf('rounded-full')!==-1)){ b.style.display = showEdit?'':'none'; } if(t.trim()==='+' && b.className.indexOf('rounded-full')!==-1){ b.style.display = showEdit?'':'none'; } } }catch(e){} }
  var origUpd=window.updateButtonsVisibility; window.updateButtonsVisibility=function(){ if(origUpd) origUpd(); setTimeout(syncEditBtns,100); setTimeout(syncEditBtns,400); };
+ setInterval(syncEditBtns,1200);
 })();
 </script>
 <!-- ========== نهاية النظام الجراحي ========== -->
@@ -1411,7 +1376,7 @@ div.fixed.inset-0{z-index:10000 !important;}
    }
   }catch(e){}
  }
- try{ bringModalAboveLogout(); }catch(e){} document.addEventListener('click', function(){ try{ bringModalAboveLogout(); }catch(e){} }, true);
+ setInterval(bringModalAboveLogout, 200);
 })();
 </script>
 
@@ -1827,7 +1792,6 @@ function setActiveBox(v){
     localStorage.setItem('liveBoxActive', v);
     if(v==='city'){ localStorage.setItem('_selectedSayeghCode', codeToSave); }
     localStorage.setItem('_prayer_default_city_v3', (v==='najaf' ? '107' : codeToSave));
-     try{ var _pc = (v==='najaf' ? '107' : codeToSave); if(window.fetchPrayersAuto) window.fetchPrayersAuto(_pc); }catch(e){}
     try{ if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){ window.Capacitor.Plugins.Preferences.set({key:'liveBoxActive', value:v}); window.Capacitor.Plugins.Preferences.set({key:'_selectedSayeghCode', value:codeToSave}); } }catch(e){}
     window._selectedSayeghCode = codeToSave;
    }catch(e){}
@@ -2042,6 +2006,24 @@ function saveCities(arr){
   }
  }catch(e){}
 }
+window._saveSayeghCityAtomic = function(code){
+  try{
+    code = String(code||'').trim();
+    if(!/^\d+$/.test(code)) return false;
+    window._selectedSayeghCode = code;
+    localStorage.setItem('_selectedSayeghCode', code);
+    localStorage.setItem('_prayer_default_city_v3', code);
+    localStorage.setItem('liveBoxActive', 'city');
+    if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){
+      window.Capacitor.Plugins.Preferences.set({key:'_selectedSayeghCode', value:code});
+      window.Capacitor.Plugins.Preferences.set({key:'_prayer_default_city_v3', value:code});
+      window.Capacitor.Plugins.Preferences.set({key:'liveBoxActive', value:'city'});
+    }
+    var _sel = document.getElementById('sayegh-city-select');
+    if(_sel) _sel.value = code;
+    return true;
+  }catch(e){ return false; }
+};
 // دوال موحدة عالمية يستخدمها النظامان
 window.getUnifiedCities = function(){
  if(window.MASTER_CITIES && window.MASTER_CITIES.length>100) return window.MASTER_CITIES;
@@ -2064,9 +2046,16 @@ window._selectedSayeghCode=window._sayeghCities[0]?.code||'107';
 async function fetchMasterCities(){
  try{
   var cached=getCachedMaster();
-  if(cached && cached.length>=1000){
-   window._masterCities=cached;
-   window._sayeghCities=cached;
+   if(cached && cached.length>=1000){
+    var _nc2={name:'النجف الأشرف',code:'107'};
+    var _cf=cached.filter(function(c){ return String(c.code)!=='1'; });
+    if(!_cf.some(function(c){ return String(c.code)==='107'; })) _cf.unshift(_nc2);
+    else _cf=[_nc2].concat(_cf.filter(function(c){ return String(c.code)!=='107'; }));
+    cached=_cf;
+    window.MASTER_CITIES=cached;
+    window._masterCitiesCache=cached;
+    window._masterCities=cached;
+    window._sayeghCities=cached;
    if(window._prayerNotifyMaster) window._prayerNotifyMaster(cached);
    if(window.renderSayeghCities) window.renderSayeghCities();
    return cached;
@@ -2079,10 +2068,20 @@ async function fetchMasterCities(){
   var res=await fetch(MASTER_CITIES_URL+'?v='+Date.now());
   if(!res.ok) throw new Error('fetch failed');
   var data=await res.json();
-  if(data&&data.length>0){
-   localStorage.setItem(MASTER_CACHE_KEY, JSON.stringify(data));
-   window._masterCities=data;
-   window._sayeghCities=data;
+   if(data&&data.length>0){
+    var _norm = (function(arr){
+      var _nc={name:'النجف الأشرف',code:'107'};
+      var f=arr.filter(function(c){ return String(c.code)!=='1'; });
+      if(!f.some(function(c){ return String(c.code)==='107'; })) f.unshift(_nc);
+      else f=[_nc].concat(f.filter(function(c){ return String(c.code)!=='107'; }));
+      return f;
+    })(data);
+    data=_norm;
+    localStorage.setItem(MASTER_CACHE_KEY, JSON.stringify(data));
+    window.MASTER_CITIES=data;
+    window._masterCitiesCache=data;
+    window._masterCities=data;
+    window._sayeghCities=data;
    if(window._prayerNotifyMaster) window._prayerNotifyMaster(data);
    if(window.renderSayeghCities) window.renderSayeghCities();
    console.log('✅ [موحد] تم تحميل '+data.length+' مدينة من cities.json');
@@ -2118,25 +2117,6 @@ window.renderSayeghCities=function(){
 
 window.updateSayeghPreview=function(){var pre=document.getElementById('sayegh-url-preview');if(!pre) return;var code=window._selectedSayeghCode||'236';pre.textContent=code?'https://taqwimalsayegh.com/city/'+code:'';var inp=document.getElementById('sayegh-city-search');if(inp){var cur=(window._sayeghCities||[]).find(function(c){return c.code===code;});if(cur) inp.value=cur.name+' - '+cur.code;}};
 window.getCurrentSayeghCode=function(){try{var _c=window._selectedSayeghCode||localStorage.getItem('_selectedSayeghCode')||'107'; return String(_c).trim();}catch(e){return '107';}};
-window._saveSayeghCityAtomic = function(code){
-  try{
-    code = String(code||'').trim();
-    if(!/^\d+$/.test(code)) return false;
-    window._selectedSayeghCode = code;
-    localStorage.setItem('_selectedSayeghCode', code);
-    localStorage.setItem('_prayer_default_city_v3', code);
-    localStorage.setItem('liveBoxActive', 'city');
-    if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){
-      window.Capacitor.Plugins.Preferences.set({key:'_selectedSayeghCode', value:code});
-      window.Capacitor.Plugins.Preferences.set({key:'_prayer_default_city_v3', value:code});
-      window.Capacitor.Plugins.Preferences.set({key:'liveBoxActive', value:'city'});
-    }
-    var _sel = document.getElementById('sayegh-city-select');
-    if(_sel) _sel.value = code;
-    return true;
-  }catch(e){ return false; }
-};
-
 window.addSayeghCity=function(){
  var nameEl=document.getElementById('inp-city-name');var codeEl=document.getElementById('inp-city-code');var addBtn=document.getElementById('btn-add-city');
  function toLatin(s){return (s||'').replace(/[\u0660-\u0669]/g,function(d){return '\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669'.indexOf(d);}).replace(/[\u06F0-\u06F9]/g,function(d){return '\u06F0\u06F1\u06F2\u06F3\u06F4\u06F5\u06F6\u06F7\u06F8\u06F9'.indexOf(d);});}
@@ -2305,35 +2285,14 @@ window.fetchSayeghBridge = async function(code){
     }catch(e){}
     return null;
   };
-  var _sayeghYearCacheKey = '_sayegh_hijri_year_cache';
-   var _getSayeghYearCache = function(){ try{ if(window._sayeghYearCache) return window._sayeghYearCache; var _r = localStorage.getItem(_sayeghYearCacheKey); if(_r){ window._sayeghYearCache = JSON.parse(_r); return window._sayeghYearCache; } }catch(e){} return null; };
-   var _setSayeghYearCache = function(year, hijriMonthNum){ try{ var _c = { year: parseInt(year,10), hijriMonthNum: parseInt(hijriMonthNum,10), fetchedAt: Date.now(), greg: new Date().toISOString().slice(0,10) }; window._sayeghYearCache = _c; localStorage.setItem(_sayeghYearCacheKey, JSON.stringify(_c)); }catch(e){} };
-   var _monthNumFromAr = function(ar){ try{ var _m = window.hijriMonthsMap || {}; for(var _k in _m){ if(_m.hasOwnProperty(_k) && _k===ar) return _m[_k]+1; } var _canon = window.hijriMonthsCanonical || []; for(var _i=0; _i<_canon.length; _i++){ if(_canon[_i]===ar) return _i+1; } }catch(e){} return null; };
-   var _augmentWithHijriCalendarYear = async function(out){
-     try{
-       if(!out) return out;
-       if(out.hijriYear){ try{ var _mn0 = _monthNumFromAr(out.hijriMonthAr); if(_mn0) _setSayeghYearCache(out.hijriYear, _mn0); }catch(e){} return out; }
-       try{
-         var _cache = _getSayeghYearCache();
-         var _curMn = _monthNumFromAr(out.hijriMonthAr);
-         if(_cache && _cache.year && _curMn){
-           var _ageDays = (Date.now() - (_cache.fetchedAt||0)) / 86400000;
-           var _cachedMn = parseInt(_cache.hijriMonthNum,10);
-           if(_ageDays < 60 && _cachedMn <= _curMn){
-             out.hijriYear = _cache.year;
-             out.hijriYearSource = 'cache';
-             if(out.extras) out.extras.hijriYear = String(_cache.year);
-             if(out.hijri && !/14\d\d/.test(out.hijri)) out.hijri = out.hijri + ' ' + _cache.year;
-             return out;
-           }
-         }
-       }catch(e){}
+  var _augmentWithHijriCalendarYear = async function(out){
+    try{
+      if(!out || out.hijriYear) return out;
       var now2 = new Date();
       var gy = now2.getFullYear(), gm = now2.getMonth()+1, gd = now2.getDate();
       var yCal = await _fetchHijriCalendarYear(gy, gm, gd, out.hijriDay, out.hijriMonthAr);
       if(yCal){
-         try{ var _mn1 = _monthNumFromAr(out.hijriMonthAr); if(_mn1) _setSayeghYearCache(yCal, _mn1); }catch(e){}
-         out.hijriYear = yCal;
+        out.hijriYear = yCal;
         out.hijriYearSource = 'hijri-calendar';
         if(out.extras) out.extras.hijriYear = String(yCal);
         if(out.hijri && !/14\d\d/.test(out.hijri)) out.hijri = out.hijri + ' ' + yCal;
@@ -2498,14 +2457,20 @@ window.applyLiveUpdate = function(objFinal, sourceLabel, displayStr){
    cleanObj.finalStr = ds;
    cleanObj.dt = ds;
   }
+   // قاعدة عبور السنة: من ذو الحجة (12) إلى محرم (1) تزيد السنة
+   try{
+     var _prev = window.FINAL_HIJRI;
+     if(_prev && parseInt(_prev.hm,10)===12 && parseInt(cleanObj.hm,10)===1 && parseInt(cleanObj.hy,10)===parseInt(_prev.hy,10)){
+       cleanObj.hy = String(parseInt(_prev.hy,10)+1);
+       try{ cleanObj.finalStr = cleanObj.finalStr.replace(String(_prev.hy), cleanObj.hy); cleanObj.dt = cleanObj.finalStr; }catch(e){}
+     }
+     try{ localStorage.setItem('_sayegh_hijri_year_cache', JSON.stringify({hy:cleanObj.hy, hm:cleanObj.hm, hd:cleanObj.hd, ts:Date.now()})); }catch(e){}
+   }catch(e){}
+
   // تخزين
   localStorage.setItem('taqweem_final_unified', JSON.stringify(cleanObj));
    try{ localStorage.setItem('_last_successful_fetch_time', String(Date.now())); }catch(e){}
   window.FINAL_HIJRI = cleanObj;
-  window.getFinalHijriForDate = function(){return cleanObj;};
-  window.getFinalHijri = function(){return cleanObj;};
-  window.getSayeghHijri = function(){return cleanObj;};
-  window.getSayeghHijriPure = function(){return cleanObj;};
   // تحديث فوري للهيدر العلوي قبل React - إصلاح البطء (الحي كان يتأخر نص دقيقة)
   try{
    var longStr = window.formatLongHeader ? window.formatLongHeader(cleanObj.hd, cleanObj.hm, cleanObj.hy, (typeof DEVICE!=='undefined'?DEVICE.dow:new Date().getDay()), (typeof DEVICE!=='undefined'?DEVICE.gd:new Date().getDate()), (typeof DEVICE!=='undefined'?DEVICE.gm:new Date().getMonth()+1), (typeof DEVICE!=='undefined'?DEVICE.gy:new Date().getFullYear())) : cleanObj.finalStr;
@@ -2897,11 +2862,11 @@ if(document.body) obs.observe(document.body,{childList:true,subtree:true});
    suggestBox.querySelectorAll('.city-suggest-item').forEach(function(el){
     el.addEventListener('click', function(){
      var code=el.dataset.code;
-      if(window._saveSayeghCityAtomic) window._saveSayeghCityAtomic(code);
+     window._selectedSayeghCode=code;
      var cur=(window._sayeghCities||[]).find(function(c){return c.code===code;});
      if(cur) searchInp.value=cur.name+' - '+cur.code;
      suggestBox.style.display='none';
-     
+     if(hiddenSel) hiddenSel.value=code;
      window.updateSayeghPreview();
      var statusEl=document.getElementById('sayegh-beirut-status');
      if(statusEl && cur) statusEl.textContent='📍 تم اختيار: '+cur.name+' - '+cur.code;
@@ -2937,16 +2902,6 @@ if(document.body) obs.observe(document.body,{childList:true,subtree:true});
    }
   });
 
-  // مصالحة عند التهيئة: إذا كان النطاق مدينتك والصلاة على بنت جبيل والصايغ على 107، يصحح الصايغ إلى بنت جبيل
-  try{
-    var _active0 = (function(){ try{ return localStorage.getItem('liveBoxActive')||'najaf'; }catch(e){ return 'najaf'; } })();
-    if(_active0==='city'){
-      var _sayCode0 = String(window._selectedSayeghCode||localStorage.getItem('_selectedSayeghCode')||'').trim();
-      var _prayCode0 = String(localStorage.getItem('_prayer_default_city_v3')||'').trim();
-      if(_sayCode0==='107' && _prayCode0 && _prayCode0!=='107' && window._saveSayeghCityAtomic){ window._saveSayeghCityAtomic(_prayCode0); }
-      else if(_prayCode0==='107' && _sayCode0 && _sayCode0!=='107'){ try{ localStorage.setItem('_prayer_default_city_v3', _sayCode0); }catch(e){} }
-    }
-  }catch(e){}
   // تهيئة أولية
   var curCode=window._selectedSayeghCode||'236';
   var cur=(window._sayeghCities||[]).find(function(c){return c.code===curCode;});
@@ -4761,9 +4716,9 @@ let fetching=false;
  }
 
  window.openPrayerSystem=function(){
-   let def=getDef();if(!def){openCitySelector(null);return;}
-   let cache=getCache(def);openPrayerModal(def,cache);
-  };
+  let def=getDef();if(!def){openCitySelector(null);return;}
+  let cache=getCache(def);openPrayerModal(def,cache);
+ };
  try{
   let obs=new MutationObserver(()=>{
    document.querySelectorAll('button').forEach(b=>{
@@ -4829,7 +4784,7 @@ let fetching=false;
   }catch(e){}
  }
  function startGMTScheduler(){checkAndFetch();setInterval(checkAndFetch,60000);}
- function initAuto(){ if(window.fetchSayeghBridge){ startGMTScheduler(); } else { setTimeout(function(){ if(window.fetchSayeghBridge) startGMTScheduler(); }, 1000); } }
+ function initAuto(){var tries=0;var iv=setInterval(function(){tries++;if(window.fetchSayeghBridge){clearInterval(iv);startGMTScheduler();}if(tries>60) clearInterval(iv);},1000);}
  // Expose for APK background
  window.fetchPrayersAuto = fetchPrayersAuto;
  window.checkAndFetchBackgroundPrayer = checkAndFetchBackground;
@@ -4887,7 +4842,8 @@ let fetching=false;
   function getPrayerDef(){
     try{return localStorage.getItem(LS_PRAYER_DEF);}catch(e){return null;}
   }
-  function setPrayerDef(code){ try{localStorage.setItem(LS_PRAYER_DEF, String(code));}catch(e){} try{ var _cs2=String(code||'').trim(); if(_cs2 && _cs2!=='107' && window._saveSayeghCityAtomic){ var _curS2=String(window._selectedSayeghCode||localStorage.getItem('_selectedSayeghCode')||'').trim(); if(_curS2!==_cs2) window._saveSayeghCityAtomic(_cs2); } }catch(e){} }catch(e){}
+  function setPrayerDef(code){
+    try{localStorage.setItem(LS_PRAYER_DEF, String(code));}catch(e){}
   }
 
   // 1- افتراضي أول استعمال: النجف
@@ -4903,9 +4859,114 @@ let fetching=false;
 
   // 2- عند تغيير البوكس، حدث أوقات الصلاة تلقائياً
   // نغلف setActiveBox الأصلية
+  (function hookActiveBox(){
+    let tries=0;
+    let iv=setInterval(function(){
+      tries++;
+      if(window.setActiveBox || typeof setActiveBox!=='undefined'){
+        clearInterval(iv);
+        if(window.setActiveBox && window.setActiveBox._fix4Atomic){ clearInterval(iv); return; } let original = window.setActiveBox || setActiveBox;
+        let wrapped = function(v){
+          try{ original(v); }catch(e){ try{ setActiveBox(v); }catch(e2){} }
+          // بعد التفعيل، حدث مدينة الصلاة حسب البوكس الجديد
+          setTimeout(function(){
+            try{
+              let expected=getExpectedPrayerCode();
+              let current=getPrayerDef();
+              // إذا كان المستخدم لم يغير يدوياً لمدينة ثالثة، نحدث
+              // المنطق: دائماً حدث عند تغيير البوكس (حسب الطلب)
+              if(expected && expected!==current){
+                setPrayerDef(expected);
+                console.log('✅ Prayer sync: box changed to '+v+' -> prayer city '+expected);
+                // إذا كان fetchPrayersAuto موجود، اجلب
+                if(window.fetchPrayersAuto) window.fetchPrayersAuto(expected);
+              }
+            }catch(e){}
+          }, 300);
+        };
+        window.setActiveBox = wrapped;
+        // أيضا للـ local scope
+        try{ setActiveBox = wrapped; }catch(e){}
+        console.log('✅ Prayer sync: setActiveBox hooked');
+      }
+      if(tries>100) clearInterval(iv);
+    },200);
+  })();
 
   // أيضا عند تغيير مدينة نطاق مدينتك - مراقبة شاملة
-  
+  (function hookSayeghChange(){
+    let lastSayeghCode = null;
+
+    // مراقبة input البحث
+    let tries=0;
+    let iv=setInterval(function(){
+      tries++;
+      let inp=document.getElementById('sayegh-city-search');
+      let sel=document.getElementById('sayegh-city-select');
+      if(inp){
+        clearInterval(iv);
+        // عند اختيار من الاقتراحات، يتم تعيين الكود بعد 100-300ms
+        let observer = new MutationObserver(function(){
+          setTimeout(function(){
+            try{
+              let active=getActiveBox();
+              if(active!=='city') return;
+              let curCode = window.getCurrentSayeghCode ? window.getCurrentSayeghCode() : (sel?sel.value:null);
+              if(curCode){
+                curCode=String(curCode).trim();
+                if(curCode!==getPrayerDef()){
+                  setPrayerDef(curCode);
+                  if(window.fetchPrayersAuto) window.fetchPrayersAuto(curCode);
+                  console.log('✅ Prayer sync: search input changed -> prayer '+curCode);
+                  lastSayeghCode=curCode;
+                }
+              }
+            }catch(e){}
+          }, 350);
+        });
+        observer.observe(inp, {attributes:true, attributeFilter:['value']});
+        // أيضا عند الضغط على اقتراح مدينة
+        document.addEventListener('click', function(e){
+          if(e.target.closest('#sayegh-city-suggest') || e.target.closest('.city-suggest-item')){
+            setTimeout(function(){
+              try{
+                let active=getActiveBox();
+                if(active!=='city') return;
+                let curCode = window.getCurrentSayeghCode ? window.getCurrentSayeghCode() : null;
+                if(curCode){
+                  curCode=String(curCode).trim();
+                  setPrayerDef(curCode);
+                  if(window.fetchPrayersAuto) window.fetchPrayersAuto(curCode);
+                  console.log('✅ Prayer sync: suggest clicked -> prayer '+curCode);
+                  lastSayeghCode=curCode;
+                }
+              }catch(e){}
+            }, 500);
+          }
+        });
+        if(sel){
+          sel.addEventListener('change', function(){
+            setTimeout(function(){
+              try{
+                let active=getActiveBox();
+                if(active==='city'){
+                  let code=sel.value;
+                  if(code){
+                    setPrayerDef(code);
+                    if(window.fetchPrayersAuto) window.fetchPrayersAuto(code);
+                    lastSayeghCode=String(code).trim();
+                    console.log('✅ Prayer sync: sayegh select changed -> prayer '+code);
+                  }
+                }
+              }catch(e){}
+            }, 200);
+          });
+        }
+        console.log('✅ Prayer sync: sayegh search hooked with polling');
+      }
+      if(tries>100) clearInterval(iv);
+    },500);
+  })();
 
   // 3- تنبيه إذا كانت مدينة الصلاة مختلفة عن نطاقك
   window._checkPrayerCityMismatch = function(prayerCode){
@@ -4930,9 +4991,12 @@ let fetching=false;
 
   // حقن التنبيه في مودال الصلاة
   (function hookPrayerModal(){
-     if(!window.openPrayerModal) return;
-     if(window.openPrayerModal._mismatchHooked) return;
-     let orig=window.openPrayerModal;
+    let tries=0;
+    let iv=setInterval(function(){
+      tries++;
+      if(window.openPrayerModal){
+        clearInterval(iv);
+        let orig=window.openPrayerModal;
         window.openPrayerModal = function(code,cached){
           // استدعاء الأصلي
           let result=orig(code,cached);
@@ -4959,9 +5023,12 @@ let fetching=false;
             }catch(e){console.log('mismatch check error',e);}
           }, 400);
           return result;
-        };console.log('✅ Prayer sync: openPrayerModal hooked for mismatch warning');
-     window.openPrayerModal._mismatchHooked = true;
-   })();
+        };
+        console.log('✅ Prayer sync: openPrayerModal hooked for mismatch warning');
+      }
+      if(tries>200) clearInterval(iv);
+    },300);
+  })();
 
   // تأكد أن sharePrayerAsImage لا يلتقط التنبيه (هو لا يلتقطه لأنه يلتقط p-cards فقط، لكن نتأكد)
   console.log('✅ Prayer Najaf sync fix loaded - default Najaf, auto sync with box, mismatch warning (no print in share)');
@@ -5216,19 +5283,24 @@ let fetching=false;
   }catch(e){ console.error(e); alert('خطأ في تصدير بطاقة الشبكة: '+e.message); }
  };
  // ربط تلقائي بزر تصدير الشبكة إذا موجود
- document.addEventListener('click', function(e){
-   try{
-    var b = e.target && e.target.closest ? e.target.closest('button') : null;
-    if(!b) return;
+ setInterval(function(){
+  try{
+   var btns = document.querySelectorAll('button');
+   btns.forEach(function(b){
+    if(b._networkBound) return;
     var t = (b.textContent||'').toLowerCase();
     if(t.includes('تصدير') && (t.includes('شبكة') || b.closest('[data-network-card]') || b.id.includes('network'))){
+     b._networkBound=true;
+     b.addEventListener('click', function(e){
       if(window.isNativeAPK && window.isNativeAPK()){
-        e.preventDefault(); e.stopPropagation();
-        window.exportNetworkCardAPK();
+       e.preventDefault(); e.stopPropagation();
+       window.exportNetworkCardAPK();
       }
+     });
     }
-   }catch(e){}
-  }, true);
+   });
+  }catch(e){}
+ },1500);
  console.log('✅ FIX: تصدير بطاقة الشبكة + خلفية الصلاة جاهز');
 })();
 </script>
@@ -6408,8 +6480,47 @@ window.openQuranSystem = async function(){
   // Override setActiveBox to persist both active and associated choice
   function hookPersistence(){
     let tries=0;
-    
+    let iv=setInterval(function(){
+      tries++;
+      // Hook setActiveBox
+      if(window.setActiveBox){
+        clearInterval(iv); return; let orig = window.setActiveBox;
+        window.setActiveBox = function(v){
+          try{ orig(v); }catch(e){ try{ setActiveBox(v); }catch(e2){} }
+          try{
+            localStorage.setItem('liveBoxActive', v);
+            if(hasCapacitorPrefs()){
+              window.Capacitor.Plugins.Preferences.set({key:'liveBoxActive', value:v});
+            }
+            console.log('Persisted active box',v);
+          }catch(e){}
+        };
+        clearInterval(iv);
+      }
+      if(tries>100) clearInterval(iv);
+    },500);
 
+    // Hook city selection
+    let iv2=setInterval(function(){
+      if(window.getCurrentSayeghCode){
+        // Watch for changes in _selectedSayeghCode
+        let lastCode = localStorage.getItem('_selectedSayeghCode') || DEFAULT_CITY_CODE;
+        setInterval(function(){
+          try{
+            let cur = window._selectedSayeghCode || window.getCurrentSayeghCode();
+            if(cur && cur!==lastCode){
+              lastCode=cur;
+              localStorage.setItem('_selectedSayeghCode', cur);
+              if(hasCapacitorPrefs()){
+                window.Capacitor.Plugins.Preferences.set({key:'_selectedSayeghCode', value:cur});
+              }
+              console.log('Persisted city code',cur);
+            }
+          }catch(e){}
+        },1000);
+        clearInterval(iv2);
+      }
+    },1000);
 
     // Hook Najaf source selection
     document.addEventListener('change', function(e){
@@ -6474,6 +6585,35 @@ window.openQuranSystem = async function(){
     }catch(e){ return '107'; }
   }
   // Override getExpectedPrayerCode if exists
+  let tries=0;
+  let iv=setInterval(function(){
+    tries++;
+    if(window.getExpectedPrayerCode || window.getPrayerDef){
+      // Wrap prayer def setter to sync with box
+      let origSetActive = window.setActiveBox;
+      if(origSetActive && !origSetActive._prayerHooked){
+        window.setActiveBox = function(v){
+          try{ origSetActive(v); }catch(e){ try{ setActiveBox(v); }catch(e2){} }
+          setTimeout(function(){
+            try{
+              let active = v;
+              let expected = (active==='najaf') ? NAJAF_CODE : getCityCodeSafe();
+              localStorage.setItem('_prayer_default_city_v3', expected);
+              if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){
+                window.Capacitor.Plugins.Preferences.set({key:'_prayer_default_city_v3', value:expected});
+              }
+              console.log('Prayer city synced to',expected,'for box',active);
+              // Fetch prayers for new city
+              if(window.fetchPrayersAuto) window.fetchPrayersAuto(expected);
+            }catch(e){}
+          },300);
+        };
+        window.setActiveBox._prayerHooked=true;
+        clearInterval(iv);
+      }
+    }
+    if(tries>100) clearInterval(iv);
+  },500);
 })();
 </script>
 
@@ -6868,7 +7008,34 @@ window.openQuranSystem = async function(){
 </script>
 
 
-
+<script id="quran-system-clean">
+let _quranCache=null;
+window._quranIconDataUri = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAArCAYAAADIWo5HAAAaN0lEQVR42p2aW6yl2XHXf1Vrre+yL+fepy+e8Vza17HjxMiRFSKLJECkIAUkAoI3eApCecqFJx6MeXbESxBICBEELwRQIiSUgCIiEyWyHDuxJ3bbY8/Nc+npPn26zzn77L2/21pVPOz2JEK8hCV92lva0tpr1VdV/6r/v4S/0BIePbq3XOT+OMfyYlTuqsiHReXFRLpJSKcm2piQokmBKWP2bi7lHWf6xlDyl7//8LN/8MlPygjg/nkFEPmCAXzVPb109oc/GmP8MdP0oymGu+rVkUmscQuKjGjemo+PvMhZyfkNgnxHnFfLmN/exBfPT05OVn+xGz1dKsLP/8avfu516e88uLyoLrYrOV0eH4jk6nni/N/99Z/+TDtfPuvFjkXlIISwoI27LUqBYlAGXCOIImZgBilBCEAmX68pZfzmMI6/eXF9+q+ef+kz7wG8+urXT0/j/X9cpfR3NaSPp+W+ogJlguyYCm7gJROj/Lk9A6DQ95iXtZldqIazzbp78PO/+z/++HWf1pdjWa/WT9bHszm3T06mjzJ/79f+zq98SUQcQD7/+c/rF77wBfuHv/rPf+hr7Vsv375RocUxgcYLf/L4ml984SP84k/+LAwTw3ZNt33CZrti7Ndmw+BQcJ8ktIm2rgUcCYltN1HGwYO5i9SEqg3HN06ZLfa4fnx5du3znwOY6/Y/7R8s73SrLRcXD+i66yJuGIPEdiltHcEypsGHcWTqtgStXKjQECWkRmd7h8zmS5r5AdQ1//J//zZffPU7fOpgzqBCUMERzh4bP+LP//C//YV/+vLnP/95jffu3ROA33/z6yfpbu0/ES1PwyBTTFxebnjj4YYPP6uwmeSdt+/Jg9e/LE27R2hmgmW1PKJVw+GtjzPbOyGmCgkJs0w7DmyvHsjle69gwwV52nL+9ndMdVaeffYDp5ePLn8b8OrG3vIb996dpuE6pOAqTRtiajh65hPM928SYmUSIu6uZRrp1g+4vP8KebxARJFYcfX4TR+6S06e/bR/8Lkf9hcKfvDwCc8zsjhYILnnaLm0fzN16dtn378FvHzvE/cknr10JgDNojlMbZJNQRdtFY6riqvzC97sR9oqQAyYjaQU0dTgVjCJzA/ucPuFT9Msb4FTiB7cBXDEhL3jF1kcfsDf/e4fSt4E4lT00XuvqOetd92wSCFwf31mjx+8kY7vfIhQt4RmwTMf/TFfHj4PSEFUUPNdwIouj16wvaMX88M3v5q67ZWUsQeiqEekZEEj85j4/rbg1vOB+RFrC6wzZdHWsvJ+DnD2rTOJP8gBfbHjeRD6fvSUGvaD4UAQYRYiFAcy9eKYPE5MueP23R9nvjxi7FaM/apM0+Y61mkupOiWp1JypKAOcuvuZ3nw2ld58va3ODw+JcYk5N5HKzSzSg+Ob7NanXHzhU9z8+6nGbfXcr75umsIXYxBRdWKeypTZyntBdVYH995iW596e++9iUJcUGYHe2ymjt7MRCrgBUlOPQDbKz3tqp4Z9wuf3Dv9w3gKR5WQbldRb652nC2Fb69nthPQh0iiDD1WywPaFpw+4Of4uTWh9huL12bJalKU8Vxq5KurEydOHNXW5Y8+rS5DFETx898jO3lGT5NhKAUz4IpURM51rSp5fSZjxFjooTos/nJKKEqCKNqBNXOxjFp0IOSR8rUcXj6gpgNPH7wJjJtmIYtCERV9oPwresOv+xY5cIPH7ZQnNRUx+8b4EtPoeBq6vefixUq8NF54NXOeGXjpJjYbyvMDBEoWajbyg9OX+TJg+9IMSPGxjvVuq1rCc1Bttwt3KyapsGnYYtboV+vmB0ccXh6lwev/TF1XUFQgkZyLoz9hpO7P0KsW1YP34KQPNsQqtAuQwpOrLLG1rx7PJuKk6c+l3ETuqtzOTr9CJfnb+GDoSFRxJhXCRPhu73w7DDxyYOaKghJlHW3PgT40nvrXQgIkKpwo1Lnuhgv1IHfPh+53xVeWgQSgjuUvoeSOTj9KKpR2r2b4E5IScXDpBIx9TalRpEqV7VorgeZbJzysIqluDTzAxzQGPFcKEEpbhiB+fKEnEea5TGxmqlolLqaUcQw6wUx0/mppZxLERcroysiIUSOb9z1966/KrHvoDh1iDQqvL5xXu1G/spRzZvrniZULGbzW1eA3V545N6XXAHFTiqg1SDfWPXc206IOFVU6jrhIuQy0OwdsH/8rFxf3CdvrylefDZbioRImt1wLZPkMjnBTcD6zRnTOASz4oLKbHFAMztk2K5x3cG9Waae79HM9+jXl5gbul2jVWW6f8sCLl6GUbVSNNjQX0TLRYf+SkSEsbli/+QFuXr4PYZhjYtSVxWzKiEy8NokfLfLHLZAb2S3IwXs3qlHXsIFyGb7wQs+Gv/x8cS5K5CZixJDpFjGixHbI6IEqnpBU7dobDRPvYlL8nFFqPcwH11LrnIZSM2+NYsoeRqkX1/gosR6xni9IrogolgxqrZBEVQDzeKYVM0oY9bSX4dQ1QQJUWNF7jfE2GLBvF4eeM5ZBNCgpPaAcewonokaaEVxd86y8+tnI7/0XC1tUEx9D4CX/rNHvoArign7tTh/ct3Lk2wkhKnAvKpIWmMUHEMJIEK/foLgXi/2mPqNVO3epNUsWUyDMHOJWusUu2G9arr1BW4jAQUvqCYkJpwRwZGgqFa4QzZnWp0TU+MpzaVql+apNiwHtHIqyyUPZdxep0r2ZNheCaVI2+yLuZOnAStGCA3LWEMxojoXxXn5Mks9F4apP1YEvuCugPe/UYK578/c+KOtMbki7uDKLAVSUHADlLppwAvt7IAYa9muHouj5HGbNpcPfLw+q2OMjedR+s0ZULxp59LMjlyqhoBR8pZSJkR3lbgUx21Egaqesdw/pU4zcYr3q7MxD5eTamRYPfRxfR7LuE6Kxn71KMSg2swPxL0QYyTEHbBVITBTATfUYXLnj3pjGSOa4v7gFgCPAP/hv32xKc/ZMoiT3RE33B2sMFchxMTkzjitMBdEhL5boaFitjxBQxQJyWutxihaiatpWo7zvUrzsNVx3NJfPZFiI83JbVx2exRxVARUMCtojAznZ5RhQ2z3vW4XFvdaFVEUGWaL02bCR9S6MnTLqpnpNHUM3RXNbB+NiWHYYGakkFhEBTPcDNHA5E40w0uZ/89f+WIDbCLAV4/eXkgV5lVMjKUTd8eKgU8cpITGGrdMijWiAXMjxkjJA9v1psQQzGxI7d6dNA6XRSWGgkkex9otS3Hxdu9I3CcQx7NjU0YJqAjTNOCxwrxQL5fEWDGOW7bjKoRYmYZECETLRpyflO7q3YVq8IKgJh40iu/gGCE8DYHAXlWBg1nBNdEVJAQIVdj70vGw974BHu2xF0RbmYyNwUILz0rm2wZzgRAC5IJNRogRd1BJaFvTxOQxpCCh8jJNObUnlYRUBAlT1SGacp42Om4ey3Z9xf7+MSEGVJVYdvAqEhCNTFPH+vKC+f4xzfyYmBrHPYQQiwjRymQ47fLoBccnKaVg0yiWy+5Mqojb7omJZRBwuJucB2qsJmMaRsCrb7z1Wvt+JXjf+v1UaUhivsouP3uUeH4Y+LY5h02LhEjJhYKhuktkedxS+ozEGL0UZvu3vExbUdFB4xgtjwzdyqY8iRKl5Il2cUxKM0wMUQUHcDwq5kaqKhb7NxjHnpLPxXFSqkrVtIRYD27FS8kxSGPd6mFSSWJ5t1fDISIVxQo5dxBblnUFBj+pEw/nid9aIY1WXrUWPe3dAF6PAFvP+1XtXE/Zn69FPruMbK8njtWpYwINuI9UdY2GgKFU8yNSqpmm3kVBpUg1O07j8NiVIBqboMuZz2KSsd9CGVhfPaJJ1e5NSUDVKQgqAdWATRN9d83y4A5IIta14x7EJsENkUBqD9zKJs7mN3cJNDWWpw0IElIloW4pZYR6hlrgNI4cOtxs93h566zy6FUQOb+6mr/vAddls99WETz4j+6Bl8JqmnjGR+apAUmUvKJfXSASsNyzungLUSGEVlKqSe0MwV21FlfxkoetEaJ1Y1o9eQvdlT0gjiKggUIGnFyMILprbd24vnyIuzI/PC0pSXZ3j7GKZhJEXMZx7MrYpVwGLWUwskm8cVcRxbot4hmCsFc3fMAz3RipBT69jIjhTRIeb7rl+wYYRA6WQcll9OyFh15xYYK70ZQC6uSpo1nsEWNDijWL/Vu+e4sqVkbK0DGNHUF0cLEQUtuGbOpeOD55nlI6hs3VDk3dMcs7FDCIugsFzKiqhmpxjIbGrYxRikUNcRzHtamoTOO14lKnttHE3AWJuBFjRdZA1TbkaQICrTvi8MRrOk+4O9mzo0pv5c8M0E3jwUKFOjr3e/jlTx3zlf4xX36w5qStcA14HigOrso49myvH3ms5iJiVPUSrRdepwrcB1OSOHXOvZfSS3f9mKlbY15o2gUhBUKoce8Rd4ImYogQAtvNiu1m6/V84aGaedPMS4xNJVW91hBFCnEat5iNPo1b8QLTuPa9gyhopLDzIlQ5mbesivDp48RnPnLCP/naA55dJprsXNLfAIgCTG4HbYBNhmdC4ddffpvhbMu+CISIEJmmkTwaUSIhRJpmqSE1mBfytEZGEesdlbIX2uPOPNg4rNTEpW6WzJYnlGnYFVjFcSuICB4EJ4MXQFkc3yFoLZ5HMcymYZVE1XBn7M8SKrgLZoJI9LqpJWoQDQmnoCg5TxCUqkocJuWr713xLd7ig3XL2TbTpsSU4qHw1PtMOK4R+pzZS5FTH3lSMpZqlnUDouCZqgpoiJQ8kccBs0KsW6/nx6IaCQKirccYWzMjVpUP3dqHvs/j9iqMmwvdPzhFREGewpYZIkKIghdjdfGIdu+AEFqr26VWzYyojWrURZkfuOfRzE1LKV6GXsehI+eOZIeoJpRMziO4sqgSedawcOM4ggVnI4KKYPiJAjEAWtc3GoWLMcvDyfn4rPCmBR7ExCwqLqDuWCk78sQLooqZWymTMw5h3L5LTDWxPTTbbHs3a8ehk7o9cLM+xVDRHN5C9f/mpWXHII8Dqs7+4QlIIE9ZxJ315XuEkCwEGTXN69ytyzhstJ7tabFCsYxKwi0jMZKLEcVBAvNYcWYVK9vwYnT+YFtImmUxr9CqPg3I0yRo436b9ljFmj96vOHnDmr+dHSyJPaqhIszjj1ChUogS8bESfVMqnohGiJtu8AM0xALqa3MsHpmKiIqxek253RXV+yfPEPJ01NjCu6OaECoKA7ry0fU8wXV7IbEauapXgqOCR5FQ4nzJsz3b1NsopRMHrdMwxbRnaOqJvptR8GZx4DFxJ90zmdD4CtXPT92PGNeOb0PC3CiIBT1RXBjnEYGE37z0cg3B+XuMlDFCDghKtVsCaq4T3gZGTaDdNfnpNTytFyVkLSgQdxD6tYXDo4XR0NFu38KCDEJKUXGKSNAiBEJggCzxSE5Z7rVQ4bNuWiop2Y+KyKi7lMok/elWGNl0JInBEFUKSXvPLCeYZ7BnZQCe5Xy3U3ktx4N9FnYTpOclAq3fKAIscek9r85Syp0hiDOl9c7QnQelCY2OMI0bSllR2+F1DDfu4mK4hoQ2YkYsaplmDqJWqcYU0ixxX3Xk4/DFdurR1QpUcou7n0na0ApSBLwQN9d0Byc0FT7iIoJMcYYY2YSzwN1PWvz2KEp4S7uVsTzhIREyUaZ+l2f4oU2VszqhCN8eSugMACVgAc96Nxi5B/8eh1iOKgl0xcDBPNdoC7rRBV3+GnZMJ94/OhVjm5+iCeP38DcPKXaQ0yaqkXn7nWqqyZPw8r6MUzTNOu7leAw9Fcsl0e4Gd1mRVXVwIiT0XpB163AjNnigOuLM6aqB0Xa+VLwanINhqZYch9yGadh+wjMtUxjEODgxof9/L17Yj4iGnEXklbMQwRzylMNrM/QaAC8vf+P/lkVf+32K3MTnyUKg7sgIOZgzjwkQqjIlhF3qnrG1cPvcXj4PMc3P0TJo9hTWc08NxICOY+ToK1WbQhsWNRHlDFTNy1B4fytV/C+I7aLnRc4iCo5D5yfv8HpBz7K3v4JGmaEVIl7RmKbStkWxa5dqz0JOc5np168aNBASg15muTq8RukZon4iAuklJjHAO5IMQjKYCbBHJz2vxyPc/1a3B4FY9FQc222y8ru4MaiilQp4uYM45axW+Mo99/4GlPe0o9dWV+8K2O/QnBBJWuoTTVEsyFPY++bq3M214+8Xu5zfXXO5ZP3QNj16CKoKm6GSuDiwbusLh7QLo9Zr59wvXrg07ixYgMqQUXSDLMMxjitdLM6s2HqbcoD99/8CqoJ667ptmvMnCCJRUy7hssdHFbZSGJUgeXrbT6K3jTHYZQm5IEPRpXzwZ8KBTALSoyJUTKqCdKcfnvFtL0GnOXxHT25dZfYHvwA0tJOsHQoU5zNb+FSWD1+i0dvfpNHb3+PsV9DNtofyLIO6so0jZQx8/Ct71DKyP7xsyyPnxXRtEsWkgSRCh93PLYIU7/Ry0ev8fjde2yfvEu2zOzwFjKNYBOxiszDrvQWBzHjmaTSUtBk1Znm/fi1h2/UnGStqPl4nfja1ZanGhR7VUIAy46XCXWjqRrMnaG7ZPvmO3J1/iqzvZtUTUsIApZxUUoxL8Wku37M5upcyjARozAYaKxB5OnBFDSiIZLHgmJcPPweq0ev0i5Pme0fIxpJMeCeMQJmMI4b1hcPyds1kmZovSCOW5gGoGBlQkLgoK6fEv+Gq/BSo8TiaAr6/e3VgWafjpsqoGJ2Izifmie8GAjMoxBSwsVACuvLt55ebiQPVzuaaepYP3mXcf2AMq2wvMaGFT6tQre6r9vLByiZpBOeO+oqsrk6A/fdwRS89HSXj6nqhqm/hnHASqbbnrO5OsOGK0p/gQ1rbFoxbh9z/fht8rjBpCBlizAS64bN+ffJ0/iUIAkcxAoAK/CxpuGDTU3xbDEEujIdRtrZSUwdZs5RCPzMceLlqwER4aBpMHV86AjVkuXJPnXTouEG2ixomgXz5REhNqR6joT01Nq7HFLGjmncsF1f0F2fcfXgbbrrx0gZcd8VQY4jIkx5oLLM/tEJi6NbzA9u0y5vEpsZKdVPAVOAjNlEHidyv6bvrhj7FbnvKGVEQkTN8DzgwH6dENnVCX9jLzI3Z+VKShOPuu08brw/qlNATLxgbMaJQy1cGMxd0ZiYt4e8+MmfQsIMpOBuWBGmcWA7bCjdgD0+x0vecYkCIrsCJVSJptnnaO8WJ7c/zLi54NH9VxnWKzQomCOx5e6nP8fhjWdpFqdYCAzjxPXqgvL40Y7TM9+JxKoQIqGKRE1Us1PmB3cQ3RGtKoJNHZIaZHvBPAXc4UAVE0hNxMfRUwjIrL0Th1L29yVwnCpW05prc356r+L3thN78zmrR2dcTQ+xsWcaBiQPWO4p40TJI6VMuIEVx3z3qO48QNgZwnSn4Ws7Y3lwwsHhLfTwhMsnX8VK4eQDL+IeeHx+zvXr36Nsr3exXJynpCHO7oL4DyZaFAmBECIpJTTVEBKxTsR6hsfEQR1Y1nNOG+Fzh4lLyywn5aRNpI1xf3t1FKvZ/MUqjKz6LY8scHORePmqYx0i88n42h/8HufDyGiwRViT2ZpzMTpXblxbZlOMzjJFI+Vp4xQMlhI5FOd2HXguVZwm4bh9g/eamsPT22iIiEQevvsml48eYP3A467nwWS82WUejoVzChsgq+DiRAmEUmhcWITAMij7wEGVmIvQqrFESOLcnM1JN+6w1si2G/nYzT3e6TK3LFPFQNWE23E9bg9PtWJQl7sHFY0L82XF7z7J/MLXX4bLa7pSGM0xN3IpYL6bC8pPP53dPJDL+9BGFIJCSdWOdqkSN0PgEzHyt+c1H37ndZq9luLG5Vvf5LUL5Tc3A386DpyNtps5yk7MmWwGWUCcpz33Lh3sNDEIcfcfupPFVZQ6VbQq2OFDJoS/vKxZNDV7qeZJ30krMJkfRwKHFYa6gynFCm8BP7654N3XnqCTsRiMJ71zVeSpW9ruksXeZ3Z3hb0QvXAnOs8lwb2wKUqdxK8M3vFa/tfhkpd95Pmp4/qwxVHmVx3f14YnGti7WPExsu+JMUxBFlrwAO9Myv0JclDQp6Eg+j6SoLvaICPsVcJhJaTk6NuBH7p1wGt3nuET4wgxEkSJZEQ5jtuS2+OmsptR7b2rlW+y0QCf+9Ap5414v1njWRg98LBksgIWMHNi8Kd1t4maIShiRfYjDJPLaAUdi5Rscsfg6p3O7XsPaX/qBfnuwfOMdYsEqMaR5dUl3e+84ov9Rm4/M5POhf0YaCv1GJSbUfwjWciKuyqCuIjhKOVpW+XuNFY4jlDhhKDMFo0c3DnishLeuNoyS5Gbi5kfu9DJMI+1+Adf64sGNb0uQgw15kYXId++wTQdkqenSk4xihleHHPdaQXuTEV2o2yl4NmYPFAooAFpBZ+K52JjeYl6vPcWH7i8LD91hNSNiWtBfPBvXz3x+4sqXHz0Wb6C90FDHZLKrjsBjUicQRTZKT9RSdGJGghB/myMKMB7QYlVIsWABEihYuYBVMhDZs82vOJCK/pcvGvNv37zO+ufuF9kwnPfrbcbh7yYzahCmtab8Yl6Gduq8UxYCT5Om267mM1LirFrY5Wnad3VIU6VxkFnbGehtrGbuhtHRzafH/Y+9mN/cbW986FnP/Hfh9/5r69vHrflInNSOhDn0fUkb19mDu4+t/mZz/y1v/XO9++/UpLObt46bC4uN83D68vYxFBnl2RuzcOLx6GSZt42y3q92aRu7OverW7qui4yJRWbX67WzJr5Yn+xONoMXbzaXnrdNLOmrppJrHLL8aX9O18RBSoJCIK5Ydifm6AUDP8B8jz95c/y3P/P+ntf/KW/+vvf/cbfH9frT7lznMtQUqivDg6O7v2lD33s3//GL/+L3/v/2Vf+H98VdpI8zi5YZBemssvjmcL/Adw5N3x3OETNAAAAAElFTkSuQmCC";
+window.openQuranSystem = async function(){
+  try{
+    if(!_quranCache){
+      let urls=['quran.html','./quran.html','/quran.html'];
+      for(let u of urls){ try{ let r=await fetch(u); if(r && r.ok){ _quranCache=await r.text(); if(_quranCache && _quranCache.length>200) break; } }catch(e){} }
+    }
+    let old=document.getElementById('quran-main-overlay');
+    if(old) old.remove();
+    let ov=document.createElement('div');
+    ov.id='quran-main-overlay';
+    ov.style.cssText='position:fixed;inset:0;z-index:999999;background:#0a1f14;display:flex;flex-direction:column;';
+    ov.innerHTML='<div style="height:56px;background:#132a1a;border-bottom:1px solid rgba(212,175,55,0.2);display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0"><div style="display:flex;align-items:center;gap:8px"><img src="'+window._quranIconDataUri+'" style="width:24px;height:24px;object-fit:contain"/><span style="font-weight:900;color:#d4af37;font-size:16px">القرآن الكريم</span></div><button id="q-close" style="width:36px;height:36px;border-radius:999px;background:#0f3218;border:1px solid rgba(212,175,55,0.2);color:#fff;font-size:18px;cursor:pointer">✕</button></div><div style="flex:1;overflow:hidden;background:#0a1f14"><iframe id="q-iframe" style="width:100%;height:100%;border:0;background:#fff"></iframe></div>';
+    document.body.appendChild(ov);
+    document.body.style.overflow='hidden';
+    let ifr=ov.querySelector('#q-iframe');
+    if(ifr){
+      ifr.src='quran.html?v=' + Date.now();
+    }
+    document.getElementById('q-close').onclick=function(){ ov.remove(); document.body.style.overflow=''; };
+    ov.addEventListener('click',function(e){ if(e.target===ov) { ov.remove(); document.body.style.overflow=''; } });
+    let esc=function(ev){ if(ev.key==='Escape'){ ov.remove(); document.body.style.overflow=''; document.removeEventListener('keydown',esc); } };
+    document.addEventListener('keydown',esc);
+  }catch(e){ console.error('Quran open error',e); alert('تعذر فتح القرآن'); }
+};
+</script>
 <style id="swipe-fix">
 .no-scrollbar::-webkit-scrollbar{display:none}
 .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
