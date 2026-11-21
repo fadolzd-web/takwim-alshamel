@@ -35,36 +35,9 @@
   const NAJAF_CITY={name:'النجف الأشرف',code:'107',country:'العراق',lat:31.9996,lng:44.3143};
   console.log('🔧 PRO FIX: Najaf 107 root');
 
-  // 1- إلغاء علامة _first نهائياً فوراً
-  try{ localStorage.removeItem('_first_auto_fetch_done'); }catch(e){}
-  // اعتراض كامل للعلامة
+  // FIX4: علامة أول تشغيل تحترم. لا نحذفها ولا نعترضها. أول تشغيل يحدث مرة واحدة فقط.
+  // FIX4: لا تحويل 236 بيروت إلى 107. 236 مدينة صحيحة. لا كتابة افتراضية عند كل فتح.
   try{
-    const _origGet = localStorage.getItem.bind(localStorage);
-    const _origSet = localStorage.setItem.bind(localStorage);
-    localStorage.getItem = function(k){
-      if(k==='_first_auto_fetch_done') return null;
-      return _origGet(k);
-    };
-    localStorage.setItem = function(k,v){
-      if(k==='_first_auto_fetch_done') return;
-      return _origSet(k,v);
-    };
-  }catch(e){}
-
-  // 2- إصلاح كل مفاتيح الكويت/بيروت لـ 107 قبل أن يقرأها React
-  try{
-    const keysToFix = ['_selectedSayeghCode','_prayer_default_city_v3','sayegh_selected_code','selected_sayegh_city'];
-    keysToFix.forEach(k=>{
-      let v = null;
-      try{ v = window.localStorage.getItem(k); }catch(e){}
-      // نستخدم _origGet لو موجود
-      if(v==='1' || v==='236' || v==='001' || v==='00236'){
-        try{ localStorage.setItem(k, NAJAF_CODE); }catch(e){}
-      }
-      if(!v && (k==='_selectedSayeghCode' || k==='_prayer_default_city_v3')){
-        try{ localStorage.setItem(k, NAJAF_CODE); }catch(e){}
-      }
-    });
     // إصلاح مصفوفة المدن
     let cityKeys = ['sayegh_dynamic_cities_v3','taqweem_user_cities','USER_CITIES_KEY'];
     cityKeys.forEach(ck=>{
@@ -86,11 +59,18 @@
         }
       }catch(e){}
     });
-    // liveBoxActive
+    // FIX4: لا نفرض النجف عند كل فتح. النطاق المحفوظ يبقى. الافتراض عند أول تشغيل فقط.
     try{
-      let active = localStorage.getItem('liveBoxActive');
-      if(!active || active==='city'){
+      let _fr = localStorage.getItem('_first_run_done');
+      let _act = localStorage.getItem('liveBoxActive');
+      let _code = localStorage.getItem('_selectedSayeghCode');
+      if(!_fr && !_act && !_code){
         localStorage.setItem('liveBoxActive','najaf');
+        localStorage.setItem('_selectedSayeghCode', NAJAF_CODE);
+        localStorage.setItem('_prayer_default_city_v3', NAJAF_CODE);
+        localStorage.setItem('_first_run_done','1');
+      } else if(!_fr){
+        localStorage.setItem('_first_run_done','1');
       }
     }catch(e){}
   }catch(e){}
@@ -99,7 +79,7 @@
   window.MASTER_CITIES = [NAJAF_CITY];
   window._masterCitiesCache = [NAJAF_CITY];
   window._sayeghCities = [NAJAF_CITY];
-  window._selectedSayeghCode = NAJAF_CODE;
+  window._selectedSayeghCode = (function(){ try{ return localStorage.getItem('_selectedSayeghCode')||NAJAF_CODE; }catch(e){ return NAJAF_CODE; } })(); // FIX4: قراءة المخزون، لا فرض النجف
 
   // 4- اعتراض تحميل cities.json من الشبكة وإرجاع النجف أولاً
   try{
@@ -1838,26 +1818,26 @@ window._stopLive=false;
 
 // النجف مفعل افتراضياً
 function getActiveBox(){
- try{
-  var v=localStorage.getItem('liveBoxActive');
-  if(v===null || v===undefined || v===''){
-   // أول مرة - النجف افتراضي
-   localStorage.setItem('liveBoxActive','najaf');
-   return 'najaf';
+   try{
+    var v=localStorage.getItem('liveBoxActive');
+    if(v===null || v===undefined || v===''){ return 'najaf'; }
+    return v;
+   }catch(e){return 'najaf';}
   }
-  return v;
- }catch(e){return 'najaf';}
-}
 function setActiveBox(v){
- try{
-  if(v===null){
-   // منع إلغاء الاثنين - ابق النجف مفعل
-   localStorage.setItem('liveBoxActive','najaf');
-  }else{
-   localStorage.setItem('liveBoxActive',v);
+   try{
+    if(v===null || v===undefined || v===''){ v='najaf'; }
+    // FIX4: حفظ ذري — النطاق مع مدينة النطاق مع مدينة صلاة الصايغ في معاملة واحدة.
+    var codeToSave = (v==='najaf') ? '107' : (function(){ try{ var _c = (window.getCurrentSayeghCode ? String(window.getCurrentSayeghCode()).trim() : ''); if(_c) return _c; var _s = localStorage.getItem('_selectedSayeghCode'); if(_s) return String(_s).trim(); var _sel=document.getElementById('sayegh-city-select'); if(_sel && _sel.value) return String(_sel.value).trim(); }catch(e){} return '107'; })();
+    if(!codeToSave) codeToSave='107';
+    localStorage.setItem('liveBoxActive', v);
+    if(v==='city'){ localStorage.setItem('_selectedSayeghCode', codeToSave); }
+    localStorage.setItem('_prayer_default_city_v3', (v==='najaf' ? '107' : codeToSave));
+    try{ if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){ window.Capacitor.Plugins.Preferences.set({key:'liveBoxActive', value:v}); window.Capacitor.Plugins.Preferences.set({key:'_selectedSayeghCode', value:codeToSave}); } }catch(e){}
+    window._selectedSayeghCode = codeToSave;
+   }catch(e){}
   }
- }catch(e){}
-}
+  window.getActiveBox = getActiveBox; window.setActiveBox = setActiveBox; try{ window.setActiveBox._fix4Atomic=true; }catch(e){}
 
 function stopAndClearBox(boxName){
  try{
@@ -2142,7 +2122,7 @@ window.renderSayeghCities=function(){
 };
 
 window.updateSayeghPreview=function(){var pre=document.getElementById('sayegh-url-preview');if(!pre) return;var code=window._selectedSayeghCode||'236';pre.textContent=code?'https://taqwimalsayegh.com/city/'+code:'';var inp=document.getElementById('sayegh-city-search');if(inp){var cur=(window._sayeghCities||[]).find(function(c){return c.code===code;});if(cur) inp.value=cur.name+' - '+cur.code;}};
-window.getCurrentSayeghCode=function(){try{return (window._selectedSayeghCode||'107').trim();}catch(e){return '236';}};
+window.getCurrentSayeghCode=function(){try{var _c=window._selectedSayeghCode||localStorage.getItem('_selectedSayeghCode')||'107'; return String(_c).trim();}catch(e){return '107';}};
 window.addSayeghCity=function(){
  var nameEl=document.getElementById('inp-city-name');var codeEl=document.getElementById('inp-city-code');var addBtn=document.getElementById('btn-add-city');
  function toLatin(s){return (s||'').replace(/[\u0660-\u0669]/g,function(d){return '\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669'.indexOf(d);}).replace(/[\u06F0-\u06F9]/g,function(d){return '\u06F0\u06F1\u06F2\u06F3\u06F4\u06F5\u06F6\u06F7\u06F8\u06F9'.indexOf(d);});}
@@ -2354,15 +2334,19 @@ window.buildUnifiedFinalObj = function(hd, hm, hy, hmn){
 
 window._confirmFinalAndRefresh = function(expectedDay, statusElId, statusText){
   try{
-   var chk=null; try{ chk=JSON.parse(localStorage.getItem('_final_unified')||'null'); }catch(e){}
-   if(!chk || !chk.finalStr) return false;
-   if(expectedDay && chk.finalStr.indexOf(String(expectedDay))===-1) return false;
-   var el=document.getElementById(statusElId); if(el) el.textContent=statusText+' — جارٍ تحديث العرض';
-   var last=parseInt(sessionStorage.getItem('_final_just_updated_at')||'0');
-   if(Date.now()-last < 60000) return true;
-   try{ sessionStorage.setItem('_final_just_updated_at', String(Date.now())); }catch(e){}
-   setTimeout(function(){ location.reload(); }, 900);
-   return true;
+    var chk=null; try{ chk=JSON.parse(localStorage.getItem('_final_unified')||'null'); }catch(e){}
+    if(!chk || !chk.finalStr) return false;
+    if(expectedDay){
+      var _exp=String(expectedDay);
+      if(_exp.indexOf(' ')>=0 || _exp.indexOf('ه')>=0){
+        if(chk.finalStr!==_exp && chk.dt!==_exp) return false;
+      } else {
+        if(chk.finalStr.indexOf(_exp)===-1) return false;
+      }
+    }
+    var el=document.getElementById(statusElId); if(el) el.textContent=statusText;
+    // FIX4: لا إعادة تحميل، ولا حارس 60 ثانية. العرض يتحدث عبر applyLiveUpdate و _Setters.
+    return true;
   }catch(e){ return false; }
 };
 
@@ -2383,7 +2367,7 @@ window.applyLiveUpdate = function(objFinal, sourceLabel, displayStr){
   // تخزين
   localStorage.setItem('taqweem_final_unified', JSON.stringify(cleanObj));
   localStorage.setItem('_final_unified', JSON.stringify(cleanObj));
-  localStorage.setItem('hijri_manual_override', JSON.stringify(cleanObj));
+  // FIX4: التحديث الحي لا يكتب فوق التجاوز اليدوي.
   localStorage.setItem('_final_date', cleanObj.finalStr);
   window.FINAL_HIJRI = cleanObj;
   window.getFinalHijriForDate = function(){return cleanObj;};
@@ -2471,6 +2455,18 @@ window.updateLiveHijriBox = function(obj, source){
 
 
 
+window._normalizeHijriMonth = function(name){
+  try{
+    var s=String(name||'').replace(/[\u064B-\u065F\u0670]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/\s+/g,'').trim();
+    s=s.replace(/^ال/,'');
+    var mapN={'محرم':1,'صفر':2,'صفرالمظفر':2,'صفرالخير':2,'ربيعالاول':3,'ربيعثاني':4,'ربيعالثاني':4,'ربيعالاخر':4,'جمادىالاولى':5,'جمادىاولى':5,'جمادىالاخرة':6,'جمادىاخرة':6,'جمادىالثانية':6,'رجب':7,'شعبان':8,'رمضان':9,'شوال':10,'ذوالقعدة':11,'ذوالحجة':12};
+    if(mapN[s]) return mapN[s];
+    var en={'muharram':1,'moharram':1,'safar':2,'safaralmuzaffar':2,'rabialawwal':3,'rabialawal':3,'rabialthani':4,'rabialsani':4,'jumadaalula':5,'jumadaaloula':5,'jumadaalakhirah':6,'jumadaalakhira':6,'rajab':7,'shaban':8,'shaaban':8,'ramadan':9,'ramadhan':9,'shawwal':10,'dhualqadah':11,'dhulqadah':11,'dhualhijjah':12,'dhulhijjah':12,'zulhijjah':12};
+    var low=String(name||'').toLowerCase().replace(/[^a-z]/g,'');
+    if(en[low]) return en[low];
+    return null;
+  }catch(e){ return null; }
+};
 window.fetchSayeghBeirut=async function(){
  if(window._boxState.boxesMuted.madina){alert('فعل بوكس مدينتك أولا');return;}
  var btn=document.getElementById('btn-fetch-city');
@@ -2486,22 +2482,10 @@ window.fetchSayeghBeirut=async function(){
  try{
  var finalHijri=null,finalMiladiSite=null,finalMethod=null;
  var URLS=['https://taqwimalsayegh.com/city/'+code];
- for(var cycle=1;cycle<=3;cycle++){
-  if(window._stopLive) break;
-  for(var attempt=1;attempt<=10;attempt++){
-  if(window._stopLive) break;
-  document.getElementById('sayegh-beirut-status').textContent='جاري... محاولة '+attempt+'/10 دورة '+cycle+'/3 ['+code+']';
-  for(var u of URLS){
-    var br=await window.fetchSayeghBridge(code);
-    if(br&&br.hijri&&br.miladi){finalHijri=br.hijri;finalMiladiSite=br.miladi;finalMethod=br.method||br.source||'';if(finalHijri) break;}
-   }
-  if(finalHijri) break;
-  await new Promise(r=>setTimeout(r,300));
-  }
-  if(finalHijri) break;
-  if(cycle<3) await new Promise(r=>setTimeout(r,60000));
- }
- if(!finalHijri){document.getElementById('sayegh-beirut-status').textContent='❌ غير متصل بعد 3 دورات';window.setFetchBtnState('idle');applyBoxMute();return;}
+ document.getElementById('sayegh-beirut-status').textContent='جارٍ الاتصال — محاولة واحدة ['+code+']';
+  var br0=await window.fetchSayeghBridge(code);
+  if(br0&&br0.hijri&&br0.miladi){finalHijri=br0.hijri;finalMiladiSite=br0.miladi;finalMethod=br0.method||br0.source||'';}
+  if(!finalHijri){document.getElementById('sayegh-beirut-status').textContent='❌ تعذر الاتصال — محاولة واحدة لم تنجح. اضغط حاول مجددا';window.setFetchBtnState('idle');applyBoxMute();return;}
  // فحص: هل البوكس لا يزال مفعلاً؟ إذا لا، لا تعرض النتيجة
  if(window._boxState.boxesMuted.madina || window._stopLive){
   window.clearResultBox();
@@ -2557,10 +2541,10 @@ window.fetchSayeghBeirut=async function(){
   var map={'محرم':1,'المحرم':1,'صفر':2,'صفر المظفر':2,'صفرالمظفر':2,'Safar':2,'ربيع الأول':3,'ربيع الاول':3,'ربيع أول':3,'ربيع اول':3,'Rabi al-Awwal':3,'Rabi al-Awal':3,'ربيع الثاني':4,'Rabi al-Thani':4,'جمادى الأولى':5,'جمادى الاولى':5,'Jumada al-Ula':5,'جمادى الآخرة':6,'Jumada al-Akhirah':6,'رجب':7,'Rajab':7,'شعبان':8,'Shaban':8,'رمضان':9,'Ramadan':9,'شوال':10,'Shawwal':10,'ذو القعدة':11,'Dhu al-Qadah':11,'ذو الحجة':12,'Dhu al-Hijjah':12,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'11':11,'12':12};
   var _pc=window.parseHijriParts?window.parseHijriParts(hijriFinal):null; var d=_pc&&_pc.day?_pc.day:parseInt((hijriFinal.match(/\d+/)||[1])[0]); var y=_pc&&_pc.year?_pc.year:parseInt((hijriFinal.match(/14\d\d/)||[1448])[0]); var _cleanSayegh = hijriFinal.replace(/الأحد|الإثنين|الاثنين|الثلاثاء|الأربعاء|الاربعاء|الخميس|الجمعة|الجمعه|السبت/g,'').trim();
   var mName=_pc&&_pc.monthIdx>=0?(window.hijriMonthsCanonical[_pc.monthIdx]||'ربيع الأول'):(_cleanSayegh.match(/(محرم|المحرم|Muharram|Moharram|صفر|الصفر|صفر المظفر|صفرالمظفر|صفر مظفر|صفر الخير|Safar|Safar al-Muzaffar|Safar al-Mudhaffar|ربيع الأول|ربيع الاول|ربيع أول|ربيع اول|الربيع الأول|ربيع 1|Rabi al-Awwal|Rabi al-Awal|Rabi I|Rabi 1|Rabi al Awwal|ربيع الثاني|ربيع ثاني|ربيع الآخر|ربيع الاخر|ربيع 2|Rabi al-Thani|Rabi al-Sani|Rabi II|Rabi 2|جمادى الأولى|جمادى الاولى|جمادي الأولى|جمادي الاولى|جمادى أولى|جمادى 1|Jumada al-Ula|Jumada al-Oula|Jumada I|جمادى الآخرة|جمادى الاخرة|جمادي الآخرة|جمادي الاخرة|جمادى الثانية|جمادى 2|Jumada al-Akhirah|Jumada al-Akhira|Jumada II|رجب|الرجب|Rajab|شعبان|الشعبان|Shaban|Shaaban|رمضان|شهر رمضان|Ramadan|Ramadhan|شوال|Shawwal|ذو القعدة|ذو القعده|ذي القعدة|Dhu al-Qadah|Dhul Qadah|ذو الحجة|ذو الحجه|ذي الحجة|Dhu al-Hijjah|Dhul Hijjah|Zul Hijjah)/)||['ربيع الأول'])[0];
-  var obj={hd:d,hm:map[mName]||2,hy:y,hmn:mName,finalStr:hijriFinal+(hijriFinal.includes('هـ')?'':' هـ'),dt:hijriFinal+(hijriFinal.includes('هـ')?'':' هـ'),len:30};
+  var _hmNorm = window._normalizeHijriMonth ? window._normalizeHijriMonth(mName) : null; var _hmFinal = _hmNorm || map[mName] || 0; if(!_hmFinal){ document.getElementById('sayegh-beirut-status').textContent='❌ شهر غير معروف: '+mName+' — لم يتم التحديث'; window.setFetchBtnState('idle'); applyBoxMute(); return; } var obj={hd:d,hm:_hmFinal,hy:y,hmn:mName,finalStr:hijriFinal+(hijriFinal.includes('هـ')?'':' هـ'),dt:hijriFinal+(hijriFinal.includes('هـ')?'':' هـ'),len:30};
   window.applyLiveUpdate(obj, 'الصايغ - بيروت', hijriFinal);
   document.getElementById('sayegh-beirut-status').textContent='✅ تم التحديث النهائي: '+hijriFinal+' (موحد ✅) | المصدر: '+(finalMethod==='api'?'API - دون فحص الوقت':'HTML Fallback - مع فحص ميلادي');
-  window._confirmFinalAndRefresh(d, 'sayegh-beirut-status', '✅ تم التحديث النهائي: '+hijriFinal+' (موحد ✅) | المصدر: '+(finalMethod==='api'?'API - دون فحص الوقت':'HTML Fallback - مع فحص ميلادي'));
+  window._confirmFinalAndRefresh(hijriFinal, 'sayegh-beirut-status', '✅ تم التحديث النهائي: '+hijriFinal+' (موحد ✅) | المصدر: '+(finalMethod==='api'?'API - دون فحص الوقت':'HTML Fallback - مع فحص ميلادي'));
   /* najaf box display removed - لا يفتح نطاق النجف عند جلب مدينتك */
   window.setFetchBtnState('connected');
   }catch(e){}
@@ -2990,26 +2974,8 @@ window.fetchNajaf = async function(){
   try{
    var finalHijri=null, finalMiladiSite=null;
    var URLS=[selectedUrl];
-   for(var cycle=1; cycle<=2; cycle++){
-    if(window._stopLive) break;
-    for(var attempt=1; attempt<=3; attempt++){
-     if(window._stopLive) break;
-     setStatus('جاري... محاولة '+attempt+'/3 دورة '+cycle+'/2 - '+selectedSrc+' ['+selectedUrl+']');
-     for(var ui=0; ui<URLS.length; ui++){
-      var u=URLS[ui];
-      var htmlContent = null;
-      try{ htmlContent = await window._nojumiFetchHtml(u); }catch(e){}
-      if(htmlContent){
-       var parsed = parseNajafSpecific(htmlContent, selectedSrc);
-       if(parsed && parsed.hijri){ finalHijri=parsed.hijri; if(parsed.miladi) finalMiladiSite=parsed.miladi; if(finalHijri) break; }
-      }
-     }
-     if(finalHijri) break;
-     await new Promise(r=>setTimeout(r,300));
-    }
-    if(finalHijri) break;
-    if(cycle<2){ setStatus('انتهت دورة '+cycle+'/2 - انتظار ثانيتين... ⏳'); await new Promise(r=>setTimeout(r,2000)); }
-   }
+   setStatus('جارٍ الاتصال — محاولة واحدة - '+selectedSrc+' ['+selectedUrl+']');
+    try{ var htmlContent = await window._nojumiFetchHtml(selectedUrl); if(htmlContent){ var parsed = parseNajafSpecific(htmlContent, selectedSrc); if(parsed && parsed.hijri){ finalHijri=parsed.hijri; if(parsed.miladi) finalMiladiSite=parsed.miladi; } } }catch(e){}
    // فحص: هل النجف لا يزال مفعلاً قبل عرض النتيجة؟
    if(window._boxState.boxesMuted.najaf || window._stopLive){
     try{
@@ -3094,11 +3060,11 @@ window.fetchNajaf = async function(){
      var mapFinal={'محرم':1,'المحرم':1,'صفر':2,'صفر المظفر':2,'صفرالمظفر':2,'Safar':2,'ربيع الأول':3,'ربيع الاول':3,'ربيع أول':3,'ربيع اول':3,'Rabi al-Awwal':3,'Rabi al-Awal':3,'ربيع الثاني':4,'Rabi al-Thani':4,'جمادى الأولى':5,'جمادى الاولى':5,'Jumada al-Ula':5,'جمادى الآخرة':6,'Jumada al-Akhirah':6,'رجب':7,'Rajab':7,'شعبان':8,'Shaban':8,'رمضان':9,'Ramadan':9,'شوال':10,'Shawwal':10,'ذو القعدة':11,'Dhu al-Qadah':11,'ذو الحجة':12,'Dhu al-Hijjah':12,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'11':11,'12':12};
      var _pn=window.parseHijriParts?window.parseHijriParts(hijriToFinal):null; var dFinal=_pn&&_pn.day?_pn.day:parseInt((hijriToFinal.match(/\d+/)||[1])[0]); var yFinal=_pn&&_pn.year?_pn.year:parseInt((hijriToFinal.match(/14\d\d/)||[1448])[0]); var _cleanForMonth = hijriToFinal.replace(/الأحد|الإثنين|الاثنين|الثلاثاء|الأربعاء|الاربعاء|الخميس|الجمعة|الجمعه|السبت/g,'').trim();
      var mNameFinal=_pn&&_pn.monthIdx>=0?(window.hijriMonthsCanonical[_pn.monthIdx]||'ربيع الأول'):(_cleanForMonth.match(/(محرم|المحرم|Muharram|Moharram|صفر|الصفر|صفر المظفر|صفرالمظفر|صفر مظفر|صفر الخير|Safar|Safar al-Muzaffar|Safar al-Mudhaffar|ربيع الأول|ربيع الاول|ربيع أول|ربيع اول|الربيع الأول|ربيع 1|Rabi al-Awwal|Rabi al-Awal|Rabi I|Rabi 1|Rabi al Awwal|ربيع الثاني|ربيع ثاني|ربيع الآخر|ربيع الاخر|ربيع 2|Rabi al-Thani|Rabi al-Sani|Rabi II|Rabi 2|جمادى الأولى|جمادى الاولى|جمادي الأولى|جمادي الاولى|جمادى أولى|جمادى 1|Jumada al-Ula|Jumada al-Oula|Jumada I|جمادى الآخرة|جمادى الاخرة|جمادي الآخرة|جمادي الاخرة|جمادى الثانية|جمادى 2|Jumada al-Akhirah|Jumada al-Akhira|Jumada II|رجب|الرجب|Rajab|شعبان|الشعبان|Shaban|Shaaban|رمضان|شهر رمضان|Ramadan|Ramadhan|شوال|Shawwal|ذو القعدة|ذو القعده|ذي القعدة|Dhu al-Qadah|Dhul Qadah|ذو الحجة|ذو الحجه|ذي الحجة|Dhu al-Hijjah|Dhul Hijjah|Zul Hijjah)/)||['ربيع الأول'])[0];
-     var objFinal={hd:dFinal,hm:mapFinal[mNameFinal]||2,hy:yFinal,hmn:mNameFinal,finalStr:hijriToFinal+(hijriToFinal.includes('هـ')?'':' هـ'),dt:hijriToFinal+(hijriToFinal.includes('هـ')?'':' هـ'),len:30,hmName:mNameFinal};
+     var _hmNorm2 = window._normalizeHijriMonth ? window._normalizeHijriMonth(mNameFinal) : null; var _hmFinal2 = _hmNorm2 || mapFinal[mNameFinal] || 0; if(!_hmFinal2){ setStatus('❌ شهر غير معروف: '+mNameFinal+' — لم يتم التحديث'); setNajafFetchBtnState('idle'); return; } var objFinal={hd:dFinal,hm:_hmFinal2,hy:yFinal,hmn:mNameFinal,finalStr:hijriToFinal+(hijriToFinal.includes('هـ')?'':' هـ'),dt:hijriToFinal+(hijriToFinal.includes('هـ')?'':' هـ'),len:30,hmName:mNameFinal};
      var displaySrc2 = 'مركز البحوث والدراسات الفلكية';
      window.applyLiveUpdate(objFinal, displaySrc2, hijriToFinal);
      document.getElementById('najaf-status').textContent='✅ تم التحديث النهائي ['+displaySrc2+']: '+hijriToFinal+' (موحد ✅)';
-     window._confirmFinalAndRefresh(dFinal, 'najaf-status', '✅ تم التحديث النهائي ['+displaySrc2+']: '+hijriToFinal+' (موحد ✅)');
+     window._confirmFinalAndRefresh(hijriToFinal, 'najaf-status', '✅ تم التحديث النهائي ['+displaySrc2+']: '+hijriToFinal+' (موحد ✅)');
      /* reload removed surgically - auto update via _Setters */ try{ var keepBox=document.getElementById('najaf-result-inside'); if(keepBox) keepBox.style.display='block'; }catch(e){}
     }catch(e){
      console.log('update final error', e);
@@ -3207,7 +3173,7 @@ async function runBackgroundSearch(){
     let body=''; const pr=/<p[^>]*>([\s\S]*?)<\/p>/gi; let mm; let ps=[];
     while((mm=pr.exec(res.html))!==null){ let t=mm[1].replace(/<[^>]+>/g,'').trim(); if(t.length>25) ps.push(t); }
     let fp=ps.find(function(p){return hasSistani(p);});
-    body=fp||ps.slice(0,3).join('\n\n');
+    var _matched = ps.filter(function(p){ return hasSistani(p) || (stripTashkeel(p).indexOf('هلال')!==-1 && stripTashkeel(p).indexOf('استهلال')!==-1) || stripTashkeel(p).indexOf('ثبوت')!==-1; }); body = _matched.length ? _matched.join('\n\n') : (fp||''); if(!body) body = ps.join('\n\n'); // FIX4: استخراج كامل للبيان، لا أول 3 فقرات فقط.
     const full={id:id, text:body, title:title, date:dateStr, fetchedAt:new Date().toLocaleString('ar-EG'), source:res.source};
     saveFull(full);
     window._bayanSearchRunning = false;
@@ -4120,7 +4086,8 @@ let fetching=false;
    let njP_miladiEl=document.getElementById('nj-p-center-miladi');
    let njP_refresh=document.getElementById('nj-p-refresh');
    let njP_shareBtn=document.getElementById('nj-p-share-img');
-   let njP_cur={name:'النجف الأشرف', lat:31.9996, lng:44.3143};
+   let njP_cur=(function(){ try{ var _s=localStorage.getItem('_prayer_nojumi_pin_v1'); if(_s){ var _o=JSON.parse(_s); if(_o && isFinite(_o.lat) && isFinite(_o.lng) && _o.name) return _o; } }catch(e){} return {name:'النجف الأشرف', lat:31.9996, lng:44.3143}; })();
+    function njP_savePin(){ try{ localStorage.setItem('_prayer_nojumi_pin_v1', JSON.stringify(njP_cur)); try{ if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){ window.Capacitor.Plugins.Preferences.set({key:'_prayer_nojumi_pin_v1', value:JSON.stringify(njP_cur)}); } }catch(e){} }catch(e){} }
    let njP_results=[];
    let njP_fetching=false;
    let njP_hijriFetched=false;
@@ -4132,7 +4099,7 @@ let fetching=false;
    function njP_getCache(){try{let s=localStorage.getItem(njP_cacheKey());if(s)return JSON.parse(s);}catch(e){}return null;}
    function njP_setCache(v){try{localStorage.setItem(njP_cacheKey(), JSON.stringify(v));}catch(e){}}
    function njP_shortName(full){try{let s=String(full||'').split(',')[0].trim();return s||full;}catch(e){return full;}}
-   function njP_setPin(){if(njP_pinEl) njP_pinEl.textContent='الدبوس الحالي: '+njP_cur.name+' — '+njP_cur.lat+' , '+njP_cur.lng;if(njP_cityEl) njP_cityEl.textContent=njP_shortName(njP_cur.name);}
+   function njP_setPin(){ njP_savePin(); if(njP_pinEl) njP_pinEl.textContent='الدبوس الحالي: '+njP_cur.name+' — '+njP_cur.lat+' , '+njP_cur.lng;if(njP_cityEl) njP_cityEl.textContent=njP_shortName(njP_cur.name);}
    function njP_showStatus(msg){if(!njP_status) return;njP_status.style.display='block';njP_status.innerHTML=msg;}
    function njP_hideStatus(){if(njP_status) njP_status.style.display='none';}
    if(njP_dateInp) njP_dateInp.value=njP_todayStr();
@@ -4444,14 +4411,32 @@ let fetching=false;
      return lines.join('');
    }
    function njP_exportMonthCSV(){
-     var ex=window._njMonthExport; if(!ex || !ex.rows){ alert('لا توجد بيانات بعد — اطلب جدول الشهر أولا'); return; }
-     var csv='\ufeff'+'الأوقات الشرعية — '+ex.city+' — '+ex.y+'/'+ex.m+'\n'+njP_monthToCSV(ex.rows, ex.y, ex.m, ex.city);
-     try{
-      var blob=new Blob([csv], {type:'text/csv;charset=utf-8'});
-      var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download='prayer-times-'+ex.y+'-'+String(ex.m).padStart(2,'0')+'.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
-      if(njP_monthStatus) njP_monthStatus.textContent='✅ تم تصدير جدول الشهر — ملف CSV';
-     }catch(e){ alert('تعذر التصدير: '+String(e&&e.message?e.message:e)); }
-   }
+      var ex=window._njMonthExport; if(!ex || !ex.rows){ alert('لا توجد بيانات بعد — اطلب جدول الشهر أولا'); return; }
+      var csv='\ufeff'+'الأوقات الشرعية — '+ex.city+' — '+ex.y+'/'+ex.m+'\n'+njP_monthToCSV(ex.rows, ex.y, ex.m, ex.city);
+      var fname='prayer-times-'+ex.y+'-'+String(ex.m).padStart(2,'0')+'.csv';
+      (async function(){
+        try{
+          if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem){
+            var r=await window.Capacitor.Plugins.Filesystem.writeFile({path:fname, data:btoa(unescape(encodeURIComponent(csv))), directory:'DOCUMENTS'});
+            if(njP_monthStatus) njP_monthStatus.textContent='✅ تم حفظ الملف في المستندات: '+fname;
+            if(window.Capacitor.Plugins.Share){ try{ await window.Capacitor.Plugins.Share.share({title:fname, url:r.uri, dialogTitle:'مشاركة جدول الصلاة'}); }catch(e){} }
+            return;
+          }
+        }catch(e){}
+        try{
+          if(navigator.share && navigator.canShare && navigator.canShare({files:[new File([csv], fname, {type:'text/csv'})]})){
+            await navigator.share({files:[new File([csv], fname, {type:'text/csv'})], title:fname});
+            if(njP_monthStatus) njP_monthStatus.textContent='✅ تمت مشاركة الملف';
+            return;
+          }
+        }catch(e){}
+        try{
+          var blob=new Blob([csv], {type:'text/csv;charset=utf-8'});
+          var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+          if(njP_monthStatus) njP_monthStatus.textContent='✅ تم تصدير جدول الشهر — ملف CSV';
+        }catch(e){ alert('تعذر التصدير: '+String(e&&e.message?e.message:e)); }
+      })();
+    }
    function njP_copyMonthTable(){
      var ex=window._njMonthExport; if(!ex || !ex.rows){ alert('لا توجد بيانات بعد — اطلب جدول الشهر أولا'); return; }
      var dayNames=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
@@ -4735,7 +4720,7 @@ let fetching=false;
       tries++;
       if(window.setActiveBox || typeof setActiveBox!=='undefined'){
         clearInterval(iv);
-        let original = window.setActiveBox || setActiveBox;
+        if(window.setActiveBox && window.setActiveBox._fix4Atomic){ clearInterval(iv); return; } let original = window.setActiveBox || setActiveBox;
         let wrapped = function(v){
           try{ original(v); }catch(e){ try{ setActiveBox(v); }catch(e2){} }
           // بعد التفعيل، حدث مدينة الصلاة حسب البوكس الجديد
@@ -4767,7 +4752,7 @@ let fetching=false;
   (function hookSayeghChange(){
     let lastSayeghCode = null;
     // مراقبة دورية كل 800ms لكود مدينتك - FIXED: يزامن فوراً
-    setInterval(function(){
+    setInterval(function(){ return; /* FIX4: حذف المراقبة الدورية. المزامنة عند التفعيل فقط عبر setActiveBox الذري. */
       try{
         let active=getActiveBox();
         if(active!=='city') return;
@@ -6410,7 +6395,8 @@ window.openQuranSystem = async function(){
       tries++;
       // Hook setActiveBox
       if(window.setActiveBox){
-        let orig = window.setActiveBox;
+        // FIX4: لا تغليف ثان. الحفظ الذري في setActiveBox الأساسي. الكود بعد return غير منفذ.
+        clearInterval(iv); return; let orig = window.setActiveBox;
         window.setActiveBox = function(v){
           try{ orig(v); }catch(e){ try{ setActiveBox(v); }catch(e2){} }
           try{
@@ -6517,7 +6503,7 @@ window.openQuranSystem = async function(){
     if(window.getExpectedPrayerCode || window.getPrayerDef){
       // Wrap prayer def setter to sync with box
       let origSetActive = window.setActiveBox;
-      if(origSetActive && !origSetActive._prayerHooked){
+      if(origSetActive && !origSetActive._prayerHooked){ // FIX4: لا تغليف ثان — الحفظ الذري يكفي. الكود بعد return غير منفذ. clearInterval(iv); return;
         window.setActiveBox = function(v){
           try{ origSetActive(v); }catch(e){ try{ setActiveBox(v); }catch(e2){} }
           setTimeout(function(){
@@ -6547,9 +6533,9 @@ window.openQuranSystem = async function(){
 <script id="apk-step2-long-fetch">
 (function(){
   console.log('⏳ Step2 - Long fetch 100s x 3 attempts');
-  const FETCH_TIMEOUT_MS = 100000; // 100 ثانية لكل محاولة
-  const RETRY_GAP_MS = 20000; // 20 ثانية راحة بين المحاولات
-  const MAX_ATTEMPTS = 3;
+  const FETCH_TIMEOUT_MS = 30000; // FIX4: محاولة واحدة 30 ثانية، لا 100 ثانية × 3
+  const RETRY_GAP_MS = 0; // FIX4: لا فاصل بين دورات، محاولة واحدة فقط
+  const MAX_ATTEMPTS = 1; // FIX4: محاولة واحدة، لا دورات
 
   // حفظ الدالة الأصلية
   let originalAutoFetch = null;
