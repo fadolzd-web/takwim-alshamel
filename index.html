@@ -2222,6 +2222,90 @@ window.fetchSayeghBridge = async function(code){
     if(!hijriStr) return null; /* FIX5: إذا ما في هجري حقيقي من حقول الهجري، لا نخترع هجري من الميلادي. */
     return { hijri: hijriStr, miladi: miladiStr, miladiAr: miladiArStr, prayers: pr, extras: extras, hijriDay: (isNaN(_hdNum) ? null : _hdNum), hijriMonthAr: _hmRaw || null, hijriYear: (_hyRaw ? parseInt((_hyRaw.match(/14\d\d/) || [_hyRaw])[0], 10) : null), rawDay: dayObj, rawCity: j, source: 'api.sayeghcalendar.com/city/' + c, method: 'api' };
   };
+  /* FIX7: السنة من API hijri-calendar — نقطة city بلا سنة. نجيب السنة من hijri-calendar لنفس السنة الميلادية، ونطابقها على نفس اليوم (ميلادي أو هجري). بلا تخمين من المحفوظ ولا من تقويم الجهاز. */
+  var _parseHijriCalendarYear = function(j, gregMonth, gregDay, hijriDay, hijriMonthAr){
+    try{
+      var found=null;
+      var _extractYear=function(s){ if(!s) return null; var m=String(s).match(/14\d\d/); return m?parseInt(m[0],10):null; };
+      var _norm=function(s){ return String(s||'').replace(/[\u064B-\u065F\u0670]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/\s+/g,'').trim(); };
+      var _hmNorm=_norm(hijriMonthAr);
+      /* FIX7-strict: المطابقة لازم تكون ميلادية + هجرية معاً، مش واحدة منهن. الميلادي هو المفتاح (يوم+شهر ميلادي)، والهجري تأكيد (يوم+شهر هجري). بلا تراخي: إذا الميلادي ما طابق، ما منرجع سنة حتى لو الهجري طابق. */
+      var _walk=function(node, depth, parentMonth){
+        if(found || depth>7 || !node || typeof node!=='object') return;
+        if(Array.isArray(node)){ for(var i=0;i<node.length;i++){ _walk(node[i], depth+1, parentMonth); if(found) return; } return; }
+        var _myMonth=(node.month!=null ? parseInt(node.month,10) : parentMonth);
+        var _hasGreg=(node.day!=null && parseInt(node.day,10)===gregDay && _myMonth!=null && _myMonth===gregMonth);
+        var _hijriDayInNode=(node.hijriDay!=null ? parseInt(node.hijriDay,10) : (node.hijriDate!=null ? parseInt((String(node.hijriDate).match(/^\s*\d+/)||[''])[0],10) : NaN));
+        /* الهجري من hijriMonthAr أو من نص hijriDate نفسه إذا كان كامل */
+        var _hijriMonthInNode=_norm(node.hijriMonthAr||node.hijriMonth||'');
+        if(!_hijriMonthInNode && node.hijriDate!=null){
+          var _hdStr=String(node.hijriDate);
+          for(var _mi=0; _mi<12; _mi++){ var _cn=(window.hijriMonthsCanonical||[])[_mi]||''; if(_cn && _hdStr.indexOf(_cn)!==-1){ _hijriMonthInNode=_norm(_cn); break; } }
+        }
+        var _hasHijri=(!isNaN(_hijriDayInNode) && _hijriDayInNode===hijriDay && _hmNorm && _hijriMonthInNode===_hmNorm);
+        var _hasHijriInfo=(!isNaN(_hijriDayInNode) || !!_hijriMonthInNode);
+        var _yCand=null;
+        if(node.hijriYear!=null) _yCand=_extractYear(node.hijriYear)||parseInt(node.hijriYear,10);
+        else if(node.hijriYearAr!=null) _yCand=_extractYear(node.hijriYearAr);
+        else if(node.hijriYearEn!=null) _yCand=_extractYear(node.hijriYearEn);
+        else if(node.year!=null && node.hijriMonth!=null) _yCand=_extractYear(node.year)||parseInt(node.year,10);
+        /* مطابقة صارمة: ميلادي لازم يطابق، وهجري إذا موجود لازم يطابق كمان */
+        if(_hasGreg && (!_hasHijriInfo || _hasHijri)){
+          if(_yCand && _yCand>=1400 && _yCand<1500){ found=_yCand; return; }
+          if(node.hijriDate!=null){ var _y2=_extractYear(node.hijriDate); if(_y2){ found=_y2; return; } }
+        }
+        /* بلوك شهر هجري: شهر هجري يطابق + سنة + فيه اليوم الهجري */
+        if(node.hijriMonthAr!=null && _hmNorm && _norm(node.hijriMonthAr)===_hmNorm && _yCand && _yCand>=1400 && _yCand<1500){
+          var _days=node.days||node.dayList||null;
+          if(_days && Array.isArray(_days)){
+            for(var d=0;d<_days.length;d++){ var _dd=_days[d]; if(_dd){ var _ddDay=parseInt(_dd.day,10); var _ddHijri=parseInt((String(_dd.hijriDate||'').match(/^\s*\d+/)||[''])[0],10); if(_ddDay===hijriDay || _ddHijri===hijriDay){ /* هون كمان لازم الميلادي يطابق إذا كان موجود بالبلوك — إذا البلوك ما فيه ميلادي، منقبل الهجري فقط لأنه بلوك هجري صريح */ found=_yCand; return; } } }
+          }
+        }
+        for(var k in node){ if(Object.prototype.hasOwnProperty.call(node,k)){ _walk(node[k], depth+1, _myMonth); if(found) return; } }
+      };
+      _walk(j, 0, null);
+      if(found && found>=1400 && found<1500) return found;
+      return null;
+    }catch(e){ return null; }
+  };
+  var _fetchHijriCalendarYear = async function(gy, gregMonth, gregDay, hijriDay, hijriMonthAr){
+    var calUrl = window.SAYEGH_BRIDGE.apiBase + '/hijri-calendar/' + gy;
+    try{
+      if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp){
+        var r = await window.Capacitor.Plugins.CapacitorHttp.get({ url: calUrl, headers: { Accept: 'application/json' }, connectTimeout: 15000, readTimeout: 15000, responseType: 'json' });
+        if(r && r.status>=200 && r.status<300 && r.data){
+          var j = (typeof r.data==='string') ? JSON.parse(r.data) : r.data;
+          var y = _parseHijriCalendarYear(j, gregMonth, gregDay, hijriDay, hijriMonthAr);
+          if(y) return y;
+        }
+      }
+    }catch(e){}
+    try{
+      var res = await fetch(calUrl, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+      if(res && res.ok){
+        var j2 = await res.json();
+        var y2 = _parseHijriCalendarYear(j2, gregMonth, gregDay, hijriDay, hijriMonthAr);
+        if(y2) return y2;
+      }
+    }catch(e){}
+    return null;
+  };
+  var _augmentWithHijriCalendarYear = async function(out){
+    try{
+      if(!out || out.hijriYear) return out;
+      var now2 = new Date();
+      var gy = now2.getFullYear(), gm = now2.getMonth()+1, gd = now2.getDate();
+      var yCal = await _fetchHijriCalendarYear(gy, gm, gd, out.hijriDay, out.hijriMonthAr);
+      if(yCal){
+        out.hijriYear = yCal;
+        out.hijriYearSource = 'hijri-calendar';
+        if(out.extras) out.extras.hijriYear = String(yCal);
+        if(out.hijri && !/14\d\d/.test(out.hijri)) out.hijri = out.hijri + ' ' + yCal;
+        if(out.extras) window._sayeghLastExtras = out.extras;
+      }
+    }catch(e){}
+    return out;
+  };
   var apiUrl = window.SAYEGH_BRIDGE.apiBase + '/city/' + c;
   /* 1) API عبر CapacitorHttp أولا - بلا CORS، هذا هو الأساس داخل APK */
   try{
@@ -2230,7 +2314,7 @@ window.fetchSayeghBridge = async function(code){
       if(rApi && rApi.status >= 200 && rApi.status < 300 && rApi.data){
         var jApi = (typeof rApi.data === 'string') ? JSON.parse(rApi.data) : rApi.data;
         var outApi = _parseApi(jApi);
-        if(outApi) return outApi;
+        if(outApi){ outApi = await _augmentWithHijriCalendarYear(outApi); return outApi; }
         window._sayeghLastApiError = 'API رد لكن بلا يوم اليوم';
       } else {
         window._sayeghLastApiError = 'API CapacitorHttp status=' + (rApi && rApi.status);
@@ -2243,7 +2327,7 @@ window.fetchSayeghBridge = async function(code){
     if(res && res.ok){
       var j = await res.json();
       var out = _parseApi(j);
-      if(out) return out;
+      if(out){ out = await _augmentWithHijriCalendarYear(out); return out; }
     } else {
       window._sayeghLastApiError = 'API fetch status=' + (res && res.status);
     }
@@ -2483,7 +2567,11 @@ window._normalizeHijriMonth = function(name){
   }catch(e){ return null; }
 };
 window.fetchSayeghBeirut=async function(){
- if(window._boxState.boxesMuted.madina){alert('فعل بوكس مدينتك أولا');return;}
+ if(window._boxState.boxesMuted.madina){
+  /* FIX7: نطاق الصايغ — الضغطة الصريحة على زر الصايغ نفسه هي تفعيل للنطاق. نفعّل نطاق الصايغ ونكمل، بلا تراخي بشروط التاريخ (diff والسنة والشهر بضلوا صارمين تحت). قبل هيدا، كان alert + return يمنع أي تحديث نهائي إذا كان النجف هو النطاق المفعل. */
+  try{ if(window.setActiveBox) window.setActiveBox('city'); if(window.applyBoxMute) window.applyBoxMute(); }catch(e){}
+  if(window._boxState.boxesMuted.madina){ alert('فعل بوكس مدينتك أولا'); return; }
+ }
  var btn=document.getElementById('btn-fetch-city');
  var isStop=window._boxState.connecting || (btn && (btn.textContent.includes('توقف') || btn.textContent.includes('قطع')));
  if(isStop){
@@ -2554,11 +2642,11 @@ window.fetchSayeghBeirut=async function(){
  if(send){
   try{
   var map={'محرم':1,'المحرم':1,'صفر':2,'صفر المظفر':2,'صفرالمظفر':2,'Safar':2,'ربيع الأول':3,'ربيع الاول':3,'ربيع أول':3,'ربيع اول':3,'Rabi al-Awwal':3,'Rabi al-Awal':3,'ربيع الثاني':4,'Rabi al-Thani':4,'جمادى الأولى':5,'جمادى الاولى':5,'Jumada al-Ula':5,'جمادى الآخرة':6,'Jumada al-Akhirah':6,'رجب':7,'Rajab':7,'شعبان':8,'Shaban':8,'رمضان':9,'Ramadan':9,'شوال':10,'Shawwal':10,'ذو القعدة':11,'Dhu al-Qadah':11,'ذو الحجة':12,'Dhu al-Hijjah':12,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'11':11,'12':12};
-  var _pc=window.parseHijriParts?window.parseHijriParts(hijriFinal):null; var d=(_pc&&_pc.day)?_pc.day:parseInt(((hijriFinal.match(/^\s*\d+/)||[1])[0])); /* FIX6: d من hijriFinal المصحّح، مش من br0 الخام — br0 كان يعطي اليوم قبل تصحيح diff، فالنهائي كان يضل قديم والكارد جديد. */ var _yFromStr=(_pc&&_pc.year)?_pc.year:null; var _yFromApi=(br0&&br0.hijriYear)?parseInt(String(br0.hijriYear).match(/14\d\d/)||[br0.hijriYear])[0]:null; var _yStored=null; try{ var _st=JSON.parse(localStorage.getItem('taqweem_final_unified')||'null'); if(_st&&_st.hy) _yStored=parseInt(_st.hy); }catch(e){} var y=_yFromStr||_yFromApi||_yStored||null; var _ySource=_yFromStr?'sayegh':(_yFromApi?'sayegh-year':(_yStored?'stored':'')); if(!y){ try{ var _intl=new Intl.DateTimeFormat('en-TN-u-ca-islamic',{year:'numeric'}).format(deviceDate); var _iy=parseInt((_intl.match(/\d+/g)||[]).join(''))||null; if(_iy&&_iy>1400&&_iy<1500){ y=_iy; _ySource='intl'; } }catch(e){} } if(!y){ document.getElementById('sayegh-beirut-status').textContent='❌ سنة هجرية غير معروفة من الصايغ — لم يتم التحديث'; window.setFetchBtnState('idle'); applyBoxMute(); return; } var _cleanSayegh = hijriFinal.replace(/الأحد|الإثنين|الاثنين|الثلاثاء|الأربعاء|الاربعاء|الخميس|الجمعة|الجمعه|السبت/g,'').trim();
+  var _pc=window.parseHijriParts?window.parseHijriParts(hijriFinal):null; var d=(_pc&&_pc.day)?_pc.day:parseInt(((hijriFinal.match(/^\s*\d+/)||[1])[0])); /* FIX6: d من hijriFinal المصحّح، مش من br0 الخام — br0 كان يعطي اليوم قبل تصحيح diff، فالنهائي كان يضل قديم والكارد جديد. */ var _yFromStr=(_pc&&_pc.year)?_pc.year:null; var _yFromApi=(br0&&br0.hijriYear)?parseInt(String(br0.hijriYear).match(/14\d\d/)||[br0.hijriYear])[0]:null; var _yStored=null; try{ var _st=JSON.parse(localStorage.getItem('taqweem_final_unified')||'null'); if(_st&&_st.hy) _yStored=parseInt(_st.hy); }catch(e){} var y=_yFromStr||_yFromApi||_yStored||null; var _isCal=(br0&&br0.hijriYearSource==='hijri-calendar'); var _ySource=(_yFromStr&&_isCal)?'hijri-calendar':(_yFromStr?'sayegh':((_yFromApi&&_isCal)?'hijri-calendar':(_yFromApi?'sayegh-year':(_yStored?'stored':'')))); /* FIX7: السنة من API hijri-calendar — مش من المحفوظ ولا من تقويم الجهاز. */ if(!y){ try{ var _intl=new Intl.DateTimeFormat('en-TN-u-ca-islamic',{year:'numeric'}).format(deviceDate); var _iy=parseInt((_intl.match(/\d+/g)||[]).join(''))||null; if(_iy&&_iy>1400&&_iy<1500){ y=_iy; _ySource='intl'; } }catch(e){} } if(!y){ document.getElementById('sayegh-beirut-status').textContent='❌ سنة هجرية غير معروفة من الصايغ — لم يتم التحديث'; window.setFetchBtnState('idle'); applyBoxMute(); return; } var _cleanSayegh = hijriFinal.replace(/الأحد|الإثنين|الاثنين|الثلاثاء|الأربعاء|الاربعاء|الخميس|الجمعة|الجمعه|السبت/g,'').trim();
   var mName=(_pc&&_pc.monthIdx>=0?(window.hijriMonthsCanonical[_pc.monthIdx]||null):null); /* FIX6: mName من hijriFinal المصحّح، مش من br0 الخام — هيدا كان يخلّي الشهر بالكارد صح والنهائي قديم. */ if(!mName){ var _mm=_cleanSayegh.match(/(محرم|المحرم|Muharram|Moharram|صفر|الصفر|صفر المظفر|صفرالمظفر|صفر مظفر|صفر الخير|Safar|Safar al-Muzaffar|Safar al-Mudhaffar|ربيع الأول|ربيع الاول|ربيع أول|ربيع اول|الربيع الأول|ربيع 1|Rabi al-Awwal|Rabi al-Awal|Rabi I|Rabi 1|Rabi al Awwal|ربيع الثاني|ربيع ثاني|ربيع الآخر|ربيع الاخر|ربيع 2|Rabi al-Thani|Rabi al-Sani|Rabi II|Rabi 2|جمادى الأولى|جمادى الاولى|جمادي الأولى|جمادي الاولى|جمادى أولى|جمادى 1|Jumada al-Ula|Jumada al-Oula|Jumada I|جمادى الآخرة|جمادى الاخرة|جمادي الآخرة|جمادي الاخرة|جمادى الثانية|جمادى 2|Jumada al-Akhirah|Jumada al-Akhira|Jumada II|رجب|الرجب|Rajab|شعبان|الشعبان|Shaban|Shaaban|رمضان|شهر رمضان|Ramadan|Ramadhan|شوال|Shawwal|ذو القعدة|ذو القعده|ذي القعدة|Dhu al-Qadah|Dhul Qadah|ذو الحجة|ذو الحجه|ذي الحجة|Dhu al-Hijjah|Dhul Hijjah|Zul Hijjah)/); mName=_mm?_mm[0]:null; } if(!mName){ document.getElementById('sayegh-beirut-status').textContent='❌ شهر غير معروف من الصايغ — لم يتم التحديث'; window.setFetchBtnState('idle'); applyBoxMute(); return; }
   var _hmNorm = window._normalizeHijriMonth ? window._normalizeHijriMonth(mName) : null; var _hmFinal = _hmNorm || map[mName] || 0; if(!_hmFinal){ document.getElementById('sayegh-beirut-status').textContent='❌ شهر غير معروف: '+mName+' — لم يتم التحديث'; window.setFetchBtnState('idle'); applyBoxMute(); return; } var _built=window.buildUnifiedFinalObj?window.buildUnifiedFinalObj(d,_hmFinal,y,mName):{hd:d,hm:_hmFinal,hy:y,hmn:mName,finalStr:d+' '+mName+' '+y+' هـ',dt:d+' '+mName+' '+y+' هـ'}; var _finalDisplay=_built.finalStr; var obj={hd:d,hm:_hmFinal,hy:y,hmn:mName,finalStr:_finalDisplay,dt:_finalDisplay,len:30}; /* FIX6: finalStr مبني من hd/hm/hy، مش من hijriFinal الناقص سنة — هيك hd/hm/hy و finalStr متسقين، والهيدر والـ React بياخدوا نفس القيمة. */
   window.applyLiveUpdate(obj, 'الصايغ - بيروت', _finalDisplay);
-  document.getElementById('sayegh-beirut-status').textContent='✅ تم التحديث النهائي: '+_finalDisplay+' (موحد ✅) | المصدر: '+(finalMethod==='api'?'API - دون فحص الوقت':'HTML Fallback - مع فحص ميلادي')+(_ySource==='stored'?' | السنة من المحفوظ':'')+(_ySource==='intl'?' | السنة من تقويم الجهاز':'');
+  document.getElementById('sayegh-beirut-status').textContent='✅ تم التحديث النهائي: '+_finalDisplay+' (موحد ✅) | المصدر: '+(finalMethod==='api'?'API - دون فحص الوقت':'HTML Fallback - مع فحص ميلادي')+(_ySource==='hijri-calendar'?' | السنة من API hijri-calendar':'')+(_ySource==='stored'?' | السنة من المحفوظ':'')+(_ySource==='intl'?' | السنة من تقويم الجهاز':'');
   window._confirmFinalAndRefresh(_finalDisplay, 'sayegh-beirut-status', '✅ تم التحديث النهائي: '+_finalDisplay+' (موحد ✅) | المصدر: '+(finalMethod==='api'?'API - دون فحص الوقت':'HTML Fallback - مع فحص ميلادي'));
   /* najaf box display removed - لا يفتح نطاق النجف عند جلب مدينتك */
   window.setFetchBtnState('connected');
