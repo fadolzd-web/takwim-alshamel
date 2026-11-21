@@ -1353,7 +1353,7 @@ observer.observe(document.body, {childList:true, subtree:true});
  ;
  function syncEditBtns(){ try{ var cu=getCU(); var found=null; try{ found=findCalendarButtons(); }catch(e){} var addBtn=found?found.add:null; var showEdit=!!cu && !!addBtn && addBtn.style.display!=='none'; var all=document.querySelectorAll('button'); for(var i=0;i<all.length;i++){ var b=all[i]; if(b.id==='cal-accounts-btn'||b.id==='top-logout-btn'||b.id==='close-acc-btn'||b.id==='login-btn'||b.id==='close-login-btn'||b.id==='add-acc-btn') continue; var t=(b.textContent||'').trim(); if((t==='تعديل'||t==='حذف'||t.indexOf('✏️ تعديل')!==-1||t.indexOf('🗑️ حذف')!==-1) && (b.className.indexOf('h-8')!==-1||b.style.height==='28px'||b.className.indexOf('rounded-full')!==-1)){ b.style.display = showEdit?'':'none'; } if(t.trim()==='+' && b.className.indexOf('rounded-full')!==-1){ b.style.display = showEdit?'':'none'; } } }catch(e){} }
  var origUpd=window.updateButtonsVisibility; window.updateButtonsVisibility=function(){ if(origUpd) origUpd(); setTimeout(syncEditBtns,100); setTimeout(syncEditBtns,400); };
- setInterval(syncEditBtns,1200);
+ try{ var _syncDeb=null; var _syncObs=new MutationObserver(function(){ if(_syncDeb) clearTimeout(_syncDeb); _syncDeb=setTimeout(syncEditBtns,200); }); if(document.body) _syncObs.observe(document.body,{childList:true,subtree:true}); setTimeout(syncEditBtns,500); }catch(e){}
 })();
 </script>
 <!-- ========== نهاية النظام الجراحي ========== -->
@@ -1376,7 +1376,7 @@ div.fixed.inset-0{z-index:10000 !important;}
    }
   }catch(e){}
  }
- setInterval(bringModalAboveLogout, 200);
+ try{ var _modalObs=new MutationObserver(function(muts){ for(var mi=0;mi<muts.length;mi++){ var nodes=muts[mi].addedNodes||[]; for(var ni=0;ni<nodes.length;ni++){ if(nodes[ni] && nodes[ni].classList && nodes[ni].classList.contains('fixed')){ bringModalAboveLogout(); break; } } } }); if(document.body) _modalObs.observe(document.body,{childList:true,subtree:true}); bringModalAboveLogout(); }catch(e){}
 })();
 </script>
 
@@ -1771,6 +1771,27 @@ select:disabled{opacity:0.78;pointer-events:none}
 </div>
 </div>
 
+<script id="unified-scheduler">
+(function(){
+  // مجدول موحد واحد: كل المهام الزمنية تسجل هنا، وفاصل واحد فقط يعمل
+  window._schedulerJobs = window._schedulerJobs || [];
+  window._unifiedInterval = window._unifiedInterval || null;
+  window._registerSchedulerJob = function(name, fn, intervalMs, initialDelayMs){
+    try{
+      if(typeof fn!=='function') return false;
+      for(var i=0;i<window._schedulerJobs.length;i++){ if(window._schedulerJobs[i].name===name) return true; }
+      window._schedulerJobs.push({name:name, fn:fn});
+      setTimeout(function(){ try{ fn(); }catch(e){} }, initialDelayMs||0);
+      if(!window._unifiedInterval){
+        window._unifiedInterval = setInterval(function(){
+          for(var k=0;k<window._schedulerJobs.length;k++){ try{ window._schedulerJobs[k].fn(); }catch(e){} }
+        }, 60000);
+      }
+      return true;
+    }catch(e){ return false; }
+  };
+})();
+</script>
 <script id="city-najaf-unified-logic-fixed">
 (function(){
 window._boxState=window._boxState||{active:null,boxesMuted:{madina:true,najaf:false},connecting:false};
@@ -2819,10 +2840,9 @@ if(document.body) obs.observe(document.body,{childList:true,subtree:true});
 
  // تشغيل المجدول
  function startScheduler(){
-  // فحص كل دقيقة
-  setInterval(dailyAndIstihlalCheck, 60000);
-  // فحص فوري بعد 5 ثواني
-  setTimeout(dailyAndIstihlalCheck, 5000);
+  // مجدول موحد: فحص كل دقيقة، أول فحص بعد 5 ثوان
+  if(window._registerSchedulerJob) window._registerSchedulerJob('daily', dailyAndIstihlalCheck, 60000, 5000);
+  else { setInterval(dailyAndIstihlalCheck, 60000); setTimeout(dailyAndIstihlalCheck, 5000); }
  }
 
  if(document.readyState==='loading'){
@@ -4783,7 +4803,7 @@ let fetching=false;
    }
   }catch(e){}
  }
- function startGMTScheduler(){checkAndFetch();setInterval(checkAndFetch,60000);}
+ function startGMTScheduler(){ if(window._registerSchedulerJob) window._registerSchedulerJob('prayer', checkAndFetch, 60000, 0); else {checkAndFetch(); setInterval(checkAndFetch,60000);} }
  function initAuto(){var tries=0;var iv=setInterval(function(){tries++;if(window.fetchSayeghBridge){clearInterval(iv);startGMTScheduler();}if(tries>60) clearInterval(iv);},1000);}
  // Expose for APK background
  window.fetchPrayersAuto = fetchPrayersAuto;
@@ -6500,28 +6520,6 @@ window.openQuranSystem = async function(){
       if(tries>100) clearInterval(iv);
     },500);
 
-    // Hook city selection
-    let iv2=setInterval(function(){
-      if(window.getCurrentSayeghCode){
-        // Watch for changes in _selectedSayeghCode
-        let lastCode = localStorage.getItem('_selectedSayeghCode') || DEFAULT_CITY_CODE;
-        setInterval(function(){
-          try{
-            let cur = window._selectedSayeghCode || window.getCurrentSayeghCode();
-            if(cur && cur!==lastCode){
-              lastCode=cur;
-              localStorage.setItem('_selectedSayeghCode', cur);
-              if(hasCapacitorPrefs()){
-                window.Capacitor.Plugins.Preferences.set({key:'_selectedSayeghCode', value:cur});
-              }
-              console.log('Persisted city code',cur);
-            }
-          }catch(e){}
-        },1000);
-        clearInterval(iv2);
-      }
-    },1000);
-
     // Hook Najaf source selection
     document.addEventListener('change', function(e){
       if(e.target && e.target.name==='najaf-source'){
@@ -6986,7 +6984,7 @@ window.openQuranSystem = async function(){
           }
         }
         // إصلاح React state إن وجد
-        if(window._selectedSayeghCode==='1') window._selectedSayeghCode=NAJAF_CODE;
+        if(window._selectedSayeghCode==='1'){ if(window._saveSayeghCityAtomic) window._saveSayeghCityAtomic(NAJAF_CODE); else window._selectedSayeghCode=NAJAF_CODE; }
         if(window._sayeghCities && window._sayeghCities[0] && String(window._sayeghCities[0].code)==='1'){
           window._sayeghCities[0].name='النجف الأشرف';
           window._sayeghCities[0].code=NAJAF_CODE;
