@@ -13,6 +13,11 @@
   };
   window.toArabicNumerals = window.toWesternDigits;
   window.wd = window.toWesternDigits;
+  /* v5: قانونيان مبكران - تطبيع عربي + استخراج سنة هجرية */
+  window._normalizeArabic = function(s){ if(!s) return ''; var t = window.toWesternDigits ? window.toWesternDigits(s) : String(s); return t.replace(/[\u064B-\u065F\u0670]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[^\u0600-\u06FF0-9\s]/g,' ').replace(/\s+/g,' ').trim().toLowerCase(); };
+  window._extractHijriYear = function(s){ if(!s) return null; var m=String(s).match(/14\d\d/); return m?parseInt(m[0],10):null; };
+  /* v6: خريطة أشهر 1-12 مشتقة من القانونية 0-11 - لا خريطة ثانية */
+  window._getHijriMonth1Based = function(){ var out={}; var base=window.hijriMonthsMap||{}; for(var k in base){ if(Object.prototype.hasOwnProperty.call(base,k)) out[k]=base[k]+1; } return out; };
   try{
     const orig = Intl.NumberFormat;
     Intl.NumberFormat = function(locales, opts){
@@ -96,7 +101,7 @@
    }
   }catch(e){}
   window.FINAL_HIJRI=FINAL;
-  window.toWesternDigits=function(s){if(s==null)return s;var map={"٠":"0","١":"1","٢":"2","٣":"3","٤":"4","٥":"5","٦":"6","٧":"7","٨":"8","٩":"9","۰":"0","۱":"1","۲":"2","۳":"3","۴":"4","۵":"5","۶":"6","۷":"7","۸":"8","۹":"9"};return String(s).replace(/[٠-٩۰-۹]/g,function(m){return map[m]||m});};
+  /* v4: toWesternDigits القانوني في الأعلى (سطر 9) - حُذف التكرار */
   window.wd=window.toWesternDigits;
   window.toArabicNumerals=window.toWesternDigits;
     window.formatLongHeader=function(hd,hm,hy,dow,gd,gm,gy){
@@ -2140,7 +2145,7 @@ window.updateSayeghPreview=function(){var pre=document.getElementById('sayegh-ur
 window.getCurrentSayeghCode=function(){try{var _c=window._selectedSayeghCode||localStorage.getItem('_selectedSayeghCode')||'107'; return String(_c).trim();}catch(e){return '107';}};
 window.addSayeghCity=function(){
  var nameEl=document.getElementById('inp-city-name');var codeEl=document.getElementById('inp-city-code');var addBtn=document.getElementById('btn-add-city');
- function toLatin(s){return (s||'').replace(/[\u0660-\u0669]/g,function(d){return '\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669'.indexOf(d);}).replace(/[\u06F0-\u06F9]/g,function(d){return '\u06F0\u06F1\u06F2\u06F3\u06F4\u06F5\u06F6\u06F7\u06F8\u06F9'.indexOf(d);});}
+ function toLatin(s){ return window.toWesternDigits ? window.toWesternDigits(s==null?'':s) : (s||''); }
  var name=(nameEl.value||'').trim();var code=toLatin((codeEl.value||'').trim());
  if(!name||!code){alert('اكتب الاسم والكود');return;}
  if(!/^\d+$/.test(code)){alert('الكود أرقام فقط');return;}
@@ -2246,13 +2251,13 @@ window.fetchSayeghBridge = async function(code){
     var extras = { farsiDate: dayObj.farsiDate || null, trueZodiacName: dayObj.trueZodiacName || null, commonZodiacName: dayObj.commonZodiacName || null, moonriseTime: dayObj.moonriseTime || null, moonsetTime: dayObj.moonsetTime || null, anwaaName: dayObj.anwaaName || null, mawasemName: dayObj.mawasemName || null, copticDate: dayObj.copticDate || null, hebrewDate: dayObj.hebrewDate || null, julianDate: dayObj.julianDate || null, longDateAr: dayObj.longDateAr || null, longDateEn: dayObj.longDateEn || null, hijriDate: dayObj.hijriDate || null, hijriMonthAr: dayObj.hijriMonthAr || null, hijriYear: _hyRaw || null, hijriDay: (isNaN(_hdNum) ? null : _hdNum), miladiAr: miladiArStr || null };
     window._sayeghLastExtras = extras;
     if(!hijriStr) return null; 
-    return { hijri: hijriStr, miladi: miladiStr, miladiAr: miladiArStr, prayers: pr, extras: extras, hijriDay: (isNaN(_hdNum) ? null : _hdNum), hijriMonthAr: _hmRaw || null, hijriYear: (_hyRaw ? parseInt((_hyRaw.match(/14\d\d/) || [_hyRaw])[0], 10) : null), rawDay: dayObj, rawCity: j, source: 'api.sayeghcalendar.com/city/' + c, method: 'api' };
+    return { hijri: hijriStr, miladi: miladiStr, miladiAr: miladiArStr, prayers: pr, extras: extras, hijriDay: (isNaN(_hdNum) ? null : _hdNum), hijriMonthAr: _hmRaw || null, hijriYear: (window._extractHijriYear ? window._extractHijriYear(_hyRaw) : (_hyRaw ? parseInt((_hyRaw.match(/14\d\d/) || [_hyRaw])[0], 10) : null)), rawDay: dayObj, rawCity: j, source: 'api.sayeghcalendar.com/city/' + c, method: 'api' };
   };
   /* السنة من API hijri-calendar. نقطة city لا تحمل سنة. المطابقة على اليوم الميلادي واليوم الهجري معا. */
   var _parseHijriCalendarYear = function(j, gregMonth, gregDay, hijriDay, hijriMonthAr){
     try{
       var found=null;
-      var _extractYear=function(s){ if(!s) return null; var m=String(s).match(/14\d\d/); return m?parseInt(m[0],10):null; };
+      var _extractYear=function(s){ if(window._extractHijriYear) return window._extractHijriYear(s); if(!s) return null; var m=String(s).match(/14\d\d/); return m?parseInt(m[0],10):null; };
       var _norm=function(s){ return String(s||'').replace(/[\u064B-\u065F\u0670]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/\s+/g,'').trim(); };
       var _hmNorm=_norm(hijriMonthAr);
       var _walk=function(node, depth, parentMonth){
@@ -2372,7 +2377,7 @@ window.fetchNajafDirect = async function(){ return null; };
 
 window.parseHijriMiladi=function(html){
  try{
- function toLat(s){return (s||'').toString().replace(/[٠-٩]/g,function(d){return String.fromCharCode(d.charCodeAt(0)-0x0660+48);}).replace(/[۰-۹]/g,function(d){return String.fromCharCode(d.charCodeAt(0)-0x06F0+48);});}
+ function toLat(s){ return window.toWesternDigits ? window.toWesternDigits(s==null?'':s) : (s||''); }
  var txt=toLat(html);
  var hijri=null, miladi=null;
  var hijriMonths='(محرم|المحرم|Muharram|Moharram|صفر|الصفر|صفر المظفر|صفرالمظفر|صفر مظفر|صفر الخير|Safar|Safar al-Muzaffar|Safar al-Mudhaffar|ربيع الأول|ربيع الاول|ربيع أول|ربيع اول|الربيع الأول|ربيع 1|Rabi al-Awwal|Rabi al-Awal|Rabi I|Rabi 1|Rabi al Awwal|ربيع الثاني|ربيع ثاني|ربيع الآخر|ربيع الاخر|ربيع 2|Rabi al-Thani|Rabi al-Sani|Rabi II|Rabi 2|جمادى الأولى|جمادى الاولى|جمادي الأولى|جمادي الاولى|جمادى أولى|جمادى 1|Jumada al-Ula|Jumada al-Oula|Jumada I|جمادى الآخرة|جمادى الاخرة|جمادي الآخرة|جمادي الاخرة|جمادى الثانية|جمادى 2|Jumada al-Akhirah|Jumada al-Akhira|Jumada II|رجب|الرجب|Rajab|شعبان|الشعبان|Shaban|Shaaban|رمضان|شهر رمضان|Ramadan|Ramadhan|شوال|Shawwal|ذو القعدة|ذو القعده|ذي القعدة|Dhu al-Qadah|Dhul Qadah|ذو الحجة|ذو الحجه|ذي الحجة|Dhu al-Hijjah|Dhul Hijjah|Zul Hijjah|1|2|3|4|5|6|7|8|9|10|11|12|01|02|03|04|05|06|07|08|09)';
@@ -2661,11 +2666,11 @@ window.fetchSayeghBeirut=async function(){
  window.renderCard('sayegh-beirut',finalHijri,finalMiladiSite,deviceDate,diff,hijriFinal,send,msg,warningMsg,finalMethod==='api'?'API':'HTML Fallback');
  if(send){
   try{
-  var map={'محرم':1,'المحرم':1,'صفر':2,'صفر المظفر':2,'صفرالمظفر':2,'Safar':2,'ربيع الأول':3,'ربيع الاول':3,'ربيع أول':3,'ربيع اول':3,'Rabi al-Awwal':3,'Rabi al-Awal':3,'ربيع الثاني':4,'Rabi al-Thani':4,'جمادى الأولى':5,'جمادى الاولى':5,'Jumada al-Ula':5,'جمادى الآخرة':6,'Jumada al-Akhirah':6,'رجب':7,'Rajab':7,'شعبان':8,'Shaban':8,'رمضان':9,'Ramadan':9,'شوال':10,'Shawwal':10,'ذو القعدة':11,'Dhu al-Qadah':11,'ذو الحجة':12,'Dhu al-Hijjah':12,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'11':11,'12':12};
+  var map=(window._getHijriMonth1Based?window._getHijriMonth1Based():{'محرم':1,'المحرم':1,'صفر':2,'صفر المظفر':2,'صفرالمظفر':2,'Safar':2,'ربيع الأول':3,'ربيع الاول':3,'ربيع أول':3,'ربيع اول':3,'Rabi al-Awwal':3,'Rabi al-Awal':3,'ربيع الثاني':4,'Rabi al-Thani':4,'جمادى الأولى':5,'جمادى الاولى':5,'Jumada al-Ula':5,'جمادى الآخرة':6,'Jumada al-Akhirah':6,'رجب':7,'Rajab':7,'شعبان':8,'Shaban':8,'رمضان':9,'Ramadan':9,'شوال':10,'Shawwal':10,'ذو القعدة':11,'Dhu al-Qadah':11,'ذو الحجة':12,'Dhu al-Hijjah':12,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'11':11,'12':12});
   var _pc=window.parseHijriParts?window.parseHijriParts(hijriFinal):null;
    var d=(_pc&&_pc.day)?_pc.day:NaN;
    var _yFromStr=(_pc&&_pc.year)?_pc.year:null;
-   var _yFromApi=(br0&&br0.hijriYear)?parseInt(String(br0.hijriYear).match(/14\d\d/)||[br0.hijriYear])[0]:null;
+   var _yFromApi=(br0&&br0.hijriYear)?(window._extractHijriYear?window._extractHijriYear(br0.hijriYear):parseInt(String(br0.hijriYear).match(/14\d\d/)||[br0.hijriYear])[0]):null;
    var y=_yFromStr||_yFromApi||null;
    var _ySource=(_yFromStr||_yFromApi)?'sayegh-api':'';
    if(!y || isNaN(d)){
@@ -2948,7 +2953,7 @@ if(document.body) obs.observe(document.body,{childList:true,subtree:true});
 window.hijriMonthsMap = {'محرم':0,'المحرم':0,'Muharram':0,'Moharram':0,'صفر':1,'الصفر':1,'صفر المظفر':1,'صفرالمظفر':1,'صفر مظفر':1,'صفر الخير':1,'Safar':1,'Safar al-Muzaffar':1,'Safar al-Mudhaffar':1,'ربيع الأول':2,'ربيع الاول':2,'ربيع أول':2,'ربيع اول':2,'الربيع الأول':2,'ربيع 1':2,'Rabi al-Awwal':2,'Rabi al-Awal':2,'Rabi I':2,'Rabi 1':2,'Rabi al Awwal':2,'ربيع الثاني':3,'ربيع ثاني':3,'ربيع الآخر':3,'ربيع الاخر':3,'ربيع 2':3,'Rabi al-Thani':3,'Rabi al-Sani':3,'Rabi II':3,'Rabi 2':3,'جمادى الأولى':4,'جمادى الاولى':4,'جمادي الأولى':4,'جمادي الاولى':4,'جمادى أولى':4,'جمادى 1':4,'Jumada al-Ula':4,'Jumada al-Oula':4,'Jumada I':4,'جمادى الآخرة':5,'جمادى الاخرة':5,'جمادي الآخرة':5,'جمادي الاخرة':5,'جمادى الثانية':5,'جمادى 2':5,'Jumada al-Akhirah':5,'Jumada al-Akhira':5,'Jumada II':5,'رجب':6,'الرجب':6,'Rajab':6,'شعبان':7,'الشعبان':7,'Shaban':7,'Shaaban':7,'رمضان':8,'شهر رمضان':8,'Ramadan':8,'Ramadhan':8,'شوال':9,'Shawwal':9,'ذو القعدة':10,'ذو القعده':10,'ذي القعدة':10,'Dhu al-Qadah':10,'Dhul Qadah':10,'ذو الحجة':11,'ذو الحجه':11,'ذي الحجة':11,'Dhu al-Hijjah':11,'Dhul Hijjah':11,'Zul Hijjah':11,'1':0,'01':0,'2':1,'02':1,'3':2,'03':2,'4':3,'04':3,'5':4,'05':4,'6':5,'06':5,'7':6,'07':6,'8':7,'08':7,'9':8,'09':8,'10':9,'11':10,'12':11};
 window.toLatComprehensive = function(s){
  if(!s) return '';
- return s.toString().replace(/[٠-٩]/g,function(d){return String.fromCharCode(d.charCodeAt(0)-0x0660+48);}).replace(/[۰-۹]/g,function(d){return String.fromCharCode(d.charCodeAt(0)-0x06F0+48);});
+ return window.toWesternDigits ? window.toWesternDigits(s) : s.toString();
 };
 window.parseHijriParts = function(hijriStr){
   try{
@@ -3213,7 +3218,7 @@ window.fetchNajaf = async function(){
    }
    if(send){
     try{
-     var mapFinal={'محرم':1,'المحرم':1,'صفر':2,'صفر المظفر':2,'صفرالمظفر':2,'Safar':2,'ربيع الأول':3,'ربيع الاول':3,'ربيع أول':3,'ربيع اول':3,'Rabi al-Awwal':3,'Rabi al-Awal':3,'ربيع الثاني':4,'Rabi al-Thani':4,'جمادى الأولى':5,'جمادى الاولى':5,'Jumada al-Ula':5,'جمادى الآخرة':6,'Jumada al-Akhirah':6,'رجب':7,'Rajab':7,'شعبان':8,'Shaban':8,'رمضان':9,'Ramadan':9,'شوال':10,'Shawwal':10,'ذو القعدة':11,'Dhu al-Qadah':11,'ذو الحجة':12,'Dhu al-Hijjah':12,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'11':11,'12':12};
+     var mapFinal=(window._getHijriMonth1Based?window._getHijriMonth1Based():{'محرم':1,'المحرم':1,'صفر':2,'صفر المظفر':2,'صفرالمظفر':2,'Safar':2,'ربيع الأول':3,'ربيع الاول':3,'ربيع أول':3,'ربيع اول':3,'Rabi al-Awwal':3,'Rabi al-Awal':3,'ربيع الثاني':4,'Rabi al-Thani':4,'جمادى الأولى':5,'جمادى الاولى':5,'Jumada al-Ula':5,'جمادى الآخرة':6,'Jumada al-Akhirah':6,'رجب':7,'Rajab':7,'شعبان':8,'Shaban':8,'رمضان':9,'Ramadan':9,'شوال':10,'Shawwal':10,'ذو القعدة':11,'Dhu al-Qadah':11,'ذو الحجة':12,'Dhu al-Hijjah':12,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'11':11,'12':12});
      var _pn=window.parseHijriParts?window.parseHijriParts(hijriToFinal):null; var dFinal=_pn&&_pn.day?_pn.day:parseInt((hijriToFinal.match(/\d+/)||[1])[0]); var yFinal=_pn&&_pn.year?_pn.year:parseInt((hijriToFinal.match(/14\d\d/)||[1448])[0]); var _cleanForMonth = hijriToFinal.replace(/الأحد|الإثنين|الاثنين|الثلاثاء|الأربعاء|الاربعاء|الخميس|الجمعة|الجمعه|السبت/g,'').trim();
      var mNameFinal=_pn&&_pn.monthIdx>=0?(window.hijriMonthsCanonical[_pn.monthIdx]||null):(_cleanForMonth.match(/(محرم|المحرم|Muharram|Moharram|صفر|الصفر|صفر المظفر|صفرالمظفر|صفر مظفر|صفر الخير|Safar|Safar al-Muzaffar|Safar al-Mudhaffar|ربيع الأول|ربيع الاول|ربيع أول|ربيع اول|الربيع الأول|ربيع 1|Rabi al-Awwal|Rabi al-Awal|Rabi I|Rabi 1|Rabi al Awwal|ربيع الثاني|ربيع ثاني|ربيع الآخر|ربيع الاخر|ربيع 2|Rabi al-Thani|Rabi al-Sani|Rabi II|Rabi 2|جمادى الأولى|جمادى الاولى|جمادي الأولى|جمادي الاولى|جمادى أولى|جمادى 1|Jumada al-Ula|Jumada al-Oula|Jumada I|جمادى الآخرة|جمادى الاخرة|جمادي الآخرة|جمادي الاخرة|جمادى الثانية|جمادى 2|Jumada al-Akhirah|Jumada al-Akhira|Jumada II|رجب|الرجب|Rajab|شعبان|الشعبان|Shaban|Shaaban|رمضان|شهر رمضان|Ramadan|Ramadhan|شوال|Shawwal|ذو القعدة|ذو القعده|ذي القعدة|Dhu al-Qadah|Dhul Qadah|ذو الحجة|ذو الحجه|ذي الحجة|Dhu al-Hijjah|Dhul Hijjah|Zul Hijjah)/)||[])[0];
      var _hmNorm2 = window._normalizeHijriMonth ? window._normalizeHijriMonth(mNameFinal) : null; var _hmFinal2 = _hmNorm2 || mapFinal[mNameFinal] || 0; if(!_hmFinal2){ setStatus('❌ شهر غير معروف: '+mNameFinal+' — لم يتم التحديث'); setNajafFetchBtnState('idle'); return; } var objFinal={hd:dFinal,hm:_hmFinal2,hy:yFinal,hmn:mNameFinal,finalStr:hijriToFinal+(hijriToFinal.includes('هـ')?'':' هـ'),dt:hijriToFinal+(hijriToFinal.includes('هـ')?'':' هـ'),len:30,hmName:mNameFinal};
@@ -3283,10 +3288,10 @@ window.fetchDirectName = async function(targetUrl){
 };
 const STORAGE_KEY='nojumi_last_bayan_full';
 window._nojumiLastBayanId = parseInt(localStorage.getItem('nojumi_last_bayan_id')||'1009');
-function toWesternDigits(t){ const m={'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9','۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9'}; return (t||'').replace(/[٠-٩۰-۹]/g,function(ch){return m[ch]||ch}); }
-function stripTashkeel(s){ if(!s) return ''; s=toWesternDigits(s); return s.replace(/[\u064B-\u065F\u0670]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[^\u0600-\u06FF0-9\s]/g,' ').replace(/\s+/g,' ').trim().toLowerCase(); }
+function toWesternDigits(t){ return window.toWesternDigits ? window.toWesternDigits(t==null?'':t) : (t||''); }
+function stripTashkeel(s){ return window._normalizeArabic ? window._normalizeArabic(s) : (s||''); }
 
-function _nojumiNormalize(s){ if(!s) return ''; s=toWesternDigits(s); return s.replace(/[\u064B-\u065F\u0670]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[^\u0600-\u06FF0-9\s]/g,' ').replace(/\s+/g,' ').trim().toLowerCase(); }
+function _nojumiNormalize(s){ return window._normalizeArabic ? window._normalizeArabic(s) : (s||''); }
 function _nojumiHasAnnouncement(text){ var n=_nojumiNormalize(text||''); if(!n) return false; /* "اعلن ... مكتب ... السيستاني" بالترتيب، مع سماح بكلمات بينها مثل "سماحه السيد" — ولا يقبل "ثبوت هلال" وحده. */ return /اعلن.{0,50}مكتب.{0,50}السيستاني/.test(n); }
 function _nojumiExtractArticle(html){ try{ var h=String(html||''); h=h.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<header[\s\S]*?<\/header>/gi,' ').replace(/<footer[\s\S]*?<\/footer>/gi,' ').replace(/<nav[\s\S]*?<\/nav>/gi,' '); var art=''; var mArt=h.match(/<article[\s\S]*?<\/article>/i); if(mArt) art=mArt[0]; else { var mMain=h.match(/<main[\s\S]*?<\/main>/i); if(mMain) art=mMain[0]; else { var mH1=h.indexOf('<h1'); art=(mH1!==-1)?h.slice(mH1):h; } } var titleM=art.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i); var title=titleM?titleM[1].replace(/<[^>]+>/g,'').trim():''; var ps=[]; var pr=/<p[^>]*>([\s\S]*?)<\/p>/gi; var mm; while((mm=pr.exec(art))!==null){ var t=mm[1].replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').trim(); if(t.length>10) ps.push(t); } return {title:title, paragraphs:ps, full:ps.join('\n\n')}; }catch(e){ return {title:'', paragraphs:[], full:''}; } }
 function hasSistani(html){  var art=_nojumiExtractArticle(html||''); if(!art.paragraphs.length) return false; return art.paragraphs.some(function(pp){ return _nojumiHasAnnouncement(pp); }); }
@@ -3453,8 +3458,8 @@ setTimeout(function(){ window._bindEstehlalNajaf(); }, 2000);
 (function(){
 const SOURCES_DIRECT = [];
 async function fetchDirect(targetUrl){try{let c=new AbortController();let t=setTimeout(()=>c.abort(),4500);let r=await fetch(targetUrl+"?_cb="+Date.now(),{cache:"no-store",signal:c.signal});clearTimeout(t);if(r.ok){let h=await r.text();if(h.length>800)return{html:h};}}catch(e){}for(let p of SOURCES_DIRECT){try{let url=p.tmpl+(p.encode?encodeURIComponent(targetUrl):targetUrl);let r=await fetch(url,{cache:"no-store"});if(!r.ok)continue;let txt=p.type==="json"?(await r.json()).contents||"":await r.text();if(txt.length>800)return{html:txt};}catch(e){}}return null;}
-function toWestern(s){const m={"٠":"0","١":"1","٢":"2","٣":"3","٤":"4","٥":"5","٦":"6","٧":"7","٨":"8","٩":"9"};return (s||"").toString().replace(/[٠-٩]/g,ch=>m[ch]||ch);}
-function strip(s){if(!s)return"";s=toWestern(s);s=s.replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي");return s.replace(/[^\u0600-\u06FF0-9\s]/g," ").replace(/\s+/g," ").trim().toLowerCase();}
+function toWestern(s){ return window.toWesternDigits ? window.toWesternDigits(s==null?"":s) : (s||""); }
+function strip(s){ return window._normalizeArabic ? window._normalizeArabic(s) : (s||""); }
 function getHijriFinal(){try{let f=null;if(window.getFinalHijri)f=window.getFinalHijri();else if(window.FINAL_HIJRI)f=window.FINAL_HIJRI;else if(window.FINAL)f=window.FINAL;if(f&&f.hy&&f.hm){return{y:parseInt(f.hy),m:parseInt(f.hm)-1,hy:f.hy,hm:f.hm,hd:f.hd,hmName:f.hmName||"",finalStr:f.finalStr||""};}}catch(e){}try{let raw=localStorage.getItem('taqweem_final_unified');if(raw){let obj=JSON.parse(raw);if(obj&&obj.hy&&obj.hm)return{y:parseInt(obj.hy),m:parseInt(obj.hm)-1,hy:obj.hy,hm:obj.hm,hd:obj.hd,hmName:obj.hmName||"",finalStr:obj.finalStr||""};}}catch(e){}return{y:1447,m:1,hy:1447,hm:2,hd:1,hmName:"صفر",finalStr:"2 صفر 1447"};}
 const MONTHS={0:["محرم"],1:["صفر"],2:["ربيع الاول","ربيع الأول"],3:["ربيع الثاني","ربيع الاخر"],4:["جمادى الاولى","جمادى الأولى"],5:["جمادى الاخرة","جمادى الآخرة"],6:["رجب"],7:["شعبان"],8:["رمضان"],9:["شوال"],10:["ذو القعدة","ذو القعده"],11:["ذو الحجة","ذو الحجه"]};
 function parseMsgs(h){let msgs=[];let re=/<div class="tgme_widget_message_wrap[^>]*>[\s\S]*?data-post="[^"]*\/(\d+)"[\s\S]*?<div class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>[\s\S]*?<time[^>]*datetime="([^"]+)"[^>]*>([^<]+)<\/time>/gi,m;while((m=re.exec(h))!==null){let id=parseInt(m[1]);let txt=m[2].replace(/<br.*?>/gi,"\n").replace(/<[^>]+>/g,"").trim();if(txt.length>30)msgs.push({id,text:txt,displayDate:m[4]});}return msgs;}
@@ -3565,12 +3570,7 @@ var _origApply=window.applyMuteStateForAll;window.applyMuteStateForAll=function(
  function setCache(code,data){try{let k=LS_CACHE+code+'_'+todayKey();localStorage.setItem(k,JSON.stringify({data:data}));}catch(e){}}
 
  // تحويل الأرقام الهندية والعربية إلى إنجليزية
- function toWesternDigits(s){
-  if(s==null) return s;
-  const map={"٠":"0","١":"1","٢":"2","٣":"3","٤":"4","٥":"5","٦":"6","٧":"7","٨":"8","٩":"9","۰":"0","۱":"1","۲":"2","۳":"3","۴":"4","۵":"5","۶":"6","۷":"7","۸":"8","۹":"9"};
-  return String(s).replace(/[٠-٩۰-۹]/g,function(m){return map[m]||m;});
- }
- window.toWesternDigits=toWesternDigits;
+ /* v4: toWesternDigits القانوني في الأعلى - حُذف التكرار الذي كان يغطيه */
 
  /* جسر الصايغ معرّف فوق - بلا بروكسي - ما فيه تعريف تاني هنا */
  function toLat(s){return toWesternDigits(s||'');}
@@ -4766,7 +4766,7 @@ let fetching=false;
  function getCityCode(){try{return localStorage.getItem(CITY_KEY);}catch(e){return null;}}
  function todayKeyLocal(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
  function todayKeyGMT(){var d=new Date();return d.getUTCFullYear()+'-'+(d.getUTCMonth()+1)+'-'+d.getUTCDate();}
- function toWestern(s){if(s==null) return s;var map={"٠":"0","١":"1","٢":"2","٣":"3","٤":"4","٥":"5","٦":"6","٧":"7","٨":"8","٩":"9","۰":"0","۱":"1","۲":"2","۳":"3","۴":"4","۵":"5","۶":"6","۷":"7","۸":"8","۹":"9"};return String(s).replace(/[٠-٩۰-۹]/g,function(m){return map[m]||m;});}
+ function toWestern(s){ if(s==null) return s; return window.toWesternDigits ? window.toWesternDigits(s) : String(s); }
  function setCacheAuto(code,data){try{var k=CACHE_PREFIX+toWestern(code)+'_'+todayKeyLocal();localStorage.setItem(k,JSON.stringify({data:data}));}catch(e){}}
  async function fetchPrayersAuto(code){
   if(fetchingAuto) return null;fetchingAuto=true;
