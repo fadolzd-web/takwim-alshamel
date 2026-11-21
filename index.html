@@ -1828,6 +1828,7 @@ function setActiveBox(v){
     localStorage.setItem('liveBoxActive', v);
     if(v==='city'){ localStorage.setItem('_selectedSayeghCode', codeToSave); }
     localStorage.setItem('_prayer_default_city_v3', (v==='najaf' ? '107' : codeToSave));
+     try{ var _pc = (v==='najaf' ? '107' : codeToSave); if(window.fetchPrayersAuto) window.fetchPrayersAuto(_pc); }catch(e){}
     try{ if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){ window.Capacitor.Plugins.Preferences.set({key:'liveBoxActive', value:v}); window.Capacitor.Plugins.Preferences.set({key:'_selectedSayeghCode', value:codeToSave}); } }catch(e){}
     window._selectedSayeghCode = codeToSave;
    }catch(e){}
@@ -2118,6 +2119,25 @@ window.renderSayeghCities=function(){
 
 window.updateSayeghPreview=function(){var pre=document.getElementById('sayegh-url-preview');if(!pre) return;var code=window._selectedSayeghCode||'236';pre.textContent=code?'https://taqwimalsayegh.com/city/'+code:'';var inp=document.getElementById('sayegh-city-search');if(inp){var cur=(window._sayeghCities||[]).find(function(c){return c.code===code;});if(cur) inp.value=cur.name+' - '+cur.code;}};
 window.getCurrentSayeghCode=function(){try{var _c=window._selectedSayeghCode||localStorage.getItem('_selectedSayeghCode')||'107'; return String(_c).trim();}catch(e){return '107';}};
+window._saveSayeghCityAtomic = function(code){
+  try{
+    code = String(code||'').trim();
+    if(!/^\d+$/.test(code)) return false;
+    window._selectedSayeghCode = code;
+    localStorage.setItem('_selectedSayeghCode', code);
+    localStorage.setItem('_prayer_default_city_v3', code);
+    localStorage.setItem('liveBoxActive', 'city');
+    if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){
+      window.Capacitor.Plugins.Preferences.set({key:'_selectedSayeghCode', value:code});
+      window.Capacitor.Plugins.Preferences.set({key:'_prayer_default_city_v3', value:code});
+      window.Capacitor.Plugins.Preferences.set({key:'liveBoxActive', value:'city'});
+    }
+    var _sel = document.getElementById('sayegh-city-select');
+    if(_sel) _sel.value = code;
+    return true;
+  }catch(e){ return false; }
+};
+
 window.addSayeghCity=function(){
  var nameEl=document.getElementById('inp-city-name');var codeEl=document.getElementById('inp-city-code');var addBtn=document.getElementById('btn-add-city');
  function toLatin(s){return (s||'').replace(/[\u0660-\u0669]/g,function(d){return '\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669'.indexOf(d);}).replace(/[\u06F0-\u06F9]/g,function(d){return '\u06F0\u06F1\u06F2\u06F3\u06F4\u06F5\u06F6\u06F7\u06F8\u06F9'.indexOf(d);});}
@@ -2286,14 +2306,35 @@ window.fetchSayeghBridge = async function(code){
     }catch(e){}
     return null;
   };
-  var _augmentWithHijriCalendarYear = async function(out){
-    try{
-      if(!out || out.hijriYear) return out;
+  var _sayeghYearCacheKey = '_sayegh_hijri_year_cache';
+   var _getSayeghYearCache = function(){ try{ if(window._sayeghYearCache) return window._sayeghYearCache; var _r = localStorage.getItem(_sayeghYearCacheKey); if(_r){ window._sayeghYearCache = JSON.parse(_r); return window._sayeghYearCache; } }catch(e){} return null; };
+   var _setSayeghYearCache = function(year, hijriMonthNum){ try{ var _c = { year: parseInt(year,10), hijriMonthNum: parseInt(hijriMonthNum,10), fetchedAt: Date.now(), greg: new Date().toISOString().slice(0,10) }; window._sayeghYearCache = _c; localStorage.setItem(_sayeghYearCacheKey, JSON.stringify(_c)); }catch(e){} };
+   var _monthNumFromAr = function(ar){ try{ var _m = window.hijriMonthsMap || {}; for(var _k in _m){ if(_m.hasOwnProperty(_k) && _k===ar) return _m[_k]+1; } var _canon = window.hijriMonthsCanonical || []; for(var _i=0; _i<_canon.length; _i++){ if(_canon[_i]===ar) return _i+1; } }catch(e){} return null; };
+   var _augmentWithHijriCalendarYear = async function(out){
+     try{
+       if(!out) return out;
+       if(out.hijriYear){ try{ var _mn0 = _monthNumFromAr(out.hijriMonthAr); if(_mn0) _setSayeghYearCache(out.hijriYear, _mn0); }catch(e){} return out; }
+       try{
+         var _cache = _getSayeghYearCache();
+         var _curMn = _monthNumFromAr(out.hijriMonthAr);
+         if(_cache && _cache.year && _curMn){
+           var _ageDays = (Date.now() - (_cache.fetchedAt||0)) / 86400000;
+           var _cachedMn = parseInt(_cache.hijriMonthNum,10);
+           if(_ageDays < 60 && _cachedMn <= _curMn){
+             out.hijriYear = _cache.year;
+             out.hijriYearSource = 'cache';
+             if(out.extras) out.extras.hijriYear = String(_cache.year);
+             if(out.hijri && !/14\d\d/.test(out.hijri)) out.hijri = out.hijri + ' ' + _cache.year;
+             return out;
+           }
+         }
+       }catch(e){}
       var now2 = new Date();
       var gy = now2.getFullYear(), gm = now2.getMonth()+1, gd = now2.getDate();
       var yCal = await _fetchHijriCalendarYear(gy, gm, gd, out.hijriDay, out.hijriMonthAr);
       if(yCal){
-        out.hijriYear = yCal;
+         try{ var _mn1 = _monthNumFromAr(out.hijriMonthAr); if(_mn1) _setSayeghYearCache(yCal, _mn1); }catch(e){}
+         out.hijriYear = yCal;
         out.hijriYearSource = 'hijri-calendar';
         if(out.extras) out.extras.hijriYear = String(yCal);
         if(out.hijri && !/14\d\d/.test(out.hijri)) out.hijri = out.hijri + ' ' + yCal;
@@ -2857,11 +2898,11 @@ if(document.body) obs.observe(document.body,{childList:true,subtree:true});
    suggestBox.querySelectorAll('.city-suggest-item').forEach(function(el){
     el.addEventListener('click', function(){
      var code=el.dataset.code;
-     window._selectedSayeghCode=code;
+      if(window._saveSayeghCityAtomic) window._saveSayeghCityAtomic(code);
      var cur=(window._sayeghCities||[]).find(function(c){return c.code===code;});
      if(cur) searchInp.value=cur.name+' - '+cur.code;
      suggestBox.style.display='none';
-     if(hiddenSel) hiddenSel.value=code;
+     
      window.updateSayeghPreview();
      var statusEl=document.getElementById('sayegh-beirut-status');
      if(statusEl && cur) statusEl.textContent='📍 تم اختيار: '+cur.name+' - '+cur.code;
@@ -4854,39 +4895,6 @@ let fetching=false;
 
   // 2- عند تغيير البوكس، حدث أوقات الصلاة تلقائياً
   // نغلف setActiveBox الأصلية
-  (function hookActiveBox(){
-    let tries=0;
-    let iv=setInterval(function(){
-      tries++;
-      if(window.setActiveBox || typeof setActiveBox!=='undefined'){
-        clearInterval(iv);
-        if(window.setActiveBox && window.setActiveBox._fix4Atomic){ clearInterval(iv); return; } let original = window.setActiveBox || setActiveBox;
-        let wrapped = function(v){
-          try{ original(v); }catch(e){ try{ setActiveBox(v); }catch(e2){} }
-          // بعد التفعيل، حدث مدينة الصلاة حسب البوكس الجديد
-          setTimeout(function(){
-            try{
-              let expected=getExpectedPrayerCode();
-              let current=getPrayerDef();
-              // إذا كان المستخدم لم يغير يدوياً لمدينة ثالثة، نحدث
-              // المنطق: دائماً حدث عند تغيير البوكس (حسب الطلب)
-              if(expected && expected!==current){
-                setPrayerDef(expected);
-                console.log('✅ Prayer sync: box changed to '+v+' -> prayer city '+expected);
-                // إذا كان fetchPrayersAuto موجود، اجلب
-                if(window.fetchPrayersAuto) window.fetchPrayersAuto(expected);
-              }
-            }catch(e){}
-          }, 300);
-        };
-        window.setActiveBox = wrapped;
-        // أيضا للـ local scope
-        try{ setActiveBox = wrapped; }catch(e){}
-        console.log('✅ Prayer sync: setActiveBox hooked');
-      }
-      if(tries>100) clearInterval(iv);
-    },200);
-  })();
 
   // أيضا عند تغيير مدينة نطاق مدينتك - مراقبة شاملة
   (function hookSayeghChange(){
@@ -6477,45 +6485,8 @@ window.openQuranSystem = async function(){
     let tries=0;
     let iv=setInterval(function(){
       tries++;
-      // Hook setActiveBox
-      if(window.setActiveBox){
-        clearInterval(iv); return; let orig = window.setActiveBox;
-        window.setActiveBox = function(v){
-          try{ orig(v); }catch(e){ try{ setActiveBox(v); }catch(e2){} }
-          try{
-            localStorage.setItem('liveBoxActive', v);
-            if(hasCapacitorPrefs()){
-              window.Capacitor.Plugins.Preferences.set({key:'liveBoxActive', value:v});
-            }
-            console.log('Persisted active box',v);
-          }catch(e){}
-        };
-        clearInterval(iv);
-      }
-      if(tries>100) clearInterval(iv);
     },500);
 
-    // Hook city selection
-    let iv2=setInterval(function(){
-      if(window.getCurrentSayeghCode){
-        // Watch for changes in _selectedSayeghCode
-        let lastCode = localStorage.getItem('_selectedSayeghCode') || DEFAULT_CITY_CODE;
-        setInterval(function(){
-          try{
-            let cur = window._selectedSayeghCode || window.getCurrentSayeghCode();
-            if(cur && cur!==lastCode){
-              lastCode=cur;
-              localStorage.setItem('_selectedSayeghCode', cur);
-              if(hasCapacitorPrefs()){
-                window.Capacitor.Plugins.Preferences.set({key:'_selectedSayeghCode', value:cur});
-              }
-              console.log('Persisted city code',cur);
-            }
-          }catch(e){}
-        },1000);
-        clearInterval(iv2);
-      }
-    },1000);
 
     // Hook Najaf source selection
     document.addEventListener('change', function(e){
@@ -6580,35 +6551,6 @@ window.openQuranSystem = async function(){
     }catch(e){ return '107'; }
   }
   // Override getExpectedPrayerCode if exists
-  let tries=0;
-  let iv=setInterval(function(){
-    tries++;
-    if(window.getExpectedPrayerCode || window.getPrayerDef){
-      // Wrap prayer def setter to sync with box
-      let origSetActive = window.setActiveBox;
-      if(origSetActive && !origSetActive._prayerHooked){
-        window.setActiveBox = function(v){
-          try{ origSetActive(v); }catch(e){ try{ setActiveBox(v); }catch(e2){} }
-          setTimeout(function(){
-            try{
-              let active = v;
-              let expected = (active==='najaf') ? NAJAF_CODE : getCityCodeSafe();
-              localStorage.setItem('_prayer_default_city_v3', expected);
-              if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){
-                window.Capacitor.Plugins.Preferences.set({key:'_prayer_default_city_v3', value:expected});
-              }
-              console.log('Prayer city synced to',expected,'for box',active);
-              // Fetch prayers for new city
-              if(window.fetchPrayersAuto) window.fetchPrayersAuto(expected);
-            }catch(e){}
-          },300);
-        };
-        window.setActiveBox._prayerHooked=true;
-        clearInterval(iv);
-      }
-    }
-    if(tries>100) clearInterval(iv);
-  },500);
 })();
 </script>
 
