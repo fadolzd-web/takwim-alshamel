@@ -34,8 +34,8 @@
   window._markSuccessfulFetch = function(){ try{ localStorage.setItem('_last_successful_fetch_time', String(Date.now())); }catch(e){} };
   /* v13: بديل نظيف لـ Patch Notification - من دون تغليف window.Notification */
   window._notify = function(title, body){ try{ if(window.apkNotify) return window.apkNotify(title, body, Math.floor(Math.random()*100000)); if("Notification" in window && Notification.permission==="granted"){ new Notification(title,{body:body}); return true; } }catch(e){} return false; };
-  /* v15: saveCities القانوني - اتحاد المفتاحين، من دون ضياع مفتاح: MASTER=_cities_master_cache_v1، UNIFIED=_unified_user_cities_v1، USER=sayegh_dynamic_cities_v3، PRAYER=_prayer_cities_v3 - القيم نفسها في النسختين، الأسماء فقط مختلفة */
-  window._saveCities = function(arr){ try{ if(!arr) return; if(arr.length>100){ localStorage.setItem('_cities_master_cache_v1', JSON.stringify(arr)); window._masterCities=arr; window._sayeghCities=arr; if(window._prayerNotifyMaster) window._prayerNotifyMaster(arr); }else{ localStorage.setItem('_unified_user_cities_v1', JSON.stringify(arr)); localStorage.setItem('sayegh_dynamic_cities_v3', JSON.stringify(arr)); localStorage.setItem('_prayer_cities_v3', JSON.stringify(arr)); window._sayeghCities=arr; } }catch(e){} };
+  /* v15: saveCities القانوني - اتحاد المفتاحين، من دون ضياع مفتاح: MASTER=_cities_master_cache_v2، UNIFIED=_unified_user_cities_v1، USER=sayegh_dynamic_cities_v3، PRAYER=_prayer_cities_v3 - القيم نفسها في النسختين، الأسماء فقط مختلفة */
+  window._saveCities = function(arr){ try{ if(!arr) return; if(arr.length>100){ localStorage.setItem('_cities_master_cache_v2', JSON.stringify(arr)); window._masterCities=arr; window._sayeghCities=arr; if(window._prayerNotifyMaster) window._prayerNotifyMaster(arr); }else{ localStorage.setItem('_unified_user_cities_v1', JSON.stringify(arr)); localStorage.setItem('sayegh_dynamic_cities_v3', JSON.stringify(arr)); localStorage.setItem('_prayer_cities_v3', JSON.stringify(arr)); window._sayeghCities=arr; } }catch(e){} };
   try{
     const orig = Intl.NumberFormat;
     Intl.NumberFormat = function(locales, opts){
@@ -463,7 +463,7 @@ try{
 }
 </style>
 
-<script>/* v20: تشك بوكس تلقائي جنب البحث + دبوس يجيب بيانات + حذف التلميحات | v19: قاعدة المدن خارج الكود - cities.json هو المصدر، وهيدي بس نسخة احتياطية أوفلاين 7 مدن */
+<script>/* v21: cities.json كامل 2439 من قاعدة الصايغ الكاملة مباشرة + شيل تكرار 950-960 + كاش v2 ليجيب الجديد | v20: تشك بوكس تلقائي جنب البحث + دبوس يجيب بيانات + حذف التلميحات | v19: قاعدة المدن خارج الكود - cities.json هو المصدر، وهيدي بس نسخة احتياطية أوفلاين 7 مدن */
 window.MASTER_CITIES_FALLBACK=[{"name":"النجف الأشرف","code":"107","lat":32.026,"lng":44.346,"tz":3,"country_ar":"العراق"},{"name":"بيروت","code":"236","lat":33.889,"lng":35.494,"tz":2,"country_ar":"لبنان"},{"name":"بنت جبيل","code":"277","lat":33.11666667,"lng":35.43333333,"tz":2,"country_ar":"لبنان"},{"name":"كربلاء","code":"888","lat":32.616,"lng":44.025,"tz":3,"country_ar":"العراق"},{"name":"بغداد","code":"2341","lat":33.315,"lng":44.393,"tz":3,"country_ar":"العراق"},{"name":"قم","code":"1586","lat":34.64,"lng":50.876,"tz":4,"country_ar":"إيران"},{"name":"مشهد","code":"1185","lat":36.316,"lng":59.568,"tz":4,"country_ar":"إيران"}];
 window.MASTER_CITIES=window.MASTER_CITIES_FALLBACK.slice();</script></head>
 
@@ -1991,7 +1991,7 @@ function toggleBox(name, e){
 
 // ===== نظام المدن الموحد - 1444 مدينة - موحد للنافذتين =====
 const MASTER_CITIES_URL='./cities.json';
-const MASTER_CACHE_KEY='_cities_master_cache_v1';
+const MASTER_CACHE_KEY='_cities_master_cache_v2';
 const USER_CITIES_KEY='sayegh_dynamic_cities_v3';
 const PRAYER_CITIES_KEY='_prayer_cities_v3';
 const UNIFIED_USER_KEY='_unified_user_cities_v1';
@@ -2151,7 +2151,7 @@ window._v19_getCoordsForCode = function(code){
     if(window.MASTER_CITIES && window.MASTER_CITIES.length>0) lists.push(window.MASTER_CITIES);
     if(window._masterCities && window._masterCities.length>0) lists.push(window._masterCities);
     if(window._sayeghCities && window._sayeghCities.length>0) lists.push(window._sayeghCities);
-    try{ var cached = localStorage.getItem('_cities_master_cache_v1'); if(cached){ var arr=JSON.parse(cached); if(Array.isArray(arr)) lists.push(arr); } }catch(e){}
+    try{ var cached = localStorage.getItem('_cities_master_cache_v2'); if(cached){ var arr=JSON.parse(cached); if(Array.isArray(arr)) lists.push(arr); } }catch(e){}
     for(var li=0; li<lists.length; li++){
       var arr2 = lists[li];
       for(var i=0;i<arr2.length;i++){
@@ -3637,7 +3637,7 @@ var _origApply=window.applyMuteStateForAll;window.applyMuteStateForAll=function(
  const LS_CITIES='_prayer_cities_v3';
  const LS_DEFAULT='_prayer_default_city_v3';
  const LS_CACHE='_prayer_cache_v3_';
- const MASTER_CACHE_KEY_PRAYER='_cities_master_cache_v1';
+ const MASTER_CACHE_KEY_PRAYER='_cities_master_cache_v2';
  const MASTER_URL_PRAYER='./cities.json';
  const UNIFIED_USER_KEY_PRAYER='_unified_user_cities_v1';
  const SAYEGH_USER_KEY='_prayer_compat_sayegh_v3';
@@ -5877,7 +5877,7 @@ button.old-export-hidden {
    try{
     var statusEl=document.getElementById('dm-cities-status'); statusEl.textContent='جاري التصدير...';
     var allData={};
-    var cityKeys=['sayegh_dynamic_cities_v3','_unified_user_cities_v1','_prayer_cities_v3','_prayer_default_city_v3','_cities_master_cache_v1','prayer_cities_v3','_cities_master_cache_v1','dynamic_cities','customCities'];
+    var cityKeys=['sayegh_dynamic_cities_v3','_unified_user_cities_v1','_prayer_cities_v3','_prayer_default_city_v3','_cities_master_cache_v2','prayer_cities_v3','_cities_master_cache_v2','dynamic_cities','customCities'];
     cityKeys.forEach(k=>{
      try{ var v=localStorage.getItem(k); if(v) { try{ allData[k]=JSON.parse(v); }catch(e){ allData[k]=v; } } }catch(e){}
     });
@@ -5952,7 +5952,7 @@ button.old-export-hidden {
      
      // دمج كل المدن المستوردة في كل المفاتيح الموحدة
      var allImportedCities=[];
-     var cityKeys=['sayegh_dynamic_cities_v3','_unified_user_cities_v1','_prayer_cities_v3','prayer_cities_v3','_cities_master_cache_v1'];
+     var cityKeys=['sayegh_dynamic_cities_v3','_unified_user_cities_v1','_prayer_cities_v3','prayer_cities_v3','_cities_master_cache_v2'];
      // جمع كل المدن من أي مفتاح موجود في الملف
      cityKeys.forEach(k=>{
       if(data[k] && Array.isArray(data[k])) allImportedCities = allImportedCities.concat(data[k]);
@@ -5978,7 +5978,7 @@ button.old-export-hidden {
       try{ localStorage.setItem('sayegh_dynamic_cities_v3', JSON.stringify(finalArr)); }catch(e){}
       try{ localStorage.setItem('_unified_user_cities_v1', JSON.stringify(finalArr)); }catch(e){}
       try{ localStorage.setItem('_prayer_cities_v3', JSON.stringify(finalArr)); }catch(e){}
-      try{ localStorage.setItem('_cities_master_cache_v1', JSON.stringify(finalArr)); }catch(e){}
+      try{ localStorage.setItem('_cities_master_cache_v2', JSON.stringify(finalArr)); }catch(e){}
       // تحديث المتغيرات العالمية
       try{ window._sayeghCities=finalArr; window._masterCities=finalArr; window._prayerCities=finalArr; }catch(e){}
       statusEl.textContent='✅ تم دمج '+allImportedCities.length+' مدينة، المجموع: '+finalArr.length+'. سيتم التحديث...';
@@ -6562,7 +6562,7 @@ window.openQuranSystem = async function(){
     'liveBoxActive',
     '_prayer_default_city_v3',
     'sayegh_dynamic_cities_v3',
-    '_cities_master_cache_v1',
+    '_cities_master_cache_v2',
     'taqweem_final_unified',
     '_last_successful_fetch_time',
     '_first_auto_fetch_done',
