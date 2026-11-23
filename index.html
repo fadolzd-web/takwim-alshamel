@@ -7166,341 +7166,22 @@ button.old-export-hidden {
 
 <div id="taq-qibla-page" dir="rtl" lang="ar" style="display:none;position:relative;width:100%;min-height:100vh;background:#0a1f14;color:#f6e9c7;font-family:system-ui,-apple-system,sans-serif;">
 <div style="position:relative;background:#0a1f14;border-bottom:1px solid rgba(212,175,55,0.25);padding:10px 14px;display:flex;align-items:center;gap:10px"><button onclick="window.closeQiblaPage()" aria-label="رجوع للتقويم" style="height:38px;padding:0 16px;border-radius:999px;background:#132a1a;border:1px solid rgba(212,175,55,0.4);color:#D4AF37;font-weight:800;font-size:13px;cursor:pointer">← رجوع للتقويم</button><div style="font-weight:900;font-size:16px;color:#D4AF37">🧭 بوصلتي</div></div>
-<div id="taq-qibla-loading" style="display:none;max-width:640px;margin:0 auto;padding:60px 16px;text-align:center"><div style="font-size:32px;margin-bottom:12px">🧭</div><div style="font-size:16px;font-weight:800;color:#D4AF37">جارٍ تحميل القبلة…</div><div style="font-size:12px;color:rgba(246,233,199,0.5);margin-top:8px">إذا بقيت هذه الرسالة، تحقق من وجود qibla-data.json بجانب التقويم</div></div>
-<div id="taq-qibla-error" style="display:none;max-width:640px;margin:0 auto;padding:40px 16px;text-align:center"><div style="background:#fff;border:1px solid rgba(212,175,55,0.3);border-radius:20px;padding:24px;color:#1a2e1a"><div style="font-size:28px;margin-bottom:10px">⚠️</div><div style="font-weight:900;font-size:16px;margin-bottom:8px">تعذّر تحميل بيانات القبلة</div><div style="font-size:13px;color:#555;line-height:1.8">تأكد من وجود ملف <b>qibla-data.json</b> بجانب التقويم، ثم أعد المحاولة.</div><div style="display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap"><button onclick="window.openQiblaPage()" style="padding:10px 20px;border-radius:999px;background:#15803D;color:#fff;border:none;font-weight:800;cursor:pointer">إعادة المحاولة</button><button onclick="window.closeQiblaPage()" style="padding:10px 20px;border-radius:999px;background:#fff;border:1.5px solid #D4AF37;font-weight:800;cursor:pointer">رجوع للتقويم</button></div></div></div>
-<div id="taq-qibla-main" style="display:none;max-width:640px;margin:0 auto;padding:16px 12px 40px">
-<div style="text-align:center"><div style="font-size:13px;color:#D4AF37;font-weight:700">بسم الله الرحمن الرحيم</div><div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:4px">حدد اتجاهك بدقة</div></div>
-<div id="taq-qibla-shrines" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:14px"></div>
-<div style="text-align:center;margin-top:12px"><div id="taq-qibla-shrine-name" style="font-size:14px;font-weight:800;color:#fff">الكعبة المشرفة</div><div id="taq-qibla-loc" style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px">—</div></div>
-<div id="taq-qibla-activate-wrap" style="display:none;margin-top:14px"><button onclick="window._taqQiblaActivate()" style="width:100%;height:44px;border-radius:999px;background:#D4AF37;color:#0a1f14;font-weight:800;font-size:14px;border:none;cursor:pointer">تفعيل البوصلة — اضغط للسماح</button></div>
-<div style="position:relative;width:340px;height:340px;margin:22px auto 0">
-<div style="position:absolute;left:-24px;top:-24px;width:388px;height:388px;border-radius:50%;background:rgba(212,175,55,0.08)"></div>
-<div style="position:relative;width:340px;height:340px;border-radius:50%;background:#12261a;border:2px solid rgba(212,175,55,0.4);overflow:hidden">
-<div id="taq-qibla-rose" style="position:absolute;left:0;top:0;width:100%;height:100%"></div>
-<div id="taq-qibla-kaaba-wrap" style="position:absolute;left:0;top:0;width:100%;height:100%"><div style="position:absolute;left:50%;top:10px;width:44px;height:44px;margin-left:-22px;border-radius:50%;background:#D4AF37;color:#0a1f14;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900">🕋</div></div>
-<div style="position:absolute;left:50%;top:50%;width:150px;height:150px;margin-left:-75px;margin-top:-75px;border-radius:50%;background:#0a1f14;border:1px solid rgba(212,175,55,0.3);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8px">
-<div id="taq-qibla-bearing" style="font-size:30px;font-weight:900;color:#fff;line-height:1">—°</div>
-<div id="taq-qibla-dir" style="font-size:11px;color:#D4AF37;margin-top:4px">—</div>
-<div id="taq-qibla-dist" style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:4px;line-height:1.5">—</div>
+<iframe id="taq-qibla-iframe" title="القبلة" style="width:100%;height:calc(100vh - 58px);border:none;display:block;background:#0a1f14"></iframe>
 </div>
-<div style="position:absolute;left:50%;top:50%;width:10px;height:10px;margin-left:-5px;margin-top:-5px;border-radius:50%;background:#D4AF37"></div>
-</div>
-</div>
-<div style="text-align:center;margin-top:14px"><div id="taq-qibla-se" style="display:inline-block;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:800;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6)">—</div><div id="taq-qibla-bearing-precise" style="font-size:11px;color:rgba(212,175,55,0.7);margin-top:8px">—</div><div id="taq-qibla-aligned" style="display:none;margin-top:8px"><span style="display:inline-block;padding:6px 12px;border-radius:999px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#6ee7b7;font-size:11px;font-weight:800">● اتجاه القبلة صحيح ✓</span></div><div id="taq-qibla-wtrue" style="font-size:10px;color:rgba(127,219,143,0.8);margin-top:8px;direction:ltr">—</div></div>
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:18px">
-<div style="border-radius:16px;background:#12261a;border:1px solid #1d3d29;padding:12px;text-align:center"><div style="font-size:10px;color:rgba(255,255,255,0.4)">الاتجاه</div><div id="taq-qibla-dir-2" style="font-size:12px;font-weight:800;color:#fff;margin-top:4px">—</div><div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:4px">من الشمال</div></div>
-<div style="border-radius:16px;background:#12261a;border:1px solid #1d3d29;padding:12px;text-align:center"><div style="font-size:10px;color:rgba(255,255,255,0.4)">الانحراف المغناطيسي</div><div id="taq-qibla-decl" style="font-size:13px;font-weight:800;color:#fff;margin-top:4px">—</div><div style="font-size:10px;color:rgba(110,231,183,0.7);margin-top:4px">WMM2025</div></div>
-<div style="border-radius:16px;background:#12261a;border:1px solid #1d3d29;padding:12px;text-align:center"><div style="font-size:10px;color:rgba(255,255,255,0.4)">الموقع</div><div id="taq-qibla-city-short" style="font-size:12px;font-weight:800;color:#fff;margin-top:4px">—</div><button onclick="window._taqQiblaRefreshGPS()" style="margin-top:8px;padding:6px 12px;border-radius:999px;background:#D4AF37;color:#0a1f14;border:none;font-size:11px;font-weight:800;cursor:pointer">تحديث الموقع 📍</button></div>
-</div>
-<div style="margin-top:18px;background:#12261a;border:1px solid #1d3d29;border-radius:16px;padding:12px"><div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:8px">🔍 بحث مدينة</div><input id="taq-qibla-city-input" placeholder="اكتب اسم المدينة... مثال: طرابلس، بيروت، النجف" autocomplete="off" style="width:100%;height:40px;border-radius:999px;background:#0a1f14;border:1px solid rgba(212,175,55,0.3);color:#fff;padding:0 14px;font-size:13px;box-sizing:border-box" /><div id="taq-qibla-city-results" style="margin-top:10px"></div><div id="taq-qibla-city-hint" style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:8px">البحث من قاعدة مدن التقويم — بلا حاجة للنت. اختر مدينة لتثبيت موقعك.</div></div>
-<div style="margin-top:18px;background:#12261a;border:1px solid #1d3d29;border-radius:16px;padding:12px"><div style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.8">⚠️ ابعد الجوال عن المعدن والمغناطيس. إذا كانت البوصلة غير مستقرة، حرك الجهاز على شكل ∞ لمعايرتها. عند تثبيت الاتجاه الصحيح، اجعل أعلى الجوال باتجاه الكعبة.</div></div>
-<div style="text-align:center;margin-top:22px;font-size:11px;color:rgba(212,175,55,0.7)">إعداد الشيخ فضل زين الدين</div>
-</div>
-</div>
-<style id="taq-qibla-style"> #taq-qibla-page { font-family:system-ui,-apple-system,sans-serif; background:#0a1f14; color:#f6e9c7; } #taq-qibla-page input { outline:none; } #taq-qibla-page input:focus { border-color:#D4AF37; } #taq-qibla-page button { -webkit-tap-highlight-color:transparent; } #taq-qibla-page .taq-qibla-city-item { display:flex;justify-content:space-between;align-items:center;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer; } #taq-qibla-page .taq-qibla-city-item:last-child { border-bottom:none; } </style>
-<script id="taq-qibla-script">/* === القبلة — صفحة كاملة مثل الخيرة | base v12 | بلا استيراد خطوط | بياناتها في qibla-data.json بجانب التقويم — تحميل غير متزامن | بلا طبقة ثابتة وبلا ضبابية وبلا عناصر وهمية وبلا حركة تلقائية === */
+<style id="taq-qibla-style"> #taq-qibla-page { font-family:system-ui,-apple-system,sans-serif; background:#0a1f14; color:#f6e9c7; } #taq-qibla-page iframe { display:block; width:100%; border:none; } </style>
+<script id="taq-qibla-script">/* === القبلة — فتح الملف الأصلي كما هو داخل إطار | base v13 من base-v11 النظيف | لا تغيير في ملف القبلة | الإطار يعزل القبلة عن التقويم === */
 (function(){
-var CACHE_KEY='qibla_data_cache_v1';
-var SHRINES=null;
-var shrineIdx=0;
-try{ var v=localStorage.getItem('qibla_shrine_idx'); if(v!==null) shrineIdx=parseInt(v,10)||0; }catch(e){}
-var loc=null;
-var heading=0;
-var headingInit=false;
-var lastUpdate=0;
-var listening=false;
-var citiesCache=null;
-function loadDataAsync(){
-if(SHRINES) return Promise.resolve(SHRINES);
-try{ var raw=localStorage.getItem(CACHE_KEY); if(raw){ var p=JSON.parse(raw); if(p && p.shrines && Array.isArray(p.shrines) && p.shrines.length>=1){ SHRINES=p.shrines; return Promise.resolve(SHRINES); } } }catch(e){}
-function tryUrl(u){
-return fetch(u,{cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error('fetch '+r.status); return r.json(); }).then(function(p2){
-if(p2 && p2.shrines && Array.isArray(p2.shrines) && p2.shrines.length>=1){ SHRINES=p2.shrines; try{localStorage.setItem(CACHE_KEY, JSON.stringify(p2));}catch(e){} return SHRINES; }
-throw new Error('bad data');
-});
-}
-return tryUrl('./qibla-data.json').catch(function(){ return tryUrl('qibla-data.json'); }).catch(function(){ return null; });
-}
-function getShrine(){
-if(!SHRINES) return null;
-var s=SHRINES[shrineIdx]||SHRINES[0];
-if(s && s.id==='custom'){
-try{ var cs=localStorage.getItem('qibla_custom_target'); if(cs){ var c=JSON.parse(cs); if(c && Math.abs(c.lat)>0.001) return {id:'custom',name:c.name||'موقع مخصص',short:'مخصص',emoji:'⭐',lat:c.lat,lon:c.lon}; } }catch(e){}
-}
-return s;
-}
-function toRad(d){ return d*Math.PI/180; }
-function toDeg(r){ return r*180/Math.PI; }
-function calcBearing(lat,lon,tLat,tLon){
-var phi1=toRad(lat), lambda1=toRad(lon), phi2=toRad(tLat), lambda2=toRad(tLon);
-var dLambda=lambda2-lambda1;
-var y=Math.sin(dLambda)*Math.cos(phi2);
-var x=Math.cos(phi1)*Math.sin(phi2)-Math.sin(phi1)*Math.cos(phi2)*Math.cos(dLambda);
-var brng=(toDeg(Math.atan2(y,x))+360)%360;
-var dLat=phi2-phi1, dLon=lambda2-lambda1;
-var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(phi1)*Math.cos(phi2)*Math.sin(dLon/2)*Math.sin(dLon/2);
-var dist=6371*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-return {bearing:brng, distanceKm:dist};
-}
-function dirName(b){
-var names=['شمال','شمال-شمال شرق','شمال شرق','شرق-شمال شرق','شرق','شرق-جنوب شرق','جنوب شرق','جنوب-جنوب شرق','جنوب','جنوب-جنوب غرب','جنوب غرب','غرب-جنوب غرب','غرب','غرب-شمال غرب','شمال غرب','شمال-شمال غرب'];
-return names[Math.round(b/22.5)%16];
-}
-function declCalc(lat,lon){
-var yr=(new Date().getFullYear()-2026);
-var decl=4.2+0.02*(lon-36)-0.01*(lat-34.4)+0.08*yr;
-var wmmLon=lon-36;
-if(Math.abs(wmmLon)>10) decl+=0.15*wmmLon*0.01;
-return decl;
-}
-function getTaqwimCity(){
-try{
-var code=null; try{ code=localStorage.getItem('_selectedSayeghCode'); }catch(e){}
-var list=null;
-if(window.MASTER_CITIES && window.MASTER_CITIES.length) list=window.MASTER_CITIES;
-else if(window.MASTER_CITIES_FALLBACK) list=window.MASTER_CITIES_FALLBACK;
-if(list && code){ for(var i=0;i<list.length;i++){ if(String(list[i].code)===String(code)){ return {lat:list[i].lat, lon:(list[i].lng!=null?list[i].lng:list[i].lon), name:list[i].name}; } } }
-if(list && list.length){ return {lat:list[0].lat, lon:(list[0].lng!=null?list[0].lng:list[0].lon), name:list[0].name}; }
-}catch(e){}
-return {lat:32.026, lon:44.346, name:'النجف الأشرف'};
-}
-function loadLoc(){
-try{ var raw=localStorage.getItem('qibla_last_loc'); if(raw){ var p=JSON.parse(raw); if(p && p.lat && p.lon){ loc=p; return; } } }catch(e){}
-var tc=getTaqwimCity();
-loc={lat:tc.lat, lon:tc.lon, accuracy:50, city:tc.name};
-}
-function saveLoc(){ try{ localStorage.setItem('qibla_last_loc', JSON.stringify(loc)); }catch(e){} }
-function setText(id,txt){ var el=document.getElementById(id); if(el) el.textContent=txt; }
-function updateDial(){
-if(!loc || !SHRINES) return;
-var shrine=getShrine(); if(!shrine || !shrine.lat) return;
-var res=calcBearing(loc.lat, loc.lon, shrine.lat, shrine.lon);
-var decl=declCalc(loc.lat, loc.lon);
-var WTrue=(heading+decl+360)%360;
-var Se=(res.bearing-WTrue+360)%360;
-var SeRel=Se>180?Se-360:Se;
-var SeAbs=Math.min(Se,360-Se);
-var rose=document.getElementById('taq-qibla-rose'); if(rose) rose.style.transform='rotate('+(-WTrue)+'deg)';
-var kaabaWrap=document.getElementById('taq-qibla-kaaba-wrap'); if(kaabaWrap) kaabaWrap.style.transform='rotate('+Se+'deg)';
-setText('taq-qibla-bearing', Math.round(res.bearing)+'°');
-setText('taq-qibla-bearing-precise', res.bearing.toFixed(2)+'° دقة');
-setText('taq-qibla-dist', (res.distanceKm<10?res.distanceKm.toFixed(1):String(Math.round(res.distanceKm)))+' كم إلى '+shrine.short);
-setText('taq-qibla-dir', dirName(res.bearing));
-setText('taq-qibla-dir-2', dirName(res.bearing));
-setText('taq-qibla-decl', (decl>0?'+':'')+decl.toFixed(1)+'°');
-setText('taq-qibla-wtrue', 'WTrue: '+WTrue.toFixed(1)+'°   Se: '+Se.toFixed(1)+'°   bearing: '+res.bearing.toFixed(1)+'°');
-setText('taq-qibla-se', (SeRel>0?'+':'')+SeRel.toFixed(1)+'° '+(SeAbs<5?'صحيح ✓':'نسبي'));
-setText('taq-qibla-shrine-name', shrine.name);
-setText('taq-qibla-loc', (loc.city?loc.city+' • ':'')+loc.lat.toFixed(4)+' , '+loc.lon.toFixed(4)+(loc.accuracy?' • دقة '+Math.round(loc.accuracy)+'م':''));
-setText('taq-qibla-city-short', loc.city||'GPS');
-var pill=document.getElementById('taq-qibla-se');
-if(pill){
-if(SeAbs<5){ pill.style.background='rgba(16,185,129,0.2)'; pill.style.border='1px solid rgba(16,185,129,0.5)'; pill.style.color='#6ee7b7'; }
-else if(SeAbs<30){ pill.style.background='rgba(251,146,60,0.2)'; pill.style.border='1px solid rgba(251,146,60,0.4)'; pill.style.color='#fdba74'; }
-else{ pill.style.background='rgba(239,68,68,0.2)'; pill.style.border='1px solid rgba(239,68,68,0.4)'; pill.style.color='#fca5a5'; }
-}
-var aligned=document.getElementById('taq-qibla-aligned'); if(aligned) aligned.style.display=(SeAbs<5?'block':'none');
-}
-function smoothHeading(newH){
-if(!headingInit){ heading=newH; headingInit=true; return heading; }
-var diff=newH-heading;
-while(diff>180) diff-=360;
-while(diff<-180) diff+=360;
-var absDiff=Math.abs(diff);
-var isFlat=(window._qiblaLastBeta!=null && Math.abs(window._qiblaLastBeta)<15);
-if(absDiff>179 && !isFlat) return heading;
-var factor=isFlat?0.55:absDiff>15?0.26:absDiff>5?0.18:0.12;
-heading=(heading+diff*factor+360)%360;
-return heading;
-}
-function onOrientation(ev){
-var now=Date.now(); if(now-lastUpdate<30) return; lastUpdate=now;
-if(typeof window.__qiblaNativeAz==='number' && !isNaN(window.__qiblaNativeAz)){
-heading=smoothHeading(window.__qiblaNativeAz); updateDial(); return;
-}
-var q=null;
-if(ev.webkitCompassHeading!==undefined && ev.webkitCompassHeading!==null && !isNaN(ev.webkitCompassHeading)){ q=ev.webkitCompassHeading; }
-else if(ev.alpha!==null && !isNaN(ev.alpha)){
-q=ev.alpha; window._qiblaLastBeta=ev.beta;
-try{ if(ev.beta!==null && Math.abs(ev.beta)<15){ q=(360-q+360)%360; } }catch(e){}
-}
-if(q===null || isNaN(q)) return;
-heading=smoothHeading(q); updateDial();
-}
-function startCompass(){
-if(listening) return; listening=true;
-try{ window.addEventListener('deviceorientation', onOrientation, true); }catch(e){}
-try{ window.addEventListener('deviceorientationabsolute', onOrientation, true); }catch(e){}
-}
-function stopCompass(){
-if(!listening) return; listening=false;
-try{ window.removeEventListener('deviceorientation', onOrientation, true); }catch(e){}
-try{ window.removeEventListener('deviceorientationabsolute', onOrientation, true); }catch(e){}
-}
-var prevNative=window.onNativeAzimuth;
-window.onNativeAzimuth=function(az){
-try{ if(prevNative) prevNative(az); }catch(e){}
-try{ var n=parseFloat(az); if(!isNaN(n)){ window.__qiblaNativeAz=(n+360)%360; heading=smoothHeading(window.__qiblaNativeAz); updateDial(); } }catch(e){}
-};
-window.addEventListener('message', function(e){ try{ if(e.data && e.data.type==='native-azimuth'){ window.onNativeAzimuth(e.data.az); } }catch(err){} });
-function renderRose(){
-var rose=document.getElementById('taq-qibla-rose'); if(!rose) return;
-if(rose.dataset.built==='1') return; rose.dataset.built='1';
-for(var d=0; d<360; d+=10){
-var tick=document.createElement('div');
-var isCard=(d%90===0);
-tick.style.cssText='position:absolute;left:50%;top:0;width:'+(isCard?'3px':'1px')+';height:'+(isCard?'14px':'8px')+';margin-left:-1px;background:'+(isCard?'#D4AF37':'rgba(212,175,55,0.35)')+';transform:rotate('+d+'deg);transform-origin:50% 170px;';
-rose.appendChild(tick);
-}
-var cards=[{t:'شمال',left:'50%',top:'20px',ml:'-16px'},{t:'شرق',left:'auto',top:'50%',ml:'0px'},{t:'جنوب',left:'50%',top:'auto',ml:'-16px'},{t:'غرب',left:'8px',top:'50%',ml:'0px'}];
-var labels=[{t:'شمال',s:'left:50%;top:22px;margin-left:-16px;'},{t:'شرق',s:'right:14px;top:50%;margin-top:-8px;'},{t:'جنوب',s:'left:50%;bottom:22px;margin-left:-16px;'},{t:'غرب',s:'left:14px;top:50%;margin-top:-8px;'}];
-labels.forEach(function(L){
-var el=document.createElement('div');
-el.textContent=L.t;
-el.style.cssText='position:absolute;'+L.s+'font-size:13px;font-weight:900;color:#D4AF37;';
-rose.appendChild(el);
-});
-}
-function renderShrines(){
-var box=document.getElementById('taq-qibla-shrines'); if(!box || !SHRINES) return;
-box.innerHTML='';
-SHRINES.forEach(function(s,i){
-var b=document.createElement('button'); b.type='button';
-var active=(i===shrineIdx);
-b.style.cssText='padding:6px 12px;border-radius:999px;font-weight:800;font-size:12px;cursor:pointer;'+(active?'background:#D4AF37;color:#0a1f14;border:1px solid #D4AF37;':'background:#132a1a;color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1);');
-b.textContent=(s.emoji||'')+' '+s.short;
-b.onclick=function(){ shrineIdx=i; try{ localStorage.setItem('qibla_shrine_idx', String(i)); }catch(e){} renderShrines(); updateDial(); };
-box.appendChild(b);
-});
-}
-function loadCities(){
-if(citiesCache) return Promise.resolve(citiesCache);
-return fetch('./cities.json',{cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error('cities'); return r.json(); }).then(function(p){ if(Array.isArray(p) && p.length>10){ citiesCache=p; return p; } throw new Error('bad cities'); }).catch(function(){
-if(window.MASTER_CITIES && window.MASTER_CITIES.length){ citiesCache=window.MASTER_CITIES; return citiesCache; }
-if(window.MASTER_CITIES_FALLBACK){ citiesCache=window.MASTER_CITIES_FALLBACK; return citiesCache; }
-return [];
-});
-}
-function renderRecentCities(){
-var box=document.getElementById('taq-qibla-city-results'); if(!box) return;
-var inp=document.getElementById('taq-qibla-city-input'); if(inp && inp.value.trim()) return;
-var arr=[]; try{ arr=JSON.parse(localStorage.getItem('qibla_cities')||'[]'); }catch(e){ arr=[]; }
-if(!arr.length){ box.innerHTML='<div style="font-size:12px;color:rgba(255,255,255,0.4);padding:8px 0">لا مدن سابقة بعد — ابحث عن مدينة لتثبيتها.</div>'; return; }
-var html='<div style="font-size:11px;color:rgba(212,175,55,0.7);margin-bottom:6px">مدن سابقة • '+arr.length+'</div>';
-arr.forEach(function(c){
-var bd=c.bearing!=null?c.bearing.toFixed(1)+'°':'—';
-var dist=c.distance!=null?Math.round(c.distance)+'كم':(c.distanceKm!=null?Math.round(c.distanceKm)+'كم':'—');
-html+='<div class="taq-qibla-city-item" data-lat="'+c.lat+'" data-lon="'+c.lon+'" data-name="'+String(c.name||'').replace(/"/g,'&quot;')+'"><div><div style="font-size:13px;font-weight:800;color:#fff">'+c.name+'</div><div style="font-size:11px;color:rgba(255,255,255,0.4)">'+Number(c.lat).toFixed(2)+' , '+Number(c.lon).toFixed(2)+'</div></div><div style="display:flex;gap:6px"><span style="font-size:11px;font-weight:800;color:#D4AF37;background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.25);border-radius:999px;padding:3px 8px">'+bd+'</span><span style="font-size:11px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.06);border-radius:999px;padding:3px 8px">'+dist+'</span></div></div>';
-});
-box.innerHTML=html;
-bindCityClicks();
-}
-function bindCityClicks(){
-var box=document.getElementById('taq-qibla-city-results'); if(!box) return;
-var items=box.querySelectorAll('.taq-qibla-city-item');
-items.forEach(function(el){
-el.onclick=function(){
-var lat=parseFloat(el.getAttribute('data-lat')); var lon=parseFloat(el.getAttribute('data-lon')); var name=el.getAttribute('data-name');
-if(!isNaN(lat) && !isNaN(lon)) selectCity(lat,lon,name);
-};
-});
-}
-function selectCity(lat,lon,name){
-loc={lat:lat, lon:lon, accuracy:50, city:name};
-saveLoc();
-try{
-var shrine=getShrine(); var calc=calcBearing(lat,lon,shrine.lat,shrine.lon);
-var arr=[]; try{ arr=JSON.parse(localStorage.getItem('qibla_cities')||'[]'); }catch(e){ arr=[]; }
-var entry={name:name, lat:lat, lon:lon, bearing:calc.bearing, distance:calc.distanceKm};
-var filtered=arr.filter(function(c){ return c.name!==name; });
-filtered.unshift(entry);
-localStorage.setItem('qibla_cities', JSON.stringify(filtered.slice(0,20)));
-}catch(e){}
-var inp=document.getElementById('taq-qibla-city-input'); if(inp) inp.value='';
-renderRecentCities(); updateDial();
-}
-function requestGPS(force){
-if(window._qiblaGpsLocked && !force) return;
-if(!navigator.geolocation){
-var st=document.getElementById('taq-qibla-loc'); if(st) st.textContent='المتصفح لا يدعم تحديد الموقع — استعمل البحث عن مدينة';
-return;
-}
-var opts={enableHighAccuracy:true, timeout:force?30000:15000, maximumAge:force?0:60000};
-navigator.geolocation.getCurrentPosition(function(pos){
-loc={lat:pos.coords.latitude, lon:pos.coords.longitude, accuracy:pos.coords.accuracy, city:(loc && loc.city)?loc.city:null};
-saveLoc(); window._qiblaGpsLocked=true; updateDial();
-}, function(err){
-var msg='تعذر تحديد الموقع';
-if(err && err.code===1) msg='تم رفض إذن الموقع. فعّل الموقع من إعدادات التطبيق';
-else if(err && err.code===2) msg='تعذر تحديد الموقع. تأكد أن GPS مفعل وأنك في مكان مفتوح';
-else if(err && err.code===3) msg='انتهت مهلة تحديد الموقع. حاول مرة أخرى';
-var st=document.getElementById('taq-qibla-loc'); if(st) st.textContent=msg+' — استعمل البحث عن مدينة';
-}, opts);
-}
-function setupCityInput(){
-var inp=document.getElementById('taq-qibla-city-input'); if(!inp || inp.dataset.hooked==='1') return; inp.dataset.hooked='1';
-var timer=null;
-inp.addEventListener('input', function(){
-var q=inp.value.trim();
-var box=document.getElementById('taq-qibla-city-results'); if(!box) return;
-if(timer) clearTimeout(timer);
-if(!q){ renderRecentCities(); return; }
-box.innerHTML='<div style="padding:12px;text-align:center;color:rgba(212,175,55,0.6);font-size:12px">جاري البحث...</div>';
-timer=setTimeout(function(){
-loadCities().then(function(list){
-var f=q.toLowerCase();
-var res=list.filter(function(c){ return String(c.name||'').toLowerCase().indexOf(f)!==-1; }).slice(0,20);
-if(!res.length){ box.innerHTML='<div style="padding:12px;text-align:center;color:rgba(255,255,255,0.5);font-size:12px">لا نتائج لـ "'+q+'"</div>'; return; }
-var shrine=getShrine();
-var html='<div style="font-size:11px;color:rgba(212,175,55,0.7);margin-bottom:6px">نتائج البحث • '+res.length+'</div>';
-res.forEach(function(c){
-var la=c.lat, lo=(c.lng!=null?c.lng:c.lon);
-var calc=calcBearing(la,lo,shrine.lat,shrine.lon);
-var short=String(c.name||'');
-html+='<div class="taq-qibla-city-item" data-lat="'+la+'" data-lon="'+lo+'" data-name="'+short.replace(/"/g,'&quot;')+'"><div><div style="font-size:13px;font-weight:800;color:#fff">'+short+'</div><div style="font-size:11px;color:rgba(255,255,255,0.4)">'+Number(la).toFixed(2)+' , '+Number(lo).toFixed(2)+'</div></div><div style="display:flex;gap:6px"><span style="font-size:11px;font-weight:800;color:#D4AF37;background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.25);border-radius:999px;padding:3px 8px">'+calc.bearing.toFixed(1)+'°</span><span style="font-size:11px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.06);border-radius:999px;padding:3px 8px">'+Math.round(calc.distanceKm)+'كم</span></div></div>';
-});
-box.innerHTML=html; bindCityClicks();
-});
-}, 200);
-});
-}
-window._taqQiblaActivate=function(){
-if(typeof DeviceOrientationEvent!=='undefined' && typeof DeviceOrientationEvent.requestPermission==='function'){
-DeviceOrientationEvent.requestPermission().then(function(p){
-if(p==='granted'){ var w=document.getElementById('taq-qibla-activate-wrap'); if(w) w.style.display='none'; startCompass(); requestGPS(true); }
-}).catch(function(){});
-} else {
-var w2=document.getElementById('taq-qibla-activate-wrap'); if(w2) w2.style.display='none';
-startCompass(); requestGPS(true);
-}
-};
-window._taqQiblaRefreshGPS=function(){ requestGPS(true); };
+var IFRAME_SRC='./qibla.html';
+function getFrame(){ return document.getElementById('taq-qibla-iframe'); }
 window.openQiblaPage=function(){
 var root=document.getElementById('root');
 var page=document.getElementById('taq-qibla-page');
 if(!page) return;
-var load=document.getElementById('taq-qibla-loading');
-var err=document.getElementById('taq-qibla-error');
-var main=document.getElementById('taq-qibla-main');
-if(main) main.style.display='none';
-if(err) err.style.display='none';
-if(load) load.style.display='block';
+var fr=getFrame();
+if(fr && !fr.getAttribute('src')){ fr.setAttribute('src', IFRAME_SRC); }
 if(root) root.style.display='none';
 page.style.display='block';
-window.scrollTo(0,0); try{ page.scrollTo(0,0); }catch(e){}
-loadDataAsync().then(function(d){
-if(!d){ if(load) load.style.display='none'; if(err) err.style.display='block'; return; }
-if(load) load.style.display='none';
-if(main) main.style.display='block';
-renderShrines(); renderRose(); loadLoc(); setupCityInput(); renderRecentCities(); updateDial();
-if(typeof DeviceOrientationEvent!=='undefined' && typeof DeviceOrientationEvent.requestPermission==='function'){
-var w=document.getElementById('taq-qibla-activate-wrap'); if(w) w.style.display='block';
-} else {
-startCompass();
-}
-requestGPS(false);
-try{ page.scrollTo(0,0); }catch(e){}
-});
+window.scrollTo(0,0);
 };
 window.closeQiblaPage=function(){
 var root=document.getElementById('root');
@@ -7508,7 +7189,17 @@ var page=document.getElementById('taq-qibla-page');
 if(page) page.style.display='none';
 if(root) root.style.display='';
 window.scrollTo(0,0);
-stopCompass();
+};
+var prevNative=window.onNativeAzimuth;
+window.onNativeAzimuth=function(az){
+try{ if(prevNative) prevNative(az); }catch(e){}
+try{
+var fr=getFrame();
+if(fr && fr.contentWindow){
+fr.contentWindow.postMessage({type:'native-azimuth', az: az}, '*');
+if(fr.contentWindow.onNativeAzimuth) fr.contentWindow.onNativeAzimuth(az);
+}
+}catch(e){}
 };
 })();
 </script>
