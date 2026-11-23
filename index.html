@@ -3950,26 +3950,7 @@ let fetching=false;
    </div>`;
   document.body.appendChild(ov);
 
-      // BRIDGE: Java -> iframe
-      try{
-        var iframeEl = document.getElementById('qibla-iframe');
-        if(iframeEl){
-          window._nativeAzBridge = function(az){
-            try{
-              if(iframeEl.contentWindow){
-                iframeEl.contentWindow.postMessage({type:'native-azimuth', az: az}, '*');
-                if(iframeEl.contentWindow.onNativeAzimuth) iframeEl.contentWindow.onNativeAzimuth(az);
-              }
-            }catch(e){}
-          };
-          // وصل Java مباشرة للـ iframe
-          var prevOnNative = window.onNativeAzimuth;
-          window.onNativeAzimuth = function(az){
-            if(prevOnNative) try{prevOnNative(az)}catch(e){}
-            window._nativeAzBridge(az);
-          };
-        }
-      }catch(e){}
+      
 
   let inpName=document.getElementById('p-inp-name');
   let inpCode=document.getElementById('p-inp-code');
@@ -4145,26 +4126,7 @@ let fetching=false;
    </div>`;
   document.body.appendChild(ov);
 
-      // BRIDGE: Java -> iframe
-      try{
-        var iframeEl = document.getElementById('qibla-iframe');
-        if(iframeEl){
-          window._nativeAzBridge = function(az){
-            try{
-              if(iframeEl.contentWindow){
-                iframeEl.contentWindow.postMessage({type:'native-azimuth', az: az}, '*');
-                if(iframeEl.contentWindow.onNativeAzimuth) iframeEl.contentWindow.onNativeAzimuth(az);
-              }
-            }catch(e){}
-          };
-          // وصل Java مباشرة للـ iframe
-          var prevOnNative = window.onNativeAzimuth;
-          window.onNativeAzimuth = function(az){
-            if(prevOnNative) try{prevOnNative(az)}catch(e){}
-            window._nativeAzBridge(az);
-          };
-        }
-      }catch(e){}
+      
 
   let statusEl=document.getElementById('p-status');
   let cardsEl=document.getElementById('p-cards');
@@ -7164,44 +7126,8 @@ button.old-export-hidden {
 })();
 </script>
 
-<div id="taq-qibla-page" dir="rtl" lang="ar" style="display:none;position:relative;width:100%;min-height:100vh;background:#0a1f14;color:#f6e9c7;font-family:system-ui,-apple-system,sans-serif;">
-<div style="position:relative;background:#0a1f14;border-bottom:1px solid rgba(212,175,55,0.25);padding:10px 14px;display:flex;align-items:center;gap:10px"><button onclick="window.closeQiblaPage()" aria-label="رجوع للتقويم" style="height:38px;padding:0 16px;border-radius:999px;background:#132a1a;border:1px solid rgba(212,175,55,0.4);color:#D4AF37;font-weight:800;font-size:13px;cursor:pointer">← رجوع للتقويم</button><div style="font-weight:900;font-size:16px;color:#D4AF37">🧭 بوصلتي</div></div>
-<iframe id="taq-qibla-iframe" title="القبلة" style="width:100%;height:calc(100vh - 58px);border:none;display:block;background:#0a1f14"></iframe>
-</div>
-<style id="taq-qibla-style"> #taq-qibla-page { font-family:system-ui,-apple-system,sans-serif; background:#0a1f14; color:#f6e9c7; } #taq-qibla-page iframe { display:block; width:100%; border:none; } </style>
-<script id="taq-qibla-script">/* === القبلة — فتح الملف المصحح داخل إطار | base v14 من base-v13 النظيف | القبلة المصححة: وضع مدينة/GPS، بلا ترويسة داخلية، بلا زر أصفر، بلا تمرير أفقي، بوصلة مرنة | الإطار يعزل القبلة عن التقويم === */
-(function(){
-var IFRAME_SRC='./qibla.html';
-function getFrame(){ return document.getElementById('taq-qibla-iframe'); }
-window.openQiblaPage=function(){
-var root=document.getElementById('root');
-var page=document.getElementById('taq-qibla-page');
-if(!page) return;
-var fr=getFrame();
-if(fr && !fr.getAttribute('src')){ fr.setAttribute('src', IFRAME_SRC); }
-if(root) root.style.display='none';
-page.style.display='block';
-window.scrollTo(0,0);
-};
-window.closeQiblaPage=function(){
-var root=document.getElementById('root');
-var page=document.getElementById('taq-qibla-page');
-if(page) page.style.display='none';
-if(root) root.style.display='';
-window.scrollTo(0,0);
-};
-var prevNative=window.onNativeAzimuth;
-window.onNativeAzimuth=function(az){
-try{ if(prevNative) prevNative(az); }catch(e){}
-try{
-var fr=getFrame();
-if(fr && fr.contentWindow){
-fr.contentWindow.postMessage({type:'native-azimuth', az: az}, '*');
-if(fr.contentWindow.onNativeAzimuth) fr.contentWindow.onNativeAzimuth(az);
-}
-}catch(e){}
-};
-})();
-</script>
+
+
+<script id="taq-qibla-script">/* القبلة - صفحة كاملة بلا iframe | v16 جراحة نظيفة: زر القبلة يفتح qibla.html كصفحة كاملة، بلا إطار، بلا postMessage، بلا مراقب */(function(){window.openQiblaPage=function(){window.location.href='./qibla.html';};window.closeQiblaPage=function(){history.back();};})();</script>
 
 </body></html>
