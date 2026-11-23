@@ -6187,8 +6187,6 @@ button.old-export-hidden {
 .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
 </style>
 
-</body>
-
 <script id="apk-persistent-fix-step1">
 (function(){
   console.log('🔒 APK Persistent Fix Step1 - Najaf+Nojumi default, Tripoli for city');
@@ -6802,7 +6800,7 @@ button.old-export-hidden {
 </style>
 
 <style id="taq-khira-style">
-@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Reem+Kufi:wght@400;700&display=swap');
+/* بلا import — خطوط النظام فقط */
 #taq-khira-page {
   font-family:'Amiri','Traditional Arabic',serif;
   background:#0a1a0f;
@@ -6893,10 +6891,10 @@ button.old-export-hidden {
   content:"";position:absolute;bottom:0;left:50%;transform:translateX(-50%);
   width:140px;height:1.5px;background: linear-gradient(90deg,transparent,#D4AF37,transparent)}
 #taq-khira-page #taq-khira-landing {animation: slideUpFade 0.9s cubic-bezier(0.4,0,0.2,1) forwards; position:relative; z-index:1}
-#taq-khira-page .landing-anim-1 {animation: slideUpFade 0.7s 0.1s both}
-#taq-khira-page .landing-anim-2 {animation: slideUpFade 0.7s 0.25s both}
-#taq-khira-page .landing-anim-3 {animation: slideUpFade 0.7s 0.4s both}
-#taq-khira-page .landing-anim-4 {animation: slideUpFade 0.7s 0.55s both}
+#taq-khira-page .landing-anim-1 {animation: slideUpFade 0.7s 0.1s; opacity:1}
+#taq-khira-page .landing-anim-2 {animation: slideUpFade 0.7s 0.25s; opacity:1}
+#taq-khira-page .landing-anim-3 {animation: slideUpFade 0.7s 0.4s; opacity:1}
+#taq-khira-page .landing-anim-4 {animation: slideUpFade 0.7s 0.55s; opacity:1}
 #taq-khira-page .ayah-decorated {
   font-family:'Reem Kufi',serif;
   font-size:22px;font-weight:700;
@@ -6931,11 +6929,11 @@ button.old-export-hidden {
 @keyframes float {0%,100%{transform: translateY(0)}50%{transform: translateY(-6px)}}
 @keyframes shimmer {0%{background-position:-200% center}100%{background-position:200% center}}
 @keyframes pulseGlow {0%,100%{box-shadow:0 8px 24px rgba(212,175,55,0.25)}50%{box-shadow:0 12px 36px rgba(212,175,55,0.4), 0 0 0 1px rgba(212,175,55,0.2)}}
-#taq-khira-page{position:relative;overflow-x:hidden;}
+#taq-khira-page{overflow-x:hidden;}
 #taq-khira-page .result-card{--c:#15803D;}
 
 </style>
-<div id="taq-khira-page" dir="rtl" lang="ar" style="display:none;position:fixed;inset:0;z-index:9000;overflow-y:auto;overflow-x:hidden;background:#0a1a0f;color:#f6e9c7;font-family:'Amiri','Traditional Arabic',serif;"><div style="position:sticky;top:0;z-index:2;background:rgba(10,26,15,0.96);backdrop-filter:blur(8px);border-bottom:1px solid rgba(212,175,55,0.25);padding:10px 14px;display:flex;align-items:center;gap:10px"><button onclick="window.closeKhiraPage()" aria-label="رجوع للتقويم" style="height:38px;padding:0 16px;border-radius:999px;background:#132a1a;border:1px solid rgba(212,175,55,0.4);color:#D4AF37;font-weight:800;font-size:13px;cursor:pointer;font-family:'Reem Kufi'">← رجوع للتقويم</button><div style="font-weight:900;font-size:16px;color:#D4AF37;font-family:'Reem Kufi'">الخيرة المباركة</div></div><div id="taq-khira-landing">
+<div id="taq-khira-page" dir="rtl" lang="ar" style="display:none;position:fixed;inset:0;z-index:9000;overflow-y:auto;overflow-x:hidden;background:#0a1a0f;color:#f6e9c7;font-family:'Amiri','Traditional Arabic',serif;"><div style="position:sticky;top:0;z-index:2;background:rgba(10,26,15,0.96);backdrop-filter:blur(8px);border-bottom:1px solid rgba(212,175,55,0.25);padding:10px 14px;display:flex;align-items:center;gap:10px"><button onclick="window.closeKhiraPage()" aria-label="رجوع للتقويم" style="height:38px;padding:0 16px;border-radius:999px;background:#132a1a;border:1px solid rgba(212,175,55,0.4);color:#D4AF37;font-weight:800;font-size:13px;cursor:pointer;font-family:'Reem Kufi'">← رجوع للتقويم</button><div style="font-weight:900;font-size:16px;color:#D4AF37;font-family:'Reem Kufi'">الخيرة المباركة</div></div><div id="taq-khira-loading" style="display:none;max-width:640px;margin:0 auto;padding:60px 16px;text-align:center"><div style="font-size:32px;margin-bottom:12px">📖</div><div style="font-size:16px;font-weight:800;color:#D4AF37">جارٍ تحميل الخيرة…</div><div style="font-size:12px;color:rgba(246,233,199,0.5);margin-top:8px">إذا بقيت هذه الرسالة، تحقق من وجود khira-data.json بجانب التقويم</div></div><div id="taq-khira-error" style="display:none;max-width:640px;margin:0 auto;padding:40px 16px;text-align:center"><div style="background:#fff;border:1px solid rgba(212,175,55,0.3);border-radius:20px;padding:24px;color:#1a2e1a"><div style="font-size:28px;margin-bottom:10px">⚠️</div><div style="font-weight:900;font-size:16px;margin-bottom:8px">تعذّر تحميل بيانات الخيرة</div><div style="font-size:13px;color:#555;line-height:1.8">تأكد من وجود ملف <b>khira-data.json</b> بجانب التقويم، ثم أعد المحاولة.</div><div style="display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap"><button onclick="window.openKhiraPage()" style="padding:10px 20px;border-radius:999px;background:#15803D;color:#fff;border:none;font-weight:800;cursor:pointer">إعادة المحاولة</button><button onclick="window.closeKhiraPage()" style="padding:10px 20px;border-radius:999px;background:#fff;border:1.5px solid #D4AF37;font-weight:800;cursor:pointer">رجوع للتقويم</button></div></div></div><div id="taq-khira-landing">
   <div style="max-width:640px;margin:0 auto;padding:28px 16px">
     <div style="text-align:center;padding:28px 0 20px" class="landing-anim-1">
 
@@ -7007,25 +7005,23 @@ button.old-export-hidden {
 </div>
 
 </div>
-<script id="taq-khira-script">/* === الخيرة المباركة — صفحة كاملة بلا نافذة | base v7 | بياناتها في khira-data.json بجانب التقويم === */
+<script id="taq-khira-script">/* === الخيرة المباركة — صفحة كاملة بلا نافذة | base v8 | بلا import | بياناتها في khira-data.json بجانب التقويم — تحميل غير متزامن === */
 (function(){
   var CACHE_KEY='khira_data_cache_v1';
   var DATA=null;
   var cur=null;
-  function loadData(){
-    if(DATA) return DATA;
-    try{ var raw=localStorage.getItem(CACHE_KEY); if(raw){ var p=JSON.parse(raw); if(Array.isArray(p)&&p.length===302){ DATA=p; return DATA; } } }catch(e){}
-    try{
-      var xhr=new XMLHttpRequest(); xhr.open('GET','./khira-data.json',false); xhr.send(null);
-      if(xhr.status===200||xhr.status===0){ var p2=JSON.parse(xhr.responseText||'[]'); if(Array.isArray(p2)&&p2.length===302){ DATA=p2; try{localStorage.setItem(CACHE_KEY, JSON.stringify(p2));}catch(e){} return DATA; } }
-    }catch(e){}
-    return DATA;
+  function loadDataAsync(){
+    if(DATA) return Promise.resolve(DATA);
+    try{ var raw=localStorage.getItem(CACHE_KEY); if(raw){ var p=JSON.parse(raw); if(Array.isArray(p)&&p.length===302){ DATA=p; return Promise.resolve(DATA); } } }catch(e){}
+    function tryUrl(u){
+      return fetch(u,{cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error('fetch '+r.status); return r.json(); }).then(function(p2){
+        if(Array.isArray(p2)&&p2.length===302){ DATA=p2; try{localStorage.setItem(CACHE_KEY, JSON.stringify(p2));}catch(e){} return DATA; }
+        throw new Error('bad data');
+      });
+    }
+    return tryUrl('./khira-data.json').catch(function(){ return tryUrl('khira-data.json'); }).catch(function(){ return null; });
   }
-  function ensureData(){
-    if(!DATA) loadData();
-    if(!DATA){ alert('تعذر تحميل بيانات الخيرة. تأكد من وجود ملف khira-data.json بجانب التقويم.'); return false; }
-    return true;
-  }
+  function ensureData(){ return !!DATA; }
   function cryptoIndex(n){
     try{ var a=new Uint32Array(1); window.crypto.getRandomValues(a); return a[0]%n; }catch(e){ return Math.floor(Math.random()*n); }
   }
@@ -7127,6 +7123,7 @@ button.old-export-hidden {
     var page=document.getElementById('taq-khira-page'); if(page) page.scrollTo(0,0);
   }
   function doKhira(){
+    if(!DATA){ alert('جارٍ تحميل الخيرة… أعد فتح الصفحة.'); return; }
     if(!ensureData()) return;
     var idx=cryptoIndex(DATA.length);
     cur=DATA[idx]; renderResult(cur); saveHistory(cur);
@@ -7167,15 +7164,24 @@ button.old-export-hidden {
     var root=document.getElementById('root');
     var page=document.getElementById('taq-khira-page');
     if(!page) return;
-    if(!ensureData()) return;
     var land=document.getElementById('taq-khira-landing');
     var res=document.getElementById('taq-khira-result');
-    if(land) land.style.display='block';
+    var load=document.getElementById('taq-khira-loading');
+    var err=document.getElementById('taq-khira-error');
+    if(land) land.style.display='none';
     if(res) res.style.display='none';
-    renderHistory();
+    if(err) err.style.display='none';
+    if(load) load.style.display='block';
     if(root) root.style.display='none';
     page.style.display='block';
-    window.scrollTo(0,0); page.scrollTo(0,0);
+    window.scrollTo(0,0); try{ page.scrollTo(0,0); }catch(e){}
+    loadDataAsync().then(function(d){
+      if(!d){ if(load) load.style.display='none'; if(err) err.style.display='block'; return; }
+      if(load) load.style.display='none';
+      if(land) land.style.display='block';
+      renderHistory();
+      try{ page.scrollTo(0,0); }catch(e){}
+    });
   };
   window.closeKhiraPage=function(){
     var root=document.getElementById('root');
