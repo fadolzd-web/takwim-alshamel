@@ -1860,6 +1860,7 @@ window._saveSayeghCityAtomic = function(code){
   try{
     code = String(code||'').trim();
     if(!/^\d+$/.test(code)) return false;
+    var _oldCode = String(window._selectedSayeghCode||localStorage.getItem('_selectedSayeghCode')||'').trim();
     window._selectedSayeghCode = code;
     localStorage.setItem('_selectedSayeghCode', code);
     localStorage.setItem('_prayer_default_city_v3', code);
@@ -1874,6 +1875,8 @@ window._saveSayeghCityAtomic = function(code){
     /* الخطوة 6: تحديث الهيدرين فورا من محل الحفظ الذري نفسه، بلا تايمر وبلا polling. */
     try{ if(window.updateCityInDate) window.updateCityInDate(); }catch(e){}
     try{ if(window._updateCityHeader) window._updateCityHeader(); }catch(e){}
+    /* الخطوة 7: مزامنة الصلاة من المحل الذري نفسه، بلا MutationObserver وبلا تايمر. الكود تغير فعلا = اجلب أوقاته مرة وحدة. */
+    try{ if(_oldCode!==code && window.fetchPrayersAuto) window.fetchPrayersAuto(code); }catch(e){}
     // v19: إذا النجومي تلقائي، حدّث دبوسه لمدينة الصايغ الجديدة - مباشرة، بلا 50ms
     try{ if(window._v19_syncNojumiPinToSayeghCity) window._v19_syncNojumiPinToSayeghCity(); }catch(e){}
     return true;
@@ -2670,7 +2673,7 @@ function bindAll(){
   var target=btn.getAttribute('data-target');
   btn.onclick=function(e){ toggleBox(target, e); };
  });
- var sel=document.getElementById('sayegh-city-select'); if(sel) sel.addEventListener('change',window.updateSayeghPreview);
+ var sel=document.getElementById('sayegh-city-select'); if(sel) sel.addEventListener('change',function(){ try{ var _c=String(sel.value||'').trim(); if(_c && window._saveSayeghCityAtomic) window._saveSayeghCityAtomic(_c); }catch(e){} try{ if(window.updateSayeghPreview) window.updateSayeghPreview(); }catch(e){} });
  var tgl=document.getElementById('btn-toggle-edit'); if(tgl) tgl.addEventListener('click',function(e){e.stopPropagation(); var p=document.getElementById('edit-panel'); p.style.display=p.style.display==='none'?'flex':'none';});
  var addB=document.getElementById('btn-add-city'); if(addB) addB.addEventListener('click',function(e){e.stopPropagation(); window.addSayeghCity();});
  var delB=document.getElementById('btn-delete-city'); if(delB) delB.addEventListener('click',function(e){e.stopPropagation(); window.deleteSayeghCity();});
@@ -4152,14 +4155,14 @@ let fetching=false;
   document.getElementById('p-refresh').onclick=async()=>{
    statusEl.style.display='block';statusEl.innerHTML='⏳ جاري التحديث...';
    let r=await fetchPrayers(code);
-   if(r){cardsEl.innerHTML=prayerDarkHTML(r.prayers);hijriEl.textContent=r.hijri;miladiEl.textContent=r.miladi+' م';statusEl.textContent='✅ تم التحديث';setTimeout(()=>statusEl.style.display='none',1000);}
+   if(r){cardsEl.innerHTML=prayerDarkHTML(r.prayers);hijriEl.textContent=r.hijri;miladiEl.textContent=r.miladi+' م';statusEl.textContent='✅ تم التحديث';} /* الخطوة 8: التنبيه بيضل ظاهر لحد ما تسكر المودال، بلا تايمر 1000ms */
    else statusEl.textContent='❌ فشل التحديث';
   };
   if(!cached){
    (async()=>{
     let r=await fetchPrayers(code);
     let still=document.getElementById('prayer-main-overlay');
-    if(still&&r){let c=document.getElementById('p-cards');if(c)c.innerHTML=prayerDarkHTML(r.prayers);let h=document.getElementById('p-center-hijri');if(h)h.textContent=r.hijri;let m=document.getElementById('p-center-miladi');if(m)m.textContent=r.miladi+' م';let s=document.getElementById('p-status');if(s){s.textContent='✅ تم الحفظ';setTimeout(()=>s.style.display='none',800);}}
+    if(still&&r){let c=document.getElementById('p-cards');if(c)c.innerHTML=prayerDarkHTML(r.prayers);let h=document.getElementById('p-center-hijri');if(h)h.textContent=r.hijri;let m=document.getElementById('p-center-miladi');if(m)m.textContent=r.miladi+' م';let s=document.getElementById('p-status');if(s){s.textContent='✅ تم الحفظ';}} /* الخطوة 8: بلا تايمر 800ms */
    })();
   }
 
@@ -4725,17 +4728,20 @@ let fetching=false;
   let def=getDef();if(!def){openCitySelector(null);return;}
   let cache=getCache(def);openPrayerModal(def,cache);
  };
+ /* الخطوة 8: تفويض واحد على document لزر 🕌، بلا MutationObserver وبلا 800ms. أي زر 🕌 بيظهر بعدين، التفويض بيلتقطه تلقائيا. */
  try{
-  let obs=new MutationObserver(()=>{
-   document.querySelectorAll('button').forEach(b=>{
-    if(b.textContent&&b.textContent.includes('🕌')&&!b._prayerBound){
-     b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();window.openPrayerSystem();});
-     b._prayerBound=true;
-    }
-   });
-  });
-  obs.observe(document.body,{childList:true,subtree:true});
-  setTimeout(()=>{document.querySelectorAll('button').forEach(b=>{if(b.textContent&&b.textContent.includes('🕌')&&!b._prayerBound){b.onclick=e=>{e.preventDefault();window.openPrayerSystem();};b._prayerBound=true;}});},800);
+  if(!window._prayerBtnDelegated){
+   window._prayerBtnDelegated=true;
+   document.addEventListener('click', function(e){
+    try{
+     var _b = e.target && e.target.closest ? e.target.closest('button') : null;
+     if(!_b) return;
+     if((_b.textContent||'').indexOf('🕌')===-1) return;
+     e.preventDefault(); e.stopPropagation();
+     window.openPrayerSystem();
+    }catch(err){}
+   }, true);
+  }
  }catch(e){}
  console.log('✅ V5 - بدون سيلكت + تحويل أرقام هندية');
 })();
@@ -4906,74 +4912,7 @@ let fetching=false;
     if(window._waitForFn) window._waitForFn('setActiveBox', doHook); else doHook();
   })();
 
-  // أيضا عند تغيير مدينة نطاق مدينتك - مراقبة شاملة
-  (function hookSayeghChange(){
-    let lastSayeghCode = null;
-
-    // مراقبة input البحث
-    function doHookSearch(inp){
-      let sel=document.getElementById('sayegh-city-select');
-        // عند اختيار من الاقتراحات، يتم تعيين الكود بعد 100-300ms
-        let observer = new MutationObserver(function(){
-          setTimeout(function(){
-            try{
-              let active=getActiveBox();
-              if(active!=='city') return;
-              let curCode = window.getCurrentSayeghCode ? window.getCurrentSayeghCode() : (sel?sel.value:null);
-              if(curCode){
-                curCode=String(curCode).trim();
-                if(curCode!==getPrayerDef()){
-                  setPrayerDef(curCode);
-                  if(window.fetchPrayersAuto) window.fetchPrayersAuto(curCode);
-                  console.log('✅ Prayer sync: search input changed -> prayer '+curCode);
-                  lastSayeghCode=curCode;
-                }
-              }
-            }catch(e){}
-          }, 350);
-        });
-        observer.observe(inp, {attributes:true, attributeFilter:['value']});
-        // أيضا عند الضغط على اقتراح مدينة
-        document.addEventListener('click', function(e){
-          if(e.target.closest('#sayegh-city-suggest') || e.target.closest('.city-suggest-item')){
-            setTimeout(function(){
-              try{
-                let active=getActiveBox();
-                if(active!=='city') return;
-                let curCode = window.getCurrentSayeghCode ? window.getCurrentSayeghCode() : null;
-                if(curCode){
-                  curCode=String(curCode).trim();
-                  setPrayerDef(curCode);
-                  if(window.fetchPrayersAuto) window.fetchPrayersAuto(curCode);
-                  console.log('✅ Prayer sync: suggest clicked -> prayer '+curCode);
-                  lastSayeghCode=curCode;
-                }
-              }catch(e){}
-            }, 500);
-          }
-        });
-        if(sel){
-          sel.addEventListener('change', function(){
-            setTimeout(function(){
-              try{
-                let active=getActiveBox();
-                if(active==='city'){
-                  let code=sel.value;
-                  if(code){
-                    setPrayerDef(code);
-                    if(window.fetchPrayersAuto) window.fetchPrayersAuto(code);
-                    lastSayeghCode=String(code).trim();
-                    console.log('✅ Prayer sync: sayegh select changed -> prayer '+code);
-                  }
-                }
-              }catch(e){}
-            }, 200);
-          });
-        }
-        console.log('✅ Prayer sync: sayegh search hooked with MutationObserver');
-    }
-    if(window._waitForEl) window._waitForEl('sayegh-city-search', doHookSearch); else { var _inp=document.getElementById('sayegh-city-search'); if(_inp) doHookSearch(_inp); }
-  })();
+  /* الخطوة 7: حذف hookSayeghChange كليا - كان MutationObserver + 3 تايمرات 200/350/500 يراقبوا البحث والاقتراح والـ select. البديل: كل تغيير مدينة بيمرق من _saveSayeghCityAtomic، وهو اللي بيعمل مزامنة الصلاة فورا، مرة وحدة، بلا مراقبة وبلا تايمر. */
 
   // 3- تنبيه إذا كانت مدينة الصلاة مختلفة عن نطاقك
   window._checkPrayerCityMismatch = function(prayerCode){
@@ -5004,15 +4943,14 @@ let fetching=false;
         window.openPrayerModal = function(code,cached){
           // استدعاء الأصلي
           let result=orig(code,cached);
-          // بعد فتح المودال، افحص التطابق
-          setTimeout(function(){
-            try{
-              let mismatch = window._checkPrayerCityMismatch(code);
+          // الخطوة 8: فحص التطابق فورا بعد فتح المودال، بلا 400ms - المودال انبنى بشكل متزامن من orig، فالـ DOM موجود هلأ.
+          try{
+            let mismatch = window._checkPrayerCityMismatch(code);
               if(mismatch){
                 let overlay=document.getElementById('prayer-main-overlay');
-                if(!overlay) return;
+                if(!overlay) return result;
                 let head=document.querySelector('#prayer-main-overlay .prayer-center-head');
-                if(!head) return;
+                if(!head) return result;
                 // إذا التنبيه موجود سابقاً احذفه
                 let old=document.getElementById('prayer-city-mismatch-warn');
                 if(old) old.remove();
@@ -5025,12 +4963,11 @@ let fetching=false;
                 console.log('⚠️ Prayer mismatch warning shown', mismatch);
               }
             }catch(e){console.log('mismatch check error',e);}
-          }, 400);
           return result;
         };
         console.log('✅ Prayer sync: openPrayerModal hooked for mismatch warning');
     }
-    if(window._waitForFn) window._waitForFn('openPrayerModal', doHook); else doHook();
+    doHook(); /* الخطوة 8: openPrayerModal معرف قبل هيدا السكربت، بلا انتظار وبلا _waitForFn */
   })();
 
   // تأكد أن sharePrayerAsImage لا يلتقط التنبيه (هو لا يلتقطه لأنه يلتقط p-cards فقط، لكن نتأكد)
