@@ -1180,8 +1180,8 @@ try{var c=JSON.parse(localStorage.getItem('taq_cur')||'null'); if(c){currentUser
  var origGetItem = localStorage.getItem.bind(localStorage);
  ;
  function syncEditBtns(){ try{ var cu=getCU(); var found=null; try{ found=findCalendarButtons(); }catch(e){} var addBtn=found?found.add:null; var showEdit=!!cu && !!addBtn && addBtn.style.display!=='none'; var all=document.querySelectorAll('button'); for(var i=0;i<all.length;i++){ var b=all[i]; if(b.id==='cal-accounts-btn'||b.id==='top-logout-btn'||b.id==='close-acc-btn'||b.id==='login-btn'||b.id==='close-login-btn'||b.id==='add-acc-btn') continue; var t=(b.textContent||'').trim(); if((t==='تعديل'||t==='حذف'||t.indexOf('✏️ تعديل')!==-1||t.indexOf('🗑️ حذف')!==-1) && (b.className.indexOf('h-8')!==-1||b.style.height==='28px'||b.className.indexOf('rounded-full')!==-1)){ b.style.display = showEdit?'':'none'; } if(t.trim()==='+' && b.className.indexOf('rounded-full')!==-1){ b.style.display = showEdit?'':'none'; } } }catch(e){} }
- /* v22: updateButtonsVisibility القديمة انشالت - React fe هو يلي يخفي/يظهر عبر polling - هون بس syncEditBtns */ window.updateButtonsVisibility=function(){ setTimeout(syncEditBtns,100); setTimeout(syncEditBtns,400); };
- try{ var _syncDeb=null; var _syncObs=new MutationObserver(function(){ if(_syncDeb) clearTimeout(_syncDeb); _syncDeb=setTimeout(syncEditBtns,200); }); if(document.body) _syncObs.observe(document.body,{childList:true,subtree:true}); setTimeout(syncEditBtns,500); }catch(e){}
+ /* الخطوة 12: updateButtonsVisibility صارت فورية، بلا تايمرات 100/400، وبلا MutationObserver وبلا 200/500. المزامنة عند النداء + عند الكبسة والتركيز والظهور. */ window.updateButtonsVisibility=function(){ syncEditBtns(); };
+ try{ if(!window._syncEditDelegated){ window._syncEditDelegated=true; document.addEventListener('click', function(){ try{ syncEditBtns(); }catch(e){} }); window.addEventListener('focus', function(){ try{ syncEditBtns(); }catch(e){} }); document.addEventListener('visibilitychange', function(){ if(!document.hidden){ try{ syncEditBtns(); }catch(e){} } }); } syncEditBtns(); }catch(e){}
 })();
 </script>
 <!-- ========== نهاية النظام الجراحي ========== -->
@@ -1191,22 +1191,7 @@ try{var c=JSON.parse(localStorage.getItem('taq_cur')||'null'); if(c){currentUser
 #top-logout-btn{z-index:9999 !important;}
 div.fixed.inset-0{z-index:10000 !important;}
 </style>
-<script>
-(function(){
- function bringModalAboveLogout(){
-  try{
-   var btns=document.querySelectorAll('button');
-   for(var j=0;j<btns.length;j++){
-    if(btns[j].textContent.trim()==='إغلاق'){
-     var modal=btns[j].closest('div.fixed');
-     if(modal) modal.style.zIndex='10000';
-    }
-   }
-  }catch(e){}
- }
- try{ var _modalObs=new MutationObserver(function(muts){ for(var mi=0;mi<muts.length;mi++){ var nodes=muts[mi].addedNodes||[]; for(var ni=0;ni<nodes.length;ni++){ if(nodes[ni] && nodes[ni].classList && nodes[ni].classList.contains('fixed')){ bringModalAboveLogout(); break; } } } }); if(document.body) _modalObs.observe(document.body,{childList:true,subtree:true}); bringModalAboveLogout(); }catch(e){}
-})();
-</script>
+<!-- الخطوة 12: حذف مراقب المودال كليا - الـ CSS فوقه، #top-logout-btn 9999 و div.fixed.inset-0 10000، هو اللي بيرفع المودال، بلا JS وبلا MutationObserver. -->
 
 
 <!--- ========== بوكس التحديث اليدوي الموحد - منطق كامل + ربط جراحي ========== -->
@@ -5215,27 +5200,8 @@ let fetching=false;
    }
   }catch(e){ console.error(e); alert('خطأ في تصدير بطاقة الشبكة: '+e.message); }
  };
- // ربط تلقائي بزر تصدير الشبكة إذا موجود - v9: MutationObserver بدل setInterval كل 1500ms إلى الأبد
- function bindNetworkBtns(){
-  try{
-   var btns = document.querySelectorAll('button');
-   btns.forEach(function(b){
-    if(b._networkBound) return;
-    var t = (b.textContent||'').toLowerCase();
-    if(t.includes('تصدير') && (t.includes('شبكة') || b.closest('[data-network-card]') || b.id.includes('network'))){
-     b._networkBound=true;
-     b.addEventListener('click', function(e){
-      if(window.isNativeAPK && window.isNativeAPK()){
-       e.preventDefault(); e.stopPropagation();
-       window.exportNetworkCardAPK();
-      }
-     });
-    }
-   });
-  }catch(e){}
- }
- bindNetworkBtns();
- try{ var _netObs=new MutationObserver(function(){ bindNetworkBtns(); }); _netObs.observe(document.documentElement,{childList:true, subtree:true}); }catch(e){}
+ /* الخطوة 12: تفويض واحد لتصدير الشبكة، بلا MutationObserver وبلا مسح كل الأزرار. أي زر تصدير شبكة بيظهر بعدين، التفويض بيلتقطه. */
+ try{ if(!window._networkDelegated){ window._networkDelegated=true; document.addEventListener('click', function(e){ try{ var _b = e.target && e.target.closest ? e.target.closest('button') : null; if(!_b) return; var _t = (_b.textContent||'').toLowerCase(); if(!(_t.indexOf('تصدير')!==-1 && (_t.indexOf('شبكة')!==-1 || (_b.closest && _b.closest('[data-network-card]')) || (_b.id||'').indexOf('network')!==-1))) return; if(window.isNativeAPK && window.isNativeAPK()){ e.preventDefault(); e.stopPropagation(); window.exportNetworkCardAPK(); } }catch(err){} }, true); } }catch(e){}
  console.log('✅ FIX: تصدير بطاقة الشبكة + خلفية الصلاة جاهز');
 })();
 </script>
@@ -5314,16 +5280,7 @@ let fetching=false;
 
 
 
-<style>
-/* إخفاء الزر القديم نهائيا بدون وميض */
-button[data-old-export="1"], 
-button.old-export-hidden {
- display:none !important;
- visibility:hidden !important;
- opacity:0 !important;
- pointer-events:none !important;
-}
-</style>
+<!-- الخطوة 12-fix: حذف CSS إخفاء الزر القديم كليا - الزر مش موجود أصلا بالملف، فما فيه شي لنخفيه. ترقيع لزر ميت. -->
 <script>
 // ===== إدارة البيانات V2 - ثابت بدون وميض - خارج التحديث الحي =====
 (function(){
@@ -5734,56 +5691,18 @@ button.old-export-hidden {
   document.body.appendChild(btn);
  }
 
- // مراقب دائم يخفي الزر القديم فورا بدون وميض
- function startObserver(){
-  var observer = new MutationObserver(function(mutations){
-   mutations.forEach(function(m){
-    m.addedNodes.forEach(function(node){
-     if(node.nodeType!==1) return;
-     if(node.tagName==='BUTTON'){
-      var t=(node.textContent||'').trim();
-      if(t.includes('تصدير النسخة') || t.includes('_GOLDEN_') || t.includes('النسخة الذهبية') || t.includes('تصدير النسخ')){
-       node.dataset.oldExport='1';
-       node.classList.add('old-export-hidden');
-       node.style.display='none';
-      }
-     }
-     // ابحث داخل العناصر المضافة
-     var innerBtns = node.querySelectorAll ? node.querySelectorAll('button') : [];
-     innerBtns.forEach(function(b){
-      var t=(b.textContent||'').trim();
-      if(t.includes('تصدير النسخة') || t.includes('_GOLDEN_') || t.includes('النسخة الذهبية') || t.includes('تصدير النسخ')){
-       b.dataset.oldExport='1';
-       b.classList.add('old-export-hidden');
-       b.style.display='none';
-      }
-     });
-    });
-   });
-  });
-  observer.observe(document.body, {childList:true, subtree:true});
- }
+ /* الخطوة 12-fix: حذف hideOldExportBtns كليا - كانت ترقيع: مراقب ثم تفويض يخفي زر تصدير النسخة / النسخة الذهبية، والزر مش موجود أصلا بالملف. البحث أثبت ان النص موجود بس جوات الدالة نفسها. لا بديل، لأن ما فيه زر لنخفيه. */
 
  function init(){
   createDataManagerUI();
   // createPermanentButton removed - now inside bar
 
-  startObserver();
-  // إخفاء فوري لأي زر قديم موجود
-  document.querySelectorAll('button').forEach(function(b){
-   var t=(b.textContent||'').trim();
-   if(t.includes('تصدير النسخة') || t.includes('_GOLDEN_') || t.includes('النسخة الذهبية') || t.includes('تصدير النسخ')){
-    b.dataset.oldExport='1';
-    b.classList.add('old-export-hidden');
-    b.style.display='none';
-   }
-  });
  }
 
  if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded', init);
  }else{
-  setTimeout(init,300);
+  init(); /* الخطوة 12: بلا 300ms - الصفحة جاهزة هلأ */
  }
 })();
 </script>
