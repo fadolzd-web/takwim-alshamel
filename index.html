@@ -71,12 +71,16 @@
         }
         let arr = JSON.parse(raw);
         if(Array.isArray(arr)){
-          if(arr.length===1 && String(arr[0].code)==='1'){
-            localStorage.setItem(ck, JSON.stringify([NAJAF_CITY]));
-          } else if(!arr.some(c=>String(c.code)===NAJAF_CODE)){
-            // أضف النجف أولاً
+          // الخطوة 5 - الكويت 1 مدينة حقيقية، لا تحذفها. الافتراضي النجف 107 أولا، والكويت تبقى.
+          if(!arr.some(c=>String(c.code)===NAJAF_CODE)){
+            // أضف النجف أولاً، وحافظ على الكويت وباقي المدن
             arr.unshift(NAJAF_CITY);
             localStorage.setItem(ck, JSON.stringify(arr));
+          } else if(String(arr[0].code)!==NAJAF_CODE){
+            // النجف موجود لكن ليس أولا - انقله أولا، وحافظ على الكويت والباقي
+            var _n = arr.filter(function(c){return String(c.code)===NAJAF_CODE;})[0];
+            var _rest = arr.filter(function(c){return String(c.code)!==NAJAF_CODE;});
+            localStorage.setItem(ck, JSON.stringify([_n].concat(_rest)));
           }
         }
       }catch(e){}
@@ -2710,11 +2714,11 @@ document.addEventListener('click', function(e){ try{ var b=e.target && e.target.
    if(active==='city'){
     var st=document.getElementById('sayegh-beirut-status');
     if(st) st.textContent = prefix + ' - جاري الاتصال في الخلفية...';
-    if(window.fetchSayeghBeirut){ window._isBackgroundAutoFetch=true; window.fetchSayeghBeirut(); setTimeout(function(){window._isBackgroundAutoFetch=false;},1000); }
+    if(window.fetchSayeghBeirut){ window._isBackgroundAutoFetch=true; await window.fetchSayeghBeirut(); window._isBackgroundAutoFetch=false; } // الخطوة 5 - الجسر عبر API: انتظر الجسر حتى يخلص، مش ترجع فورا
    } else {
     var st2=document.getElementById('najaf-status');
     if(st2) st2.textContent = prefix + ' - جاري الاتصال في الخلفية...';
-    if(window.fetchNajaf){ window._isBackgroundAutoFetch=true; window.fetchNajaf(); setTimeout(function(){window._isBackgroundAutoFetch=false;},1000); }
+    if(window.fetchNajaf){ window._isBackgroundAutoFetch=true; await window.fetchNajaf(); window._isBackgroundAutoFetch=false; } // الخطوة 5 - انتظر النجف حتى يخلص
    }
   }catch(e){ console.log('autoFetch error', e); }
  }
@@ -6373,7 +6377,8 @@ button.old-export-hidden {
 (function(){
   /* الخطوة 4: أرقام إعادة المحاولة موحدة - الكود والرسالة يقولوا نفس الشي: 30 ثانية × 3 محاولات، فاصل 5 ثواني */
   /* الخطوة 4-fix: مهلة 45 ثانية لأن الجسر بيعمل اتصالين، فاصل 2 ثانية، الفتح محاولة وحدة والاستهلال 3 */
-  console.log('⏳ Long fetch 45s, 1 attempt open / 3 attempts istihlal');
+  /* الخطوة 5: الفتح محاولتين - محاولة وحدة كانت تخلي أي تقطع عابر يبين فشل نهائي. الافتراضي النجف، الكويت 1 تشتغل طبيعي. */
+  console.log('⏳ Long fetch 45s, 2 attempts open / 3 attempts istihlal');
   const FETCH_TIMEOUT_MS = 45000;
   const RETRY_GAP_MS = 2000;
   const MAX_ATTEMPTS = 3;
@@ -6386,7 +6391,7 @@ button.old-export-hidden {
 
   async function fetchWithTimeout(fetchFn){
     return new Promise(async (resolve, reject)=>{
-      let timeout = setTimeout(()=>{ reject(new Error('timeout 30s')); }, FETCH_TIMEOUT_MS);
+      let timeout = setTimeout(()=>{ reject(new Error('timeout 45s')); }, FETCH_TIMEOUT_MS);
       try{
         // fetchSayeghBeirut و fetchNajaf لا ترجع Promise دائماً، لكنها async
         let result = await fetchFn();
@@ -6418,13 +6423,17 @@ button.old-export-hidden {
       console.log('Already connecting, skip auto fetch',reason);
       return;
     }
+    // الخطوة 5 - جلب جديد يبدأ نضيف: توقف قديم ما بيضل معلق ويخلي كل جلب بعده يفشل فورا
+    window._stopLive=false;
     isRetrying=true;
-    /* الخطوة 4-fix: الفتح العادي محاولة وحدة سريعة، الاستهلال واليدوي 3 محاولات - مش كل فتحة 100 ثانية */
+    /* الخطوة 5 - الفتح محاولتين، الاستهلال واليدوي 3 محاولات - محاولة وحدة كانت تخلي تقطع عابر يبين فشل نهائي */
     var _isOpenReason = reason && (reason.indexOf('أول فتح')!==-1 || reason.indexOf('يوم جديد')!==-1 || reason.indexOf('🚀')!==-1 || reason.indexOf('📅')!==-1 || reason.indexOf('🔄')!==-1);
-    var _effectiveMax = _isOpenReason ? 1 : MAX_ATTEMPTS;
+    var _effectiveMax = _isOpenReason ? 2 : MAX_ATTEMPTS;
+    var _stoppedByUser=false;
     for(let attempt=1; attempt<=_effectiveMax; attempt++){
       if(window._stopLive){
         console.log('Stopped, abort retry');
+        _stoppedByUser=true;
         break;
       }
       try{
@@ -6452,6 +6461,15 @@ button.old-export-hidden {
           await fetchWithTimeout(()=>window.fetchNajaf());
         }
 
+        // الخطوة 5 - الجسر ما بيرمي خطأ لما يفشل، بيرجع وبيكتب تعذر الاتصال. لازم نفحص الحالة، وإلا الريتري بيظن انه نجح وبيوقف.
+        // الجسر عبر API: اذا الحالة بعد الجلب فيها تعذر أو فشل، اعتبرها فشل وارجع جرب.
+        try{
+          var _stEl = active==='city' ? document.getElementById('sayegh-beirut-status') : document.getElementById('najaf-status');
+          var _stTxt = _stEl ? (_stEl.textContent||'') : '';
+          if(_stTxt.indexOf('تعذر الاتصال')!==-1 || _stTxt.indexOf('فشل الاتصال')!==-1){ throw new Error('bridge failed: ' + _stTxt); }
+        }catch(_bridgeErr){
+          if(_bridgeErr && _bridgeErr.message && _bridgeErr.message.indexOf('bridge failed')===0) throw _bridgeErr;
+        }
         // إذا وصلنا هنا، المحاولة نجحت (حتى لو لم تجد هلال، الاتصال نفسه نجح)
         // نتحقق هل تم تحديث _last_successful_fetch_time من داخل fetch
         // إذا لا، نحدثه نحن
@@ -6481,11 +6499,26 @@ button.old-export-hidden {
           console.log(`⏳ Waiting ${RETRY_GAP_MS/1000}s before next attempt`);
           /* الخطوة 4-fix: انتظار قابل للإيقاف - يفحص التوقف كل 250ms، مش 2000ms كاملة */
           for(let _w=0; _w<RETRY_GAP_MS; _w+=250){ if(window._stopLive) break; await wait(250); }
-          if(window._stopLive) break;
+          if(window._stopLive){ _stoppedByUser=true; break; }
         }
       }
     }
     isRetrying=false;
+    // الخطوة 5 - اذا المستخدم وقف بنفسه، ما تبين فشل. بين توقف.
+    if(_stoppedByUser){
+      console.log('Stopped by user, not a failure');
+      try{
+        let active = localStorage.getItem('liveBoxActive')||'najaf';
+        if(active==='city'){
+          let st=document.getElementById('sayegh-beirut-status');
+          if(st) st.textContent='⏹️ تم الإيقاف - اضغط جلب حي للمتابعة';
+        }else{
+          let st2=document.getElementById('najaf-status');
+          if(st2) st2.textContent='⏹️ تم الإيقاف - اضغط جلب للمتابعة';
+        }
+      }catch(e){}
+      return;
+    }
     console.log('All attempts failed');
     // تحديث الواجهة بالفشل
     try{
@@ -6505,7 +6538,7 @@ button.old-export-hidden {
     if(!window.autoFetchActiveBoxGlobal) return;
       originalAutoFetch = window.autoFetchActiveBoxGlobal;
       window.autoFetchActiveBoxGlobal = autoFetchWithRetry;
-      console.log('✅ autoFetchActiveBoxGlobal overridden with long 100s retry logic');
+      console.log('✅ autoFetchActiveBoxGlobal overridden with long retry logic - 2 attempts open / 3 istihlal');
 
       /* الخطوة 3: شيل فحص يوم جديد المكرر - firstOpenFetch الموحد بيغطي أول فتح + يوم جديد */
   }
@@ -6699,8 +6732,8 @@ button.old-export-hidden {
   }catch(e){}
 
   window.addEventListener('load', function(){
-    /* الخطوة 4-fix: شيل فرض النجف بعد 800ms - الهيدر بيقرا من المصدر الموحد، الكود 1 القديم بيتصلح لمدينة النطاق الحالية */
-    try{ if(window._selectedSayeghCode==='1'){ var _exp=(window.getCurrentSayeghCode?window.getCurrentSayeghCode():'107'); if(window._saveSayeghCityAtomic) window._saveSayeghCityAtomic(_exp); else window._selectedSayeghCode=_exp; } if(window._sayeghCities && window._sayeghCities[0] && String(window._sayeghCities[0].code)==='1'){ var _c0=(window._sayeghCities||[]).find(function(c){return String(c.code)==='107';}); if(_c0){ window._sayeghCities[0].name=_c0.name; window._sayeghCities[0].code=_c0.code; } } if(window._updateCityHeader) window._updateCityHeader(); }catch(e){}
+    /* الخطوة 5: الكويت 1 مدينة حقيقية - لا تجبرها للنجف أبدا. الافتراضي النجف 107 من localStorage لما ما في اختيار، والهيدر بس بيقرا من المصدر الموحد. */
+    try{ if(window._updateCityHeader) window._updateCityHeader(); }catch(e){}
 
     /* الخطوة 3: شيل جلب 4 ثواني المكرر - firstOpenFetch الموحد بيغطي الفتح */
   });
