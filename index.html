@@ -2666,7 +2666,7 @@ function bindAll(){
  var editB=document.getElementById('btn-edit-city'); if(editB) editB.addEventListener('click',function(e){e.stopPropagation(); window.editSayeghCity();});
  var openB=document.getElementById('btn-open-city'); if(openB) openB.addEventListener('click',function(e){e.stopPropagation(); window.openDynamicSayegh();});
  /* الخطوة 3: الزر اليدوي - باب واحد مع سبب يدوي، بيجبر الجلب، مش طريق لحاله */
- var fetchB=document.getElementById('btn-fetch-city'); if(fetchB) fetchB.addEventListener('click',function(e){e.stopPropagation(); if(window.autoFetchActiveBoxGlobal) window.autoFetchActiveBoxGlobal('يدوي - جلب حي'); else if(window.fetchSayeghBeirut) window.fetchSayeghBeirut();});
+ var fetchB=document.getElementById('btn-fetch-city'); if(fetchB) fetchB.addEventListener('click',function(e){e.stopPropagation(); /* الخطوة 4-fix: اذا جاري الاتصال، الكبسة توقف، مش جلب جديد - باب مستقل */ if((window._boxState && window._boxState.connecting) || (fetchB.textContent && (fetchB.textContent.indexOf('توقف')!==-1 || fetchB.textContent.indexOf('قطع')!==-1))){ if(window._requestStopLive) window._requestStopLive(); else { window._stopLive=true; if(window._boxState) window._boxState.connecting=false; } return; } if(window.autoFetchActiveBoxGlobal) window.autoFetchActiveBoxGlobal('يدوي - جلب حي'); else if(window.fetchSayeghBeirut) window.fetchSayeghBeirut();});
  // إصلاح: استدعاء موحد يقرأ من localStorage ويحدث كل شيء
  try{ applyBoxMute(); }catch(e){ loadActivationState(); applyMuteStateForAll(); }
 }
@@ -2723,6 +2723,7 @@ document.addEventListener('click', function(e){ try{ var b=e.target && e.target.
  /* الخطوة 3: باب واحد للفتح - أول مرة + يوم جديد بنفس الدالة، من دون مؤقت 1800، عبر الباب الموحد */
  function firstOpenFetch(){
   try{
+   window._lastOpenFetchAt = Date.now();
    var todayStr = new Date().toISOString().slice(0,10);
    var ldStr = localStorage.getItem('_last_fetch_date_str');
    var isFirstEver = !localStorage.getItem('_first_auto_fetch_done');
@@ -4843,6 +4844,8 @@ let fetching=false;
     }catch(e){}
     return 'مدينتك';
   }
+  /* الخطوة 4-fix: مصدر واحد لاسم المدينة بالهيدر - الكل بينده هيدا، مش كل واحد بيقرا من مخزن */
+  window._updateCityHeader = function(){ try{ var nm=getExpectedCityName(); var cd=getExpectedPrayerCode(); var h1=document.getElementById('nj-p-city'); if(h1 && nm) h1.textContent=nm; var h2=document.getElementById('p-center-city'); if(h2 && nm) h2.textContent=nm; var inp=document.getElementById('sayegh-city-search'); if(inp && nm && cd){ var cur=(window._sayeghCities||[]).find(function(c){return String(c.code)===String(cd);}); if(cur) inp.value=cur.name+' - '+cur.code; } }catch(e){} };
   function getPrayerDef(){
     try{return localStorage.getItem(LS_PRAYER_DEF);}catch(e){return null;}
   }
@@ -4882,6 +4885,7 @@ let fetching=false;
                 // إذا كان fetchPrayersAuto موجود، اجلب
                 if(window.fetchPrayersAuto) window.fetchPrayersAuto(expected);
               }
+              if(window._updateCityHeader) window._updateCityHeader();
             }catch(e){}
           }, 300);
         };
@@ -6068,6 +6072,10 @@ button.old-export-hidden {
 // v16: حذف 12 ساعة نهائيا، LAST يتحدث فقط على النجاح في applyLiveUpdate، لا يتحدث هنا على المحاولة
 (function(){
  function smartUpdate(reason){
+  /* الخطوة 4-fix: اذا جاري الاتصال، لا تبلش جلب تاني - والفتح له باب واحد firstOpenFetch */
+  if(window._boxState && window._boxState.connecting) return;
+  if(reason==='open') return;
+  if(window._lastOpenFetchAt && (Date.now()-window._lastOpenFetchAt)<10000) return;
   try{
    var today=new Date().toISOString().slice(0,10);
    var last=parseInt(localStorage.getItem('_last_successful_fetch_time')||'0',10);
@@ -6083,12 +6091,12 @@ button.old-export-hidden {
    // v16: لا نحدث LAST ولا _last_fetch_date_str هنا، يتحدثان فقط على النجاح في applyLiveUpdate
   }catch(e){ console.log('smart err', e); }
  }
- function init(){ setTimeout(function(){ smartUpdate('open'); },2000); }
+ function init(){ /* الخطوة 4-fix: شيل جلب الفتح المكرر - firstOpenFetch هو باب الفتح الوحيد */ }
  try{ if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App){ window.Capacitor.Plugins.App.addListener('resume', function(){ setTimeout(function(){ smartUpdate('resume'); },600); }); } }catch(e){}
  try{ document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') setTimeout(function(){ smartUpdate('visible'); },600); }); }catch(e){}
  try{ window.addEventListener('online', function(){ setTimeout(function(){ smartUpdate('online'); },1200); }); }catch(e){}
  try{ window.addEventListener('focus', function(){ setTimeout(function(){ smartUpdate('focus'); },800); }); }catch(e){}
- if(document.readyState==='complete') setTimeout(init,800); else window.addEventListener('load', function(){ setTimeout(init,800); });
+ /* الخطوة 4-fix: لا جلب عند load - firstOpenFetch بيغطي الفتح */
  window.smartUpdateOnResume=smartUpdate;
 })();
 </script>
@@ -6364,9 +6372,10 @@ button.old-export-hidden {
 <script id="apk-step2-long-fetch">
 (function(){
   /* الخطوة 4: أرقام إعادة المحاولة موحدة - الكود والرسالة يقولوا نفس الشي: 30 ثانية × 3 محاولات، فاصل 5 ثواني */
-  console.log('⏳ Long fetch 30s x 3 attempts');
-  const FETCH_TIMEOUT_MS = 30000;
-  const RETRY_GAP_MS = 5000;
+  /* الخطوة 4-fix: مهلة 45 ثانية لأن الجسر بيعمل اتصالين، فاصل 2 ثانية، الفتح محاولة وحدة والاستهلال 3 */
+  console.log('⏳ Long fetch 45s, 1 attempt open / 3 attempts istihlal');
+  const FETCH_TIMEOUT_MS = 45000;
+  const RETRY_GAP_MS = 2000;
   const MAX_ATTEMPTS = 3;
 
   // حفظ الدالة الأصلية
@@ -6390,7 +6399,17 @@ button.old-export-hidden {
     });
   }
 
+  /* الخطوة 4-fix: زر توقف مستقل - مش عبر باب الجلب، الحارس ما بيحظره */
+  window._requestStopLive = window._requestStopLive || function(){
+    window._stopLive=true;
+    if(window._boxState) window._boxState.connecting=false;
+    if(window.setFetchBtnState) try{window.setFetchBtnState('idle');}catch(e){}
+    if(window.setNajafFetchBtnState) try{window.setNajafFetchBtnState('idle');}catch(e){}
+    try{ var st=document.getElementById('sayegh-beirut-status'); if(st) st.textContent='⏹️ تم الإيقاف - اضغط جلب حي للمتابعة'; var st2=document.getElementById('najaf-status'); if(st2) st2.textContent='⏹️ تم الإيقاف - اضغط جلب للمتابعة'; }catch(e){}
+    try{ if(window.applyBoxMute) window.applyBoxMute(); }catch(e){}
+  };
   async function autoFetchWithRetry(reason){
+    if(reason && (reason.indexOf('توقف')!==-1 || reason.indexOf('إيقاف')!==-1 || reason.indexOf('stop')!==-1)){ if(window._requestStopLive) window._requestStopLive(); return; }
     if(isRetrying) {
       console.log('Already retrying, skip');
       return;
@@ -6400,18 +6419,21 @@ button.old-export-hidden {
       return;
     }
     isRetrying=true;
-    for(let attempt=1; attempt<=MAX_ATTEMPTS; attempt++){
+    /* الخطوة 4-fix: الفتح العادي محاولة وحدة سريعة، الاستهلال واليدوي 3 محاولات - مش كل فتحة 100 ثانية */
+    var _isOpenReason = reason && (reason.indexOf('أول فتح')!==-1 || reason.indexOf('يوم جديد')!==-1 || reason.indexOf('🚀')!==-1 || reason.indexOf('📅')!==-1 || reason.indexOf('🔄')!==-1);
+    var _effectiveMax = _isOpenReason ? 1 : MAX_ATTEMPTS;
+    for(let attempt=1; attempt<=_effectiveMax; attempt++){
       if(window._stopLive){
         console.log('Stopped, abort retry');
         break;
       }
       try{
-        console.log(`🔄 Attempt ${attempt}/${MAX_ATTEMPTS} - ${reason} - waiting ${FETCH_TIMEOUT_MS/1000}s`);
+        console.log(`🔄 Attempt ${attempt}/${_effectiveMax} - ${reason} - waiting ${FETCH_TIMEOUT_MS/1000}s`);
         var active = (typeof getActiveBox==='function') ? getActiveBox() : (localStorage.getItem('liveBoxActive')||'najaf');
         if(!active) active='najaf';
         
         // تحديث حالة الواجهة
-        let statusMsg = `${reason} - محاولة ${attempt}/${MAX_ATTEMPTS} (قد تستغرق 30 ثانية)`;
+        let statusMsg = `${reason} - محاولة ${attempt}/${_effectiveMax} (قد تستغرق 45 ثانية)`;
         if(active==='city'){
           let st=document.getElementById('sayegh-beirut-status');
           if(st) st.textContent=statusMsg;
@@ -6455,9 +6477,11 @@ button.old-export-hidden {
         console.log(`❌ Attempt ${attempt} failed:`, e.message);
         window._isBackgroundAutoFetch=false;
         if(window._boxState) window._boxState.connecting=false;
-        if(attempt < MAX_ATTEMPTS){
+        if(attempt < _effectiveMax){
           console.log(`⏳ Waiting ${RETRY_GAP_MS/1000}s before next attempt`);
-          await wait(RETRY_GAP_MS);
+          /* الخطوة 4-fix: انتظار قابل للإيقاف - يفحص التوقف كل 250ms، مش 2000ms كاملة */
+          for(let _w=0; _w<RETRY_GAP_MS; _w+=250){ if(window._stopLive) break; await wait(250); }
+          if(window._stopLive) break;
         }
       }
     }
@@ -6468,10 +6492,10 @@ button.old-export-hidden {
       let active = localStorage.getItem('liveBoxActive')||'najaf';
       if(active==='city'){
         let st=document.getElementById('sayegh-beirut-status');
-        if(st) st.textContent='فشل الاتصال بعد 3 محاولات - سيعاود عند الفتح القادم';
+        if(st) st.textContent='فشل الاتصال بعد '+_effectiveMax+' محاولة - سيعاود عند الفتح القادم';
       }else{
         let st2=document.getElementById('najaf-status');
-        if(st2) st2.textContent='فشل الاتصال بعد 3 محاولات - سيعاود عند الفتح القادم';
+        if(st2) st2.textContent='فشل الاتصال بعد '+_effectiveMax+' محاولة - سيعاود عند الفتح القادم';
       }
     }catch(e){}
   }
@@ -6487,11 +6511,7 @@ button.old-export-hidden {
   }
   if(window._waitForFn) window._waitForFn('autoFetchActiveBoxGlobal', doOverrideAutoFetch); else doOverrideAutoFetch();
 
-  /* الخطوة 4: شيل رجوعين مكررين - smartUpdate بالسطر 6085 بيغطي visible + resume + online + focus عبر الباب الموحد */          }catch(e){}
-        },1500);
-      }
-    });
-  }
+  /* الخطوة 4-fix: شيل رجوعين مكررين - smartUpdate بيغطي visible + resume + online + focus - والـ 4 سطور المكسورة انشالت */
 
 })();
 </script>
@@ -6679,29 +6699,8 @@ button.old-export-hidden {
   }catch(e){}
 
   window.addEventListener('load', function(){
-    // إصلاح السيلكت في DOM بعد 1 ثانية
-    setTimeout(function(){
-      try{
-        // ابحث عن العنصر الذي يعرض الكويت
-        let els = document.querySelectorAll('*');
-        for(let el of els){
-          if(el.childNodes.length===1 && el.textContent.trim()==='الكويت - 1'){
-            // هذا هو عرض السيلكت
-            el.textContent = 'النجف الأشرف - 107';
-            // غير القيمة إن أمكن
-            if(el.parentElement && el.parentElement.querySelector('select')){
-              el.parentElement.querySelector('select').value='107';
-            }
-          }
-        }
-        // إصلاح React state إن وجد
-        if(window._selectedSayeghCode==='1'){ if(window._saveSayeghCityAtomic) window._saveSayeghCityAtomic(NAJAF_CODE); else window._selectedSayeghCode=NAJAF_CODE; }
-        if(window._sayeghCities && window._sayeghCities[0] && String(window._sayeghCities[0].code)==='1'){
-          window._sayeghCities[0].name='النجف الأشرف';
-          window._sayeghCities[0].code=NAJAF_CODE;
-        }
-      }catch(e){ console.log('select fix error',e); }
-    }, 800);
+    /* الخطوة 4-fix: شيل فرض النجف بعد 800ms - الهيدر بيقرا من المصدر الموحد، الكود 1 القديم بيتصلح لمدينة النطاق الحالية */
+    try{ if(window._selectedSayeghCode==='1'){ var _exp=(window.getCurrentSayeghCode?window.getCurrentSayeghCode():'107'); if(window._saveSayeghCityAtomic) window._saveSayeghCityAtomic(_exp); else window._selectedSayeghCode=_exp; } if(window._sayeghCities && window._sayeghCities[0] && String(window._sayeghCities[0].code)==='1'){ var _c0=(window._sayeghCities||[]).find(function(c){return String(c.code)==='107';}); if(_c0){ window._sayeghCities[0].name=_c0.name; window._sayeghCities[0].code=_c0.code; } } if(window._updateCityHeader) window._updateCityHeader(); }catch(e){}
 
     /* الخطوة 3: شيل جلب 4 ثواني المكرر - firstOpenFetch الموحد بيغطي الفتح */
   });
