@@ -2438,38 +2438,23 @@ window.applyLiveUpdate = function(objFinal, sourceLabel, displayStr){
      try{ localStorage.setItem('_sayegh_hijri_year_cache', JSON.stringify({hy:cleanObj.hy, hm:cleanObj.hm, hd:cleanObj.hd, ts:Date.now()})); }catch(e){}
    }catch(e){}
 
+   // خطوة 16: تحديث واحد - اذا التاريخ الجديد هو نفسه الحالي، لا تكتب شي، لا DOM ولا React
+   // هيدا اللي بيخلي الجلب التاني اللي بيرجع نفس التاريخ يصير no-op، مش كتابة تانية فوق الاولى
+   try{
+     var _cur = window.FINAL_HIJRI;
+     if(_cur && String(parseInt(_cur.hd,10))===String(parseInt(cleanObj.hd,10)) && String(parseInt(_cur.hm,10))===String(parseInt(cleanObj.hm,10)) && String(parseInt(_cur.hy,10))===String(parseInt(cleanObj.hy,10))){
+       return;
+     }
+   }catch(e){}
+
   // تخزين v16: LAST + تاريخ اليوم يتحدثان فقط على النجاح، لا على المحاولة
   localStorage.setItem('taqweem_final_unified', JSON.stringify(cleanObj));
    try{ localStorage.setItem('_last_successful_fetch_time', String(Date.now())); localStorage.setItem('_last_fetch_date_str', new Date().toISOString().slice(0,10)); }catch(e){}
   window.FINAL_HIJRI = cleanObj;
-  // تحديث فوري للهيدر العلوي قبل React - إصلاح البطء (الحي كان يتأخر نص دقيقة)
-  try{
-   var longStr = window.formatLongHeader ? window.formatLongHeader(cleanObj.hd, cleanObj.hm, cleanObj.hy, (typeof DEVICE!=='undefined'?DEVICE.dow:new Date().getDay()), (typeof DEVICE!=='undefined'?DEVICE.gd:new Date().getDate()), (typeof DEVICE!=='undefined'?DEVICE.gm:new Date().getMonth()+1), (typeof DEVICE!=='undefined'?DEVICE.gy:new Date().getFullYear())) : cleanObj.finalStr;
-   // تحديث الهيدر العلوي
-   var topHeader = document.querySelector('.hidden.md\\:inline.text-white\\/40');
-   if(topHeader){
-    topHeader.textContent = longStr;
-   }
-   // تحديث الهيدر الرئيسي (اللي فيه 010) - فوري بدون انتظار React
-   var mainHijriEls = document.querySelectorAll('.font-bold.text-\\[\\#d4af37\\] span.truncate');
-   for(var mi=0; mi<mainHijriEls.length; mi++){
-    var el = mainHijriEls[mi];
-    if(el.textContent && el.textContent.includes('هـ')){
-     // إزالة الصفر البادئ: 010 -> 10
-     var cleanText = longStr;
-     el.textContent = cleanText;
-    }
-   }
-   // تحديث كل عناصر التاريخ الهجري، دون تقييد بشهر محدد
-   var allTruncate = document.querySelectorAll('span.truncate');
-   for(var ai=0; ai<allTruncate.length; ai++){
-    var ael = allTruncate[ai];
-    if(ael.textContent && (ael.textContent.includes('هـ') || ael.textContent.match(/\d+\s+\S+\s+14\d\d/))){
-     ael.textContent = longStr;
-    }
-   }
-  }catch(e){}
-  // تحديث React Header (بعد التحديث الفوري)
+  // خطوة 16: React هو الكاتب الوحيد للهيدر - لا كتابة DOM مباشرة هنا
+  // الكتابة المباشرة كانت تكتب فوق React و React كان يرجع يمحيها، فكانت 3 كتابات لنفس التحديث
+  // التخزين فوق + updateFromFinal تحت بيكفي: اذا React لسا ما ركب، الـ useEffect تبعه بيقرا من التخزين
+  // تحديث React Header - تحديث واحد فقط
   var setters = window._Setters;
   if(setters && setters.updateFromFinal){
    setters.updateFromFinal(cleanObj);
@@ -2479,10 +2464,8 @@ window.applyLiveUpdate = function(objFinal, sourceLabel, displayStr){
    if(setters.setDay) setters.setDay(cleanObj.hd);
    if(setters.setFullDay) setters.setFullDay(cleanObj);
   }
-  // احداث (مرة واحدة فقط لتجنب التحديث المضاعف)
-  try{
-   window.dispatchEvent(new CustomEvent('taqweem_final_updated',{detail:{finalStr:cleanObj.finalStr,obj:cleanObj,source:sourceLabel}}));
-  }catch(e){}
+  // خطوة 16: لا dispatch - updateFromFinal فوق حدّث React مرة واحدة
+  // الـ dispatch كان يرجّع يحدّث React مرة تانية لنفس التحديث عبر المستمع في wa()، فصار تحديثين
   if(window.setFirstTimingSource) window.setFirstTimingSource(cleanObj.finalStr, sourceLabel, 'najaf');
   if(window.setDynamicRefFromDt) window.setDynamicRefFromDt(cleanObj.finalStr, sourceLabel && sourceLabel.includes('يدوي') ? 'manual' : 'live');
   // تحديث مربعات التصحيح
@@ -2782,6 +2765,10 @@ document.addEventListener('click', function(e){ try{ var b=e.target && e.target.
  // لا 12 ساعة، لا 12-23، لا فحص عام
  function dailyAndIstihlalCheck(){
   try{
+   // خطوة 16: اذا جلب الفتح لسا شغال او خلص من اقل من 15 ثانية، لا تبلش جلب تاني - تحديث واحد للفتح
+   // الاستهلال بيضل شغال بعدها: الحارس وقتي بس، مش حظر دائم
+   if(window._boxState && window._boxState.connecting) return;
+   if(window._lastOpenFetchAt && (Date.now()-window._lastOpenFetchAt)<15000) return;
    var now = new Date();
    var h = now.getHours();
    var m = now.getMinutes();
