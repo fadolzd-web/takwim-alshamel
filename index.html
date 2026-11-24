@@ -528,8 +528,9 @@ window.MASTER_CITIES=window.MASTER_CITIES_FALLBACK.slice();</script></head>
       if(el.textContent!==n) el.textContent = n;
     }catch(e){}
   }
+  /* الخطوة 6 - جراحة الهيدر: الدالة معروضة ع window ليناديها محل حفظ المدينة مباشرة، بلا polling وبلا تايمر. storage للتاب التاني بس. */
+  window.updateCityInDate = updateCityInDate;
   try{
-    /* الخطوة 2: شيل فحص المدينة كل 800ms - storage event بيكفي، والمدينة بتتغير بس لما انت تغيرها */
     if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', updateCityInDate);
     else updateCityInDate();
     window.addEventListener('storage', updateCityInDate);
@@ -1637,8 +1638,11 @@ function setActiveBox(v){
     localStorage.setItem('_prayer_default_city_v3', (v==='najaf' ? '107' : codeToSave));
     try{ if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){ window.Capacitor.Plugins.Preferences.set({key:'liveBoxActive', value:v}); window.Capacitor.Plugins.Preferences.set({key:'_selectedSayeghCode', value:codeToSave}); } }catch(e){}
     window._selectedSayeghCode = codeToSave;
-     // v19: إذا النجومي تلقائي، حدّث دبوسه حسب النطاق الجديد (نجف أو مدينة)
-     try{ setTimeout(function(){ if(window._v19_syncNojumiPinToSayeghCity) window._v19_syncNojumiPinToSayeghCity(); }, 50); }catch(e){}
+     /* الخطوة 6: تحديث الهيدرين فورا من محل الحفظ نفسه، بلا تايمر وبلا polling. */
+     try{ if(window.updateCityInDate) window.updateCityInDate(); }catch(e){}
+     try{ if(window._updateCityHeader) window._updateCityHeader(); }catch(e){}
+     /* v19: إذا النجومي تلقائي، حدّث دبوسه حسب النطاق الجديد (نجف أو مدينة) - مباشرة، بلا 50ms */
+     try{ if(window._v19_syncNojumiPinToSayeghCity) window._v19_syncNojumiPinToSayeghCity(); }catch(e){}
    }catch(e){}
   }
   window.getActiveBox = getActiveBox; window.setActiveBox = setActiveBox; try{ window.setActiveBox._fix4Atomic=true; }catch(e){}
@@ -1867,8 +1871,11 @@ window._saveSayeghCityAtomic = function(code){
     }
     var _sel = document.getElementById('sayegh-city-select');
     if(_sel) _sel.value = code;
-    // v19: إذا النجومي تلقائي، حدّث دبوسه لمدينة الصايغ الجديدة
-    try{ setTimeout(function(){ if(window._v19_syncNojumiPinToSayeghCity) window._v19_syncNojumiPinToSayeghCity(); }, 50); }catch(e){}
+    /* الخطوة 6: تحديث الهيدرين فورا من محل الحفظ الذري نفسه، بلا تايمر وبلا polling. */
+    try{ if(window.updateCityInDate) window.updateCityInDate(); }catch(e){}
+    try{ if(window._updateCityHeader) window._updateCityHeader(); }catch(e){}
+    // v19: إذا النجومي تلقائي، حدّث دبوسه لمدينة الصايغ الجديدة - مباشرة، بلا 50ms
+    try{ if(window._v19_syncNojumiPinToSayeghCity) window._v19_syncNojumiPinToSayeghCity(); }catch(e){}
     return true;
   }catch(e){ return false; }
 };
@@ -4086,7 +4093,7 @@ let fetching=false;
     <div class="prayer-body">
      <div id="p-panel-sayegh">
      <div class="prayer-center-head">
-      <div class="prayer-center-city">${cityObj.name}</div>
+      <div class="prayer-center-city" id="p-center-city">${cityObj.name}</div>
       <div class="prayer-center-hijri" id="p-center-hijri">${hijriText}</div>
       <div class="prayer-center-miladi" id="p-center-miladi">${miladiText}</div>
      </div>
@@ -4876,22 +4883,20 @@ let fetching=false;
         if(window.setActiveBox && window.setActiveBox._fix4Atomic){ return; } let original = window.setActiveBox || setActiveBox;
         let wrapped = function(v){
           try{ original(v); }catch(e){ try{ setActiveBox(v); }catch(e2){} }
-          // بعد التفعيل، حدث مدينة الصلاة حسب البوكس الجديد
-          setTimeout(function(){
-            try{
-              let expected=getExpectedPrayerCode();
-              let current=getPrayerDef();
-              // إذا كان المستخدم لم يغير يدوياً لمدينة ثالثة، نحدث
-              // المنطق: دائماً حدث عند تغيير البوكس (حسب الطلب)
-              if(expected && expected!==current){
-                setPrayerDef(expected);
-                console.log('✅ Prayer sync: box changed to '+v+' -> prayer city '+expected);
-                // إذا كان fetchPrayersAuto موجود، اجلب
-                if(window.fetchPrayersAuto) window.fetchPrayersAuto(expected);
-              }
-              if(window._updateCityHeader) window._updateCityHeader();
-            }catch(e){}
-          }, 300);
+          // بعد التفعيل، حدث مدينة الصلاة حسب البوكس الجديد - مباشرة، بلا 300ms
+          try{
+            let expected=getExpectedPrayerCode();
+            let current=getPrayerDef();
+            // المنطق: دائماً حدث عند تغيير البوكس (حسب الطلب)
+            if(expected && expected!==current){
+              setPrayerDef(expected);
+              console.log('✅ Prayer sync: box changed to '+v+' -> prayer city '+expected);
+              // إذا كان fetchPrayersAuto موجود، اجلب
+              if(window.fetchPrayersAuto) window.fetchPrayersAuto(expected);
+            }
+            if(window._updateCityHeader) window._updateCityHeader();
+            if(window.updateCityInDate) window.updateCityInDate();
+          }catch(e){}
         };
         window.setActiveBox = wrapped;
         // أيضا للـ local scope
