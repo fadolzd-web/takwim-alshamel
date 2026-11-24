@@ -2159,6 +2159,7 @@ window.fetchSayeghBridge = async function(code){
   window._sayeghLastApiError = '';
   var _parseApi = function(j){
     var months = (j && j.months) || [];
+    try{ if(j && j.months && j.months.length){ window._sayeghFullCity = j; window._sayeghFullCode = c; try{ if(window._sayeghRenderYearViews) window._sayeghRenderYearViews(); }catch(e){} } }catch(e){}
     var now = new Date();
     var m = now.getMonth() + 1, dy = now.getDate();
     var md = null;
@@ -4097,7 +4098,11 @@ let fetching=false;
       <div class="prayer-center-miladi" id="p-center-miladi">${miladiText}</div>
      </div>
      <div id="p-status" class="prayer-status" style="display:${cached?'none':'block'}"><div style="font-size:20px">⏳</div>جاري جلب أحدث بيانات الصلاة...<br><span style="font-size:11px;opacity:0.8">قد تستغرق بعض الوقت</span><div style="margin-top:8px;height:4px;background:rgba(255,255,255,0.08);border-radius:999px;overflow:hidden"><div style="width:100%;height:100%;background:linear-gradient(90deg,#d4af37,#fff,#d4af37);background-size:200% 100%;animation:loadBar 1.2s infinite linear"></div></div></div>
-     <div id="p-cards">${cached? prayerDarkHTML(cached.data.prayers):''}</div>
+     <div class="sg-tabs"><button class="sg-tab active" data-sg-view="day">اليوم</button><button class="sg-tab" data-sg-view="month">الشهر</button><button class="sg-tab" data-sg-view="year">السنة</button><button class="sg-tab" data-sg-view="moon">القمر والإضافات</button></div>
+     <div id="sg-view-day"><div id="p-cards">${cached? prayerDarkHTML(cached.data.prayers):''}</div><div id="sg-day-extra"></div><details id="sg-day-details"><summary>تفاصيل أكتر</summary><div id="sg-day-details-body"></div></details></div>
+     <div id="sg-view-month" style="display:none"><div class="sg-month-head"><select id="sg-month-sel"></select><div class="sg-month-note">من نفس جلبة المدينة، بلا جلب جديد. كبسة على اليوم بتفتح كل مواقيتو.</div></div><div id="sg-month-list"></div></div>
+     <div id="sg-view-year" style="display:none"><div class="sg-year-note">تقويم السنة - من نفس جلبة المدينة. كبسة على الشهر بتروح لجدول الشهر.</div><div id="sg-year-grid"></div></div>
+     <div id="sg-view-moon" style="display:none"><div id="sg-moon-today"></div><div class="sg-tabs" style="margin-top:10px"><button class="sg-extra-btn" data-sg-extra="crescent">الهلال</button><button class="sg-extra-btn" data-sg-extra="moon">منازل القمر</button><button class="sg-extra-btn" data-sg-extra="events">المناسبات</button><button class="sg-extra-btn" data-sg-extra="tide">المد والجزر</button><button class="sg-extra-btn" data-sg-extra="hijri">التقويم الهجري</button></div><div style="display:flex;gap:8px;align-items:center;margin-top:8px"><label style="font-size:12px;color:#e8d9a3">نوع القمر:</label><select id="sg-moon-which"><option value="man">منازل man</option><option value="zod" selected>أبراج zod</option><option value="true">حقيقي true</option></select></div><div id="sg-extra-box" style="margin-top:10px"></div></div>
      <div style="background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.25);border-radius:8px;padding:10px 8px;text-align:center;color:#d4af37;font-size:12px;line-height:1.5;margin-top:12px">⚠️ نلفت انتباه جنابكم الى وجوب الاحتياط بضع دقائق..و شكرا</div>
      <div class="sayegh-row" style="margin-top:12px"><button class="sayegh-btn primary" id="p-refresh" style="flex:1">🔄 تحديث</button><button class="sayegh-btn" id="p-change" style="flex:1">📍 حدد مدينتك</button></div>
      <div class="sayegh-row" style="margin-top:8px"><button class="sayegh-btn" id="p-share-img" style="flex:1;background:linear-gradient(135deg,#0f3218,#132a1a);border:1px solid rgba(212,175,55,0.4);color:#d4af37">📸 مشاركة كصورة</button></div>
@@ -4147,6 +4152,8 @@ let fetching=false;
   // تم الغاء زر الاغلاق السفلي - الاكس فوق يكفي
   ov.addEventListener('click',e=>{if(e.target===ov)close();});
   document.getElementById('p-change').onclick=()=>{close();openCitySelector(code);}; /* الخطوة 13: فوري - close() متزامن */
+  try{ if(window._sayeghBindModal) window._sayeghBindModal(ov, code); }catch(e){}
+  try{ if(window._sayeghRenderYearViews) window._sayeghRenderYearViews(); }catch(e){}
   let shareBtn=document.getElementById('p-share-img'); if(shareBtn) shareBtn.onclick=()=>{ if(window.sharePrayerAsImage) window.sharePrayerAsImage(); };
   document.getElementById('p-refresh').onclick=async()=>{
    statusEl.style.display='block';statusEl.innerHTML='⏳ جاري التحديث...';
@@ -7007,4 +7014,309 @@ let fetching=false;
 <script id="taq-qibla-script">/* القبلة - صفحة كاملة بلا iframe | v16 جراحة نظيفة: زر القبلة يفتح qibla.html كصفحة كاملة، بلا إطار، بلا postMessage، بلا مراقب */(function(){window.openQiblaPage=function(){window.location.href='./qibla.html';};window.closeQiblaPage=function(){history.back();};})();</script>
 
 <script id="taq-back-history">(function(){var openLayer=null;var layerPushed=false;var ignorePop=false;function isKhiraOpen(){var p=document.getElementById('taq-khira-page');return !!(p&&p.style.display!=='none'&&p.style.display!=='');}function closeKhiraDirect(){try{if(window.closeKhiraPage&&window.closeKhiraPage._taqWrapped){window.closeKhiraPage._taqOrig();}else if(window.closeKhiraPage){window.closeKhiraPage();}}catch(e){try{var p=document.getElementById('taq-khira-page');if(p)p.style.display='none';var r=document.getElementById('root');if(r)r.style.display='';}catch(e2){}}}function closePrayerDirect(){try{var o=document.getElementById('prayer-main-overlay');if(o)o.remove();var c=document.getElementById('p-city-sel-overlay');if(c)c.remove();}catch(e){}}function pushLayer(name){try{history.pushState({page:name},'');openLayer=name;layerPushed=true;}catch(e){openLayer=name;layerPushed=true;}}function popLayerState(){if(!layerPushed)return;layerPushed=false;ignorePop=true;try{history.back();}catch(e){}}try{var st=history.state;if(st&&st.page==='khira'&&!isKhiraOpen()){history.replaceState({page:'calendar'},'');}else if(!st){try{history.replaceState({page:'calendar'},'');}catch(e){}}}catch(e){}try{var origKhira=window.openKhiraPage;if(origKhira){var wrappedKhira=function(){origKhira();if(openLayer!=='khira')pushLayer('khira');};wrappedKhira._taqOrig=origKhira;window.openKhiraPage=wrappedKhira;}var origCloseKhira=window.closeKhiraPage;if(origCloseKhira){var wrappedCloseKhira=function(){var wasOpen=(openLayer==='khira');var wasPushed=layerPushed;origCloseKhira();openLayer=null;if(wasOpen&&wasPushed){popLayerState();}else{layerPushed=false;}};wrappedCloseKhira._taqOrig=origCloseKhira;wrappedCloseKhira._taqWrapped=true;window.closeKhiraPage=wrappedCloseKhira;}}catch(e){}try{var origPrayer=window.openPrayerSystem;if(origPrayer){window.openPrayerSystem=function(){origPrayer();var hasPrayer=!!document.getElementById('prayer-main-overlay');var hasCity=!!document.getElementById('p-city-sel-overlay');if(hasPrayer){if(openLayer!=='prayer')pushLayer('prayer');}else if(hasCity){if(openLayer!=='city')pushLayer('city');}};}}catch(e){}try{document.addEventListener('click',function(ev){var t=ev.target;if(!t||!t.id)return;if(t.id==='p-close-main'){if(openLayer==='prayer'){openLayer=null;popLayerState();}else if(layerPushed){popLayerState();}return;}if(t.id==='p-close-city'||t.id==='p-btn-close2'){if(openLayer==='city'||openLayer==='prayer'){openLayer=null;popLayerState();}else if(layerPushed){popLayerState();}return;}if(t.id==='prayer-main-overlay'&&ev.target===t){if(openLayer==='prayer'){openLayer=null;popLayerState();}return;}if(t.id==='p-city-sel-overlay'&&ev.target===t){if(openLayer==='city'||openLayer==='prayer'){openLayer=null;popLayerState();}return;}});}catch(e){}function closeTopLayer(){if(isKhiraOpen()){if(layerPushed){layerPushed=false;ignorePop=true;try{history.back();}catch(e){}}closeKhiraDirect();openLayer=null;layerPushed=false;return true;}var pr=document.getElementById('prayer-main-overlay');var ct=document.getElementById('p-city-sel-overlay');if(pr||ct){if(layerPushed){layerPushed=false;ignorePop=true;try{history.back();}catch(e){}}closePrayerDirect();openLayer=null;layerPushed=false;return true;}if(layerPushed){layerPushed=false;ignorePop=true;try{history.back();}catch(e){}openLayer=null;return true;}return false;}window.__taqCloseTopLayer=closeTopLayer;window.addEventListener('popstate',function(ev){if(ignorePop){ignorePop=false;return;}if(isKhiraOpen()){var o1=window.closeKhiraPage;try{if(o1&&o1._taqWrapped){o1._taqOrig();}else if(o1){o1();}}catch(e){try{var p=document.getElementById('taq-khira-page');if(p)p.style.display='none';var r=document.getElementById('root');if(r)r.style.display='';}catch(e2){}}openLayer=null;layerPushed=false;return;}var pr=document.getElementById('prayer-main-overlay');var ct=document.getElementById('p-city-sel-overlay');if(pr||ct){closePrayerDirect();openLayer=null;layerPushed=false;return;}if(layerPushed){layerPushed=false;openLayer=null;return;}});})();</script>
+
+<style id="sg-step18-style">
+.sg-tabs{display:flex;gap:6px;margin:12px 0 8px;flex-wrap:wrap}
+.sg-tab{flex:1;min-width:70px;height:38px;padding:0 8px;border-radius:10px;border:1px solid rgba(212,175,55,.25);background:#0f2418;color:#e8d9a3;font-size:13px;font-weight:700;cursor:pointer}
+.sg-tab.active{background:linear-gradient(135deg,#065f46,#064e3b);border-color:#10b981;color:#a7f3d0}
+.sg-extra-btn{flex:1;min-width:90px;height:38px;padding:0 8px;border-radius:10px;border:1px solid rgba(212,175,55,.25);background:#0f2418;color:#e8d9a3;font-size:12px;font-weight:700;cursor:pointer}
+.sg-month-head{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.sg-month-head select{background:#0f2418;border:1px solid rgba(212,175,55,.25);color:#e8d9a3;border-radius:8px;padding:10px;font-size:13px}
+.sg-month-note,.sg-year-note{font-size:12px;color:#9ca3af;line-height:1.6}
+.sg-month-row{border:1px solid rgba(212,175,55,.15);border-radius:10px;padding:10px 12px;margin-bottom:6px;background:rgba(0,0,0,.18);cursor:pointer}
+.sg-month-row-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sg-month-day{font-weight:900;color:#fde68a;font-size:14px}
+.sg-month-hijri{font-size:12px;color:#e8d9a3}
+.sg-month-times{display:flex;gap:10px;font-size:12px;color:#d1d5db;flex-wrap:wrap;margin-top:6px}
+.sg-month-times b{color:#fff}
+.sg-month-detail{display:none;margin-top:10px;border-top:1px solid rgba(212,175,55,.15);padding-top:8px;font-size:12px;line-height:1.8;color:#e8d9a3}
+.sg-month-row.open .sg-month-detail{display:block}
+.sg-year-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.sg-year-card{border:1px solid rgba(212,175,55,.18);border-radius:12px;padding:12px;background:rgba(0,0,0,.18);cursor:pointer}
+.sg-year-card b{display:block;color:#fde68a;font-size:14px}
+.sg-year-card span{font-size:12px;color:#e8d9a3}
+.sg-year-card small{display:block;font-size:11px;color:#9ca3af;margin-top:4px}
+.sg-pill-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.sg-pill{border:1px solid rgba(212,175,55,.18);border-radius:999px;padding:6px 10px;font-size:12px;color:#e8d9a3;background:rgba(0,0,0,.18)}
+.sg-pill b{color:#fde68a;margin-left:4px}
+#sg-day-details{margin-top:10px;border:1px solid rgba(212,175,55,.15);border-radius:10px;padding:8px 10px;background:rgba(0,0,0,.12)}
+#sg-day-details summary{cursor:pointer;color:#e8d9a3;font-size:12px;font-weight:700}
+#sg-day-details-body{margin-top:8px;font-size:12px;line-height:1.8;color:#d1d5db}
+.sg-extra-table{width:100%;border-collapse:collapse;font-size:12px}
+.sg-extra-table td{border-bottom:1px solid rgba(212,175,55,.12);padding:6px 4px;vertical-align:top}
+.sg-extra-table td:first-child{font-weight:700;color:#fde68a;width:35%}
+</style>
+<script id="sg-step18-script">
+/* ===== الخطوة 18: الصايغ - شهر + سنة + فارسي + قمر - عملية جراحية نظيفة =====
+   قاعدة واحدة: جلبة المدينة الواحدة فيها السنة كلها. لا جلبة جديدة للشهر ولا للسنة.
+   اليوم والشهر والسنة والفارسي والقمر اليومي كلهم من نفس window._sayeghFullCity.
+   الإضافات (هلال / منازل / مناسبات / مد وجزر / تقويم هجري) عند الطلب فقط، لما تكبس.
+   لا كتابة فوق React، لا كتابة فوق applyLiveUpdate. هون بس رسم واجهات الصلاة.
+   السنة ديناميك من تاريخ الجهاز، مش مكتوبة باليد.
+*/
+(function(){
+  window._sayeghFullCity = window._sayeghFullCity || null;
+  window._sayeghFullCode = window._sayeghFullCode || null;
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function num(v){ return '<span style="direction:ltr;display:inline-block">'+esc(v)+'</span>'; }
+  window._sayeghGetMonth = function(m){
+    try{
+      var f = window._sayeghFullCity;
+      if(!f || !f.months) return null;
+      for(var i=0;i<f.months.length;i++){ if(f.months[i] && f.months[i].month===m) return f.months[i]; }
+    }catch(e){}
+    return null;
+  };
+  window._sayeghGetDay = function(m, d){
+    try{
+      var mm = window._sayeghGetMonth(m);
+      if(!mm || !mm.days) return null;
+      for(var i=0;i<mm.days.length;i++){ if(mm.days[i] && mm.days[i].day===d) return mm.days[i]; }
+    }catch(e){}
+    return null;
+  };
+  function dayPrayerRows(d){
+    if(!d) return '';
+    var map = window._sayeghMapDayToPrayers ? window._sayeghMapDayToPrayers(d) : null;
+    if(!map) return '';
+    var pairs = [['السحر',d.saharTime],['الإمساك',d.imsakTime],['الفجر',d.dawnTime],['الصبح',d.subhTime],['الشروق',d.sunriseTime],['الزوال',d.zawalTime],['الظهر',d.dhuhrTime],['العصر 1',d.asrTime_1],['العصر 2',d.asrTime_2],['الغروب',d.sunsetTime],['المغرب',d.maghrebTime],['العشاء',d.ishaTime],['منتصف الليل',d.midnightTime]];
+    var out = '';
+    for(var i=0;i<pairs.length;i++){ if(pairs[i][1]) out += '<div>'+esc(pairs[i][0])+' : '+num(pairs[i][1])+'</div>'; }
+    return out;
+  }
+  window._sayeghRenderDayExtras = function(){
+    var box = document.getElementById('sg-day-extra');
+    var det = document.getElementById('sg-day-details-body');
+    if(!box && !det) return;
+    var ex = window._sayeghLastExtras || null;
+    var full = window._sayeghFullCity || null;
+    if(!ex && !full){
+      if(box) box.innerHTML = '<div class="prayer-status">جارٍ جلب الفارسي والقمر مع جلبة المدينة...</div>';
+      if(det) det.innerHTML = '';
+      return;
+    }
+    var farsi = ex ? ex.farsiDate : null;
+    var moonrise = ex ? ex.moonriseTime : null;
+    var moonset = ex ? ex.moonsetTime : null;
+    var anwaa = ex ? ex.anwaaName : null;
+    var mawasem = ex ? ex.mawasemName : null;
+    var trueZ = ex ? ex.trueZodiacName : null;
+    var commonZ = ex ? ex.commonZodiacName : null;
+    var coptic = ex ? ex.copticDate : null;
+    var hebrew = ex ? ex.hebrewDate : null;
+    var julian = ex ? ex.julianDate : null;
+    var html = '';
+    html += '<div style="border:1px solid rgba(212,175,55,.18);border-radius:12px;padding:12px;background:rgba(0,0,0,.18);margin-top:10px">';
+    html += '<div style="font-weight:900;color:#fde68a;font-size:13px">التاريخ الفارسي</div>';
+    html += '<div style="font-size:13px;color:#e8d9a3;margin-top:4px">'+esc(farsi || 'غير متوفر')+'</div>';
+    html += '<div style="font-weight:900;color:#fde68a;font-size:13px;margin-top:12px">القمر اليوم</div>';
+    html += '<div class="sg-pill-row">';
+    html += '<span class="sg-pill"><b>طلوع القمر</b>'+num(moonrise || '-')+'</span>';
+    html += '<span class="sg-pill"><b>غروب القمر</b>'+num(moonset || '-')+'</span>';
+    if(anwaa) html += '<span class="sg-pill"><b>الأنواء</b>'+esc(anwaa)+'</span>';
+    if(mawasem) html += '<span class="sg-pill"><b>المواسم</b>'+esc(mawasem)+'</span>';
+    if(trueZ) html += '<span class="sg-pill"><b>البرج الحقيقي</b>'+esc(trueZ)+'</span>';
+    if(commonZ) html += '<span class="sg-pill"><b>البرج الشائع</b>'+esc(commonZ)+'</span>';
+    html += '</div></div>';
+    if(box) box.innerHTML = html;
+    if(det){
+      var dh = '';
+      if(coptic) dh += '<div>قبطي : '+esc(coptic)+'</div>';
+      if(hebrew) dh += '<div>عبري : '+esc(hebrew)+'</div>';
+      if(julian) dh += '<div>يولياني : '+esc(julian)+'</div>';
+      if(!dh) dh = '<div>لا تفاصيل إضافية من السيرفر لهذا اليوم.</div>';
+      det.innerHTML = dh;
+    }
+  };
+  window._sayeghRenderMonth = function(monthNum){
+    var list = document.getElementById('sg-month-list');
+    var sel = document.getElementById('sg-month-sel');
+    if(!list) return;
+    var full = window._sayeghFullCity;
+    if(!full || !full.months){
+      list.innerHTML = '<div class="prayer-status">اجلب المدينة أولاً - الشهر من نفس جلبة المدينة، بلا جلب جديد.</div>';
+      return;
+    }
+    var m = monthNum || (new Date().getMonth()+1);
+    if(sel && sel.options.length===0){
+      var opts = '';
+      for(var i=0;i<full.months.length;i++){
+        var mm0 = full.months[i];
+        var name0 = (mm0.days && mm0.days[0] && mm0.days[0].monthNameAr) ? mm0.days[0].monthNameAr : ('شهر '+mm0.month);
+        opts += '<option value="'+mm0.month+'"'+(mm0.month===m?' selected':'')+'>'+esc(name0)+'</option>';
+      }
+      sel.innerHTML = opts;
+    }
+    if(sel) sel.value = String(m);
+    var mm = window._sayeghGetMonth(m);
+    if(!mm || !mm.days){
+      list.innerHTML = '<div class="prayer-status">لا يوجد شهر '+esc(m)+'.</div>';
+      return;
+    }
+    var rows = '';
+    for(var k=0;k<mm.days.length;k++){
+      var d = mm.days[k];
+      var detail = dayPrayerRows(d);
+      rows += '<div class="sg-month-row" data-day="'+esc(d.day)+'">';
+      rows += '<div class="sg-month-row-head"><span class="sg-month-day">'+num(d.day)+' - '+esc(d.date || '')+'</span><span class="sg-month-hijri">هجري '+num(d.hijriDate || '')+'</span></div>';
+      rows += '<div class="sg-month-times"><span>إمساك <b>'+num(d.imsakTime || '-')+'</b></span><span>صبح <b>'+num(d.subhTime || '-')+'</b></span><span>ظهر <b>'+num(d.dhuhrTime || '-')+'</b></span><span>مغرب <b>'+num(d.maghrebTime || '-')+'</b></span><span>عشاء <b>'+num(d.ishaTime || '-')+'</b></span></div>';
+      if(detail) rows += '<div class="sg-month-detail">'+detail+'</div>';
+      rows += '</div>';
+    }
+    list.innerHTML = rows;
+  };
+  window._sayeghRenderYear = function(){
+    var grid = document.getElementById('sg-year-grid');
+    if(!grid) return;
+    var full = window._sayeghFullCity;
+    if(!full || !full.months){
+      grid.innerHTML = '<div class="prayer-status">اجلب المدينة أولاً - السنة من نفس جلبة المدينة.</div>';
+      return;
+    }
+    var out = '';
+    for(var i=0;i<full.months.length;i++){
+      var mm = full.months[i];
+      if(!mm.days || !mm.days.length) continue;
+      var f = mm.days[0], l = mm.days[mm.days.length-1];
+      var name = f.monthNameAr || ('شهر '+mm.month);
+      out += '<div class="sg-year-card" data-month="'+mm.month+'"><b>'+esc(name)+'</b><span>'+num(mm.days.length)+' يوم</span><small>من '+num(f.hijriDate || '')+' إلى '+num(l.hijriDate || '')+'</small></div>';
+    }
+    grid.innerHTML = out;
+  };
+  window._sayeghRenderMoon = function(){
+    var box = document.getElementById('sg-moon-today');
+    if(!box) return;
+    var ex = window._sayeghLastExtras || null;
+    if(!ex){
+      box.innerHTML = '<div class="prayer-status">جارٍ جلب القمر مع جلبة المدينة...</div>';
+      return;
+    }
+    var h = '<div style="border:1px solid rgba(212,175,55,.18);border-radius:12px;padding:12px;background:rgba(0,0,0,.18)">';
+    h += '<div style="font-weight:900;color:#fde68a;font-size:13px">أحوال القمر - اليوم</div>';
+    h += '<div class="sg-pill-row">';
+    h += '<span class="sg-pill"><b>طلوع</b>'+num(ex.moonriseTime || '-')+'</span>';
+    h += '<span class="sg-pill"><b>غروب</b>'+num(ex.moonsetTime || '-')+'</span>';
+    if(ex.anwaaName) h += '<span class="sg-pill"><b>الأنواء</b>'+esc(ex.anwaaName)+'</span>';
+    if(ex.mawasemName) h += '<span class="sg-pill"><b>المواسم</b>'+esc(ex.mawasemName)+'</span>';
+    if(ex.trueZodiacName) h += '<span class="sg-pill"><b>الحقيقي</b>'+esc(ex.trueZodiacName)+'</span>';
+    if(ex.commonZodiacName) h += '<span class="sg-pill"><b>الشائع</b>'+esc(ex.commonZodiacName)+'</span>';
+    h += '</div><div style="font-size:12px;color:#9ca3af;margin-top:8px">الهلال والمنازل تحت، عند الطلب فقط، من السيرفر مباشرة.</div></div>';
+    box.innerHTML = h;
+  };
+  window._sayeghRenderYearViews = function(){
+    if(!document.getElementById('prayer-main-overlay')) return;
+    try{ window._sayeghRenderDayExtras(); }catch(e){}
+    try{
+      var sel = document.getElementById('sg-month-sel');
+      var cur = sel && sel.value ? parseInt(sel.value,10) : (new Date().getMonth()+1);
+      window._sayeghRenderMonth(cur);
+    }catch(e){}
+    try{ window._sayeghRenderYear(); }catch(e){}
+    try{ window._sayeghRenderMoon(); }catch(e){}
+  };
+  window._sayeghSwitchView = function(view){
+    var views = ['day','month','year','moon'];
+    for(var i=0;i<views.length;i++){
+      var el = document.getElementById('sg-view-'+views[i]);
+      if(el) el.style.display = (views[i]===view ? 'block' : 'none');
+    }
+    var tabs = document.querySelectorAll('.sg-tab[data-sg-view]');
+    for(var j=0;j<tabs.length;j++){
+      if(tabs[j].getAttribute('data-sg-view')===view) tabs[j].classList.add('active');
+      else tabs[j].classList.remove('active');
+    }
+    try{
+      if(view==='month'){ var s=document.getElementById('sg-month-sel'); var mm2 = s && s.value ? parseInt(s.value,10) : (new Date().getMonth()+1); window._sayeghRenderMonth(mm2); }
+      if(view==='year') window._sayeghRenderYear();
+      if(view==='moon') window._sayeghRenderMoon();
+      if(view==='day') window._sayeghRenderDayExtras();
+    }catch(e){}
+  };
+  window._sayeghBindModal = function(ov, code){
+    if(!ov) return;
+    if(ov.dataset.sgBound==='1') return;
+    ov.dataset.sgBound='1';
+    var tabs = ov.querySelectorAll('.sg-tab[data-sg-view]');
+    for(var i=0;i<tabs.length;i++){
+      (function(t){ t.addEventListener('click', function(){ window._sayeghSwitchView(t.getAttribute('data-sg-view')); }); })(tabs[i]);
+    }
+    var sel = ov.querySelector('#sg-month-sel');
+    if(sel) sel.addEventListener('change', function(){ window._sayeghRenderMonth(parseInt(sel.value,10)); });
+    var yearGrid = ov.querySelector('#sg-year-grid');
+    if(yearGrid) yearGrid.addEventListener('click', function(e){
+      var card = e.target && e.target.closest ? e.target.closest('.sg-year-card') : null;
+      if(!card) return;
+      var m = parseInt(card.getAttribute('data-month'),10);
+      if(!m) return;
+      var sel2 = document.getElementById('sg-month-sel');
+      if(sel2) sel2.value = String(m);
+      window._sayeghRenderMonth(m);
+      window._sayeghSwitchView('month');
+    });
+    var monthList = ov.querySelector('#sg-month-list');
+    if(monthList) monthList.addEventListener('click', function(e){
+      var row = e.target && e.target.closest ? e.target.closest('.sg-month-row') : null;
+      if(!row) return;
+      row.classList.toggle('open');
+    });
+    var extraBtns = ov.querySelectorAll('.sg-extra-btn');
+    for(var k=0;k<extraBtns.length;k++){
+      (function(b){ b.addEventListener('click', function(){ window._sayeghLoadExtra(b.getAttribute('data-sg-extra'), code); }); })(extraBtns[k]);
+    }
+  };
+  window._sayeghRenderObj = function(o){
+    if(o==null) return '<span style="color:#9ca3af">-</span>';
+    if(Array.isArray(o)){
+      if(o.length===0) return '<span style="color:#9ca3af">لا يوجد</span>';
+      if(o.every(function(x){ return x==null || typeof x!=='object'; })) return o.map(function(x){ return '<span class="sg-pill">'+esc(x)+'</span>'; }).join(' ');
+      return '<div style="color:#9ca3af;font-size:12px">'+o.length+' عنصر</div>'+o.slice(0,30).map(function(x){ return '<div style="border:1px solid rgba(212,175,55,.15);border-radius:10px;padding:8px;margin:6px 0">'+window._sayeghRenderObj(x)+'</div>'; }).join('');
+    }
+    if(typeof o==='object'){
+      return '<table class="sg-extra-table">'+Object.keys(o).map(function(k){
+        var v=o[k]; var cell;
+        if(v==null) cell='<span style="color:#9ca3af">-</span>';
+        else if(typeof v==='object') cell=window._sayeghRenderObj(v);
+        else cell=num(v);
+        return '<tr><td>'+esc(k)+'</td><td>'+cell+'</td></tr>';
+      }).join('')+'</table>';
+    }
+    return num(o);
+  };
+  window._sayeghLoadExtra = async function(kind, code){
+    var box = document.getElementById('sg-extra-box');
+    if(!box) return;
+    box.innerHTML = 'جارٍ الجلب...';
+    try{
+      var full = window._sayeghFullCity;
+      if(!full){ box.innerHTML = '<div class="prayer-status">اجلب المدينة أولاً - الإضافات تحتاج مدينة.</div>'; return; }
+      var cityEn = full.city || full.city_en || '';
+      var countryEn = full.country_en || full.country || '';
+      var curMonth = new Date().getMonth()+1;
+      var url = '';
+      if(kind==='events') url = 'https://api.sayeghcalendar.com/events/'+encodeURIComponent(countryEn);
+      else if(kind==='crescent') url = 'https://api.sayeghcalendar.com/crescent/'+encodeURIComponent(cityEn)+'/'+curMonth;
+      else if(kind==='tide') url = 'https://api.sayeghcalendar.com/tidewave/'+encodeURIComponent(countryEn);
+      else if(kind==='moon'){ var wEl=document.getElementById('sg-moon-which'); var w=wEl?wEl.value:'zod'; url='https://api.sayeghcalendar.com/moon/'+encodeURIComponent(w); }
+      else if(kind==='hijri') url='https://api.sayeghcalendar.com/hijri-calendar/'+new Date().getFullYear();
+      else { box.innerHTML='<div class="prayer-status">نوع غير معروف.</div>'; return; }
+      var d = null;
+      try{
+        if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp){
+          var r = await window.Capacitor.Plugins.CapacitorHttp.get({ url:url, headers:{Accept:'application/json'}, connectTimeout:15000, readTimeout:15000, responseType:'json' });
+          if(r && r.status>=200 && r.status<300 && r.data){ d = (typeof r.data==='string') ? JSON.parse(r.data) : r.data; }
+        }
+      }catch(e){}
+      if(!d){
+        var res = await fetch(url, { headers:{'Accept':'application/json'}, cache:'no-store' });
+        if(res && res.ok) d = await res.json();
+        else throw new Error('HTTP '+ (res && res.status));
+      }
+      box.innerHTML = '<div style="font-size:11px;color:#9ca3af;direction:ltr">المصدر: '+esc(url)+'</div><div style="margin-top:8px">'+window._sayeghRenderObj(d)+'</div>';
+    }catch(e){
+      box.innerHTML = '<div class="prayer-status">غير متوفر من السيرفر: '+esc(e && e.message ? e.message : String(e))+'</div><div style="font-size:12px;color:#9ca3af">السيرفر قال فشل، ما في داتا مخترعة. جرب زر تاني.</div>';
+    }
+  };
+})();
+</script>
+
 </body></html>
