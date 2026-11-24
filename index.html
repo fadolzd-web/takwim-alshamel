@@ -914,7 +914,7 @@ window.openSource = function(url){
   a.href=url; a.target='_blank'; a.rel='noopener noreferrer';
   a.style.display='none';
   document.body.appendChild(a); a.click();
-  setTimeout(function(){ try{a.remove();}catch(e){} }, 100);
+  try{a.remove();}catch(e){} /* الخطوة 13: إزالة فورية - الكبسة متزامنة، ما فيه داعي ننطر 100ms */
   return;
  }catch(e){}
  try{ location.href=url; }catch(e){}
@@ -972,10 +972,7 @@ function getTypeLabel(type){
 }
 
 (function(){
- // انتظر حتى يحمل DOM
- function addSectionsFeature(){return;}
-
- function openSectionsModal(){return;}
+ /* الخطوة 13: حذف addSectionsFeature و openSectionsModal الميتين - كانوا return فقط، والتايمر 1500ms كان ينادي دالة ميتة. */
 
  function renderSectionsTabs(){
   let groups = getAllGroups();
@@ -1092,8 +1089,7 @@ ev.id
   alert('استخدم زر تعديل في لوحة الإدارة الأصلية للتقويم، أو احذف وأضف من جديد. ID: '+id);
  };
 
- // شغل بعد تحميل الصفحة
- setTimeout(addSectionsFeature, 1500);
+ /* الخطوة 13: حذف setTimeout 1500ms - كان ينادي دالة ميتة، ما فيه شي لينشغل. */
  
 })();
 </script>
@@ -1329,8 +1325,8 @@ function selectManual(t,v){
  if(t==='d')window._manualSel.d=v;
  updateManualActive();
  updateManualPreview();
- if(t==='y') setTimeout(function(){toggleSection('m');},150);
- if(t==='m') setTimeout(function(){toggleSection('d');},150);
+ if(t==='y') toggleSection('m'); /* الخطوة 13: فوري - toggleSection متزامن، بيقلب كلاس فقط */
+ if(t==='m') toggleSection('d');
 }
 function updateManualActive(){
  document.querySelectorAll('#manual-years .manual-btn').forEach(function(b){b.classList.toggle('active',String(b.dataset.val)===String(window._manualSel.y));});
@@ -1388,12 +1384,10 @@ function applyManualHijri(){
  var obj=window.buildUnifiedFinalObj ? window.buildUnifiedFinalObj(parseInt(s.d), hm, parseInt(s.y), s.m) : {hd:parseInt(s.d),hm:hm,hy:parseInt(s.y),hmn:s.m,hmName:s.m,dt:s.d+' '+s.m+' '+s.y+' هـ',finalStr:s.d+' '+s.m+' '+s.y+' هـ',len:30};
  window.applyLiveUpdate(obj, 'يدوي - النجف الأشرف', obj.finalStr);
  try{ closeManualHijri(); }catch(e){}
- setTimeout(function(){
-  try{
-   if(window.setFirstTimingSource) window.setFirstTimingSource(obj.finalStr, 'يدوي - النجف الأشرف','najaf');
-   if(window.setDynamicRefFromDt) window.setDynamicRefFromDt(obj.finalStr,'manual');
-  }catch(e){}
- },100);
+ try{
+  if(window.setFirstTimingSource) window.setFirstTimingSource(obj.finalStr, 'يدوي - النجف الأشرف','najaf');
+  if(window.setDynamicRefFromDt) window.setDynamicRefFromDt(obj.finalStr,'manual');
+ }catch(e){} /* الخطوة 13: فوري - closeManualHijri متزامن */
 }
 
 // ========== الربط الجراحي الذكي V2 - إصلاح عدم فتح النافذة ==========
@@ -2037,7 +2031,8 @@ window._v20_bindAutoCheckbox = function(){
   }catch(e){}
 };
 
-setTimeout(fetchMasterCities, 500);
+/* الخطوة 13: جلب المدن فورا عند جاهزية الصفحة، بلا تخمين 500ms */
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', fetchMasterCities); else fetchMasterCities();
 
 window.renderSayeghCities=function(){
  // للتوافق: نحدّث الـ select المخفي
@@ -2676,7 +2671,7 @@ window.addEventListener('focus', function(){ try{ applyBoxMute(); }catch(e){} })
 document.addEventListener('visibilitychange', function(){ if(!document.hidden){ try{ applyBoxMute(); }catch(e){} } });
 
 function openLiveShape(){var el=document.getElementById('live-update-overlay'); if(el) el.classList.add('open'); try{ applyBoxMute(); }catch(e){}}
-function closeLiveShape(){var el=document.getElementById('live-update-overlay'); if(el) el.classList.remove('open'); try{ setTimeout(function(){ applyBoxMute(); }, 50); }catch(e){}}
+function closeLiveShape(){var el=document.getElementById('live-update-overlay'); if(el) el.classList.remove('open'); try{ applyBoxMute(); }catch(e){} /* الخطوة 13: فوري مثل openLiveShape */}
 var closeBtn=document.getElementById('live-shape-close'); if(closeBtn) closeBtn.onclick=closeLiveShape;
 var overlay=document.getElementById('live-update-overlay'); if(overlay) overlay.addEventListener('click',function(e){if(e.target===this) closeLiveShape()});
 function bindLive(){
@@ -3208,11 +3203,7 @@ document.addEventListener('DOMContentLoaded', function(){
  var fetchBtn=document.getElementById('btn-fetch-najaf'); if(fetchBtn) fetchBtn.addEventListener('click', window.fetchNajaf);
  window.updateNajafPreview(); setNajafFetchBtnState('idle');
 });
-setTimeout(function(){
- var openBtn=document.getElementById('btn-open-najaf'); if(openBtn && !openBtn._bound){ openBtn.addEventListener('click', window.openNajafSource); openBtn._bound=true; }
- var fetchBtn=document.getElementById('btn-fetch-najaf'); if(fetchBtn && !fetchBtn._bound){ fetchBtn.addEventListener('click', window.fetchNajaf); fetchBtn._bound=true; }
- window.updateNajafPreview(); setNajafFetchBtnState('idle');
-}, 800);
+/* الخطوة 13: حذف الربط المكرر بعد 800ms - الربط الأصلي فوقه بـ DOMContentLoaded بيكفي. */
 </script>
 
 
@@ -3505,7 +3496,7 @@ var _origApply=window.applyMuteStateForAll;window.applyMuteStateForAll=function(
     }
    }catch(e){}
   }
-  setTimeout(loadMasterForPrayer, 700);
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', loadMasterForPrayer); else loadMasterForPrayer(); /* الخطوة 13: فوري عند الجاهزية، بلا تخمين 700ms */
  })();
 
  function saveCities(a){
@@ -3966,7 +3957,7 @@ let fetching=false;
    if(original!==converted){
     inpCode.value=converted;
     // حرك المؤشر للآخر
-    setTimeout(()=>{inpCode.setSelectionRange(converted.length,converted.length);},0);
+    queueMicrotask(function(){ try{ inpCode.setSelectionRange(converted.length,converted.length); }catch(e){} }); /* الخطوة 13: queueMicrotask بدل setTimeout 0 */
    }
   });
 
@@ -3992,7 +3983,7 @@ let fetching=false;
    resultsBox.querySelectorAll('.city-res-item').forEach(el=>{
     el.addEventListener('click',()=>{
      selectedCode=toWesternDigits(el.dataset.code);
-     setDef(toWesternDigits(selectedCode));close();setTimeout(()=>window.openPrayerSystem(),150);
+     setDef(toWesternDigits(selectedCode));close();window.openPrayerSystem() /* الخطوة 13: فوري - close() متزامن */;
     });
    });
   }
@@ -4014,7 +4005,7 @@ let fetching=false;
      suggestBox.querySelectorAll('.city-suggest-item').forEach(it=>{
       it.addEventListener('click',()=>{
        selectedCode=toWesternDigits(it.dataset.code);
-       setDef(toWesternDigits(selectedCode));close();setTimeout(()=>window.openPrayerSystem(),150);
+       setDef(toWesternDigits(selectedCode));close();window.openPrayerSystem() /* الخطوة 13: فوري - close() متزامن */;
       });
      });
     }else suggestBox.style.display='none';
@@ -4059,7 +4050,7 @@ let fetching=false;
   ov.addEventListener('click',e=>{if(e.target===ov)close();});
   document.getElementById('p-btn-save-def').onclick=()=>{
    if(!selectedCode){statusEl.textContent='اختر مدينة من القائمة';return;}
-   setDef(toWesternDigits(selectedCode));close();setTimeout(()=>window.openPrayerSystem(),150);
+   setDef(toWesternDigits(selectedCode));close();window.openPrayerSystem() /* الخطوة 13: فوري - close() متزامن */;
   };
  }
 
@@ -4135,7 +4126,7 @@ let fetching=false;
   document.getElementById('p-close-main').onclick=close;
   // تم الغاء زر الاغلاق السفلي - الاكس فوق يكفي
   ov.addEventListener('click',e=>{if(e.target===ov)close();});
-  document.getElementById('p-change').onclick=()=>{close();setTimeout(()=>openCitySelector(code),100);};
+  document.getElementById('p-change').onclick=()=>{close();openCitySelector(code);}; /* الخطوة 13: فوري - close() متزامن */
   let shareBtn=document.getElementById('p-share-img'); if(shareBtn) shareBtn.onclick=()=>{ if(window.sharePrayerAsImage) window.sharePrayerAsImage(); };
   document.getElementById('p-refresh').onclick=async()=>{
    statusEl.style.display='block';statusEl.innerHTML='⏳ جاري التحديث...';
@@ -5058,8 +5049,8 @@ let fetching=false;
   }catch(e){ console.log('reminder perm err',e); }
   return false;
  };
- if(document.readyState==="complete") setTimeout(window.ensureNotifChannel,2000);
- else window.addEventListener('load', function(){ setTimeout(window.ensureNotifChannel,2000); });
+ if(document.readyState==="complete") window.ensureNotifChannel(); /* الخطوة 13: فوري عند اكتمال التحميل، بلا تخمين 2000ms */
+ else window.addEventListener('load', window.ensureNotifChannel);
  /* الخطوة 4: تعريف واحد لليوم المكثف - الكل بينده هيدا التعريف */
  window._isIntensiveDay = window._isIntensiveDay || function(hd){ return hd===28 || hd===29 || hd===30; };
  // Background fetch init - التهيئة الرئيسية الوحيدة، مع حارس يمنع التهيئة مرتين
@@ -5659,23 +5650,21 @@ let fetching=false;
   };
 
   window.openDataManager=function(tab){
-   try{ setTimeout(function(){ if(typeof updateCounts==='function') updateCounts(); },100); }catch(e){}
+   try{ if(typeof updateCounts==='function') updateCounts(); }catch(e){} /* الخطوة 13: فوري - rootDiv موجود أصلا */
    rootDiv.style.display='block';
    // افتح الاكورديون المطلوب تلقائيا
    try{
     var target = tab || 'events';
-    setTimeout(function(){
-     if(target==='cities') toggleAccordion('cities');
-     else toggleAccordion('events');
-    },50);
-   }catch(e){ try{ switchTab(tab||'events'); }catch(e2){} }
+    if(target==='cities') toggleAccordion('cities');
+    else toggleAccordion('events');
+   }catch(e){ try{ switchTab(tab||'events'); }catch(e2){} } /* الخطوة 13: فوري - rootDiv صار display block بالسطر اللي قبله */
   };
 
   // إغلاق بـ ESC
   document.addEventListener('keydown', function(e){ if(e.key==='Escape') rootDiv.style.display='none'; });
 
   // تأكيد الإخفاء بعد تحميل كامل (يصلح مشكلة بعد تسجيل الدخول)
-  setTimeout(function(){ if(rootDiv.style.display!=='block') rootDiv.style.display='none'; }, 500);
+  if(rootDiv.style.display!=='block') rootDiv.style.display='none'; /* الخطوة 13: فوري - تأكيد الإخفاء ما بده 500ms */
   return rootDiv;
  }
 
@@ -5870,7 +5859,7 @@ let fetching=false;
   // 2- اغلق فوراً ليشعر المستخدم انه اخذ
   closeReminderPicker();
   if(window.T) window.T("تم التذكير: "+label+" ✓");
-  try{ setTimeout(function(){ var btn=document.querySelector('[data-reminder="'+ev.id+'"]'); if(btn) btn.textContent='✓ تم التفعيل'; },300); }catch(e){}
+  try{ var btn=document.querySelector('[data-reminder="'+ev.id+'"]'); if(btn) btn.textContent='✓ تم التفعيل'; }catch(e){} /* الخطوة 13: فوري - closeReminderPicker متزامن، ما فيه شي لننطره 300ms */
   
   // 3- جدولة الاشعار بالخلفية (لا تؤخر الاغلاق)
   try{
@@ -5912,8 +5901,7 @@ let fetching=false;
      // إذا الزر أصلا عنده onclick مع showReminderPicker، لا نتدخل
      var oc=btn.getAttribute('onclick')||'';
      if(oc.indexOf('showReminderPicker')!==-1) return;
-     // إذا الـ picker ما فتح خلال 200ms، افتحه أنت - نفس منطق الـ Patch القديم، لكن بمستمع واحد
-     setTimeout(function(){
+     // الخطوة 13: فوري بلا 200ms - المستمع صار فقاعة مش التقاط، فـ onclick الأصلي بيكون خلص قبله
       var el=document.getElementById('reminder-picker-overlay');
       if(el && el.style.display==='none'){
        var card=btn.closest('[class*="card"]')||btn.closest('div');
@@ -5922,9 +5910,8 @@ let fetching=false;
        var evId=btn.getAttribute('data-reminder') || btn.getAttribute('data-id') || Date.now();
        if(window.showReminderPicker) window.showReminderPicker({id:evId, title:title, desc:''});
       }
-     },200);
     }catch(err){}
-   }, true);
+   }, false); /* الخطوة 13: فقاعة بدل التقاط */
   }catch(e){}
  }
  /* الخطوة 1: ربط واحد عند جاهزية الصفحة + تفويض على زر التذكير، من دون مؤقتين */
@@ -6167,8 +6154,7 @@ let fetching=false;
   }
 
   // On load, force active box to Najaf if nothing saved (first install)
-  window.addEventListener('load', function(){
-    setTimeout(function(){
+  window.addEventListener('load', function(){ /* الخطوة 13: فوري عند load، بلا 800ms */
       try{
         let active = localStorage.getItem('liveBoxActive');
         if(!active){
@@ -6182,7 +6168,6 @@ let fetching=false;
           if(r) r.checked=true;
         }
       }catch(e){}
-    },800);
   });
 
   console.log('✅ Step1 persistent fix loaded - default Najaf+Nojumi, city=Tripoli 1977');
@@ -6212,19 +6197,17 @@ let fetching=false;
       if(origSetActive && !origSetActive._prayerHooked){
         window.setActiveBox = function(v){
           try{ origSetActive(v); }catch(e){ try{ setActiveBox(v); }catch(e2){} }
-          setTimeout(function(){
-            try{
-              let active = v;
-              let expected = (active==='najaf') ? NAJAF_CODE : getCityCodeSafe();
-              localStorage.setItem('_prayer_default_city_v3', expected);
-              if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){
-                window.Capacitor.Plugins.Preferences.set({key:'_prayer_default_city_v3', value:expected});
-              }
-              console.log('Prayer city synced to',expected,'for box',active);
-              // Fetch prayers for new city
-              if(window.fetchPrayersAuto) window.fetchPrayersAuto(expected);
-            }catch(e){}
-          },300);
+          try{ /* الخطوة 13: فوري - origSetActive متزامن */
+            let active = v;
+            let expected = (active==='najaf') ? NAJAF_CODE : getCityCodeSafe();
+            localStorage.setItem('_prayer_default_city_v3', expected);
+            if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences){
+              window.Capacitor.Plugins.Preferences.set({key:'_prayer_default_city_v3', value:expected});
+            }
+            console.log('Prayer city synced to',expected,'for box',active);
+            // Fetch prayers for new city
+            if(window.fetchPrayersAuto) window.fetchPrayersAuto(expected);
+          }catch(e){}
         };
         window.setActiveBox._prayerHooked=true;
       }
