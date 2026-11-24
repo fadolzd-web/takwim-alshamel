@@ -21,8 +21,9 @@
   /* v7: جالب قانوني واحد - fetch مع مهلة، من دون تكرار AbortController */
   window._fetchUnified = async function(url, opts, timeoutMs){ var timeout=timeoutMs||4500; var c=new AbortController(); var t=setTimeout(function(){ try{c.abort();}catch(e){} }, timeout); try{ var r=await fetch(url, Object.assign({cache:"no-store", signal:c.signal}, opts||{})); return r; } finally{ clearTimeout(t); } };
   /* v9: انتظار قانوني واحد - فحص مباشر + إعادة واحدة، من دون setInterval */
-  window._waitForFn = function(name, cb){ try{ if(window[name]){ cb(); return; } }catch(e){} setTimeout(function(){ try{ if(window[name]) cb(); }catch(e){} },2000); };
-  window._waitForEl = function(id, cb){ var el=document.getElementById(id); if(el){ cb(el); return; } try{ var obs=new MutationObserver(function(){ var e=document.getElementById(id); if(e){ try{obs.disconnect();}catch(e){} cb(e); } }); obs.observe(document.documentElement,{childList:true, subtree:true}); setTimeout(function(){ try{obs.disconnect();}catch(e){} },10000); }catch(e){ setTimeout(function(){ var e2=document.getElementById(id); if(e2) cb(e2); },2000); } };
+  /* الخطوة 1: انتظار نضيف - فحص مباشر + DOMContentLoaded، من دون مؤقت */
+  window._waitForFn = function(name, cb){ try{ if(window[name]){ cb(); return; } }catch(e){} if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', function(){ try{ if(window[name]) cb(); }catch(e){} }); } };
+  window._waitForEl = function(id, cb){ var el=document.getElementById(id); if(el){ cb(el); return; } if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', function(){ var e2=document.getElementById(id); if(e2) cb(e2); }); } else { var e2=document.getElementById(id); if(e2) cb(e2); } };
   /* v10: ريجيكس أشهر قانوني واحد - لا 4 نسخ */
   window._hijriMonthNames = 'محرم|المحرم|Muharram|Moharram|صفر|الصفر|صفر المظفر|صفرالمظفر|صفر مظفر|صفر الخير|Safar|Safar al-Muzaffar|Safar al-Mudhaffar|ربيع الأول|ربيع الاول|ربيع أول|ربيع اول|الربيع الأول|ربيع 1|Rabi al-Awwal|Rabi al-Awal|Rabi I|Rabi 1|Rabi al Awwal|ربيع الثاني|ربيع ثاني|ربيع الآخر|ربيع الاخر|ربيع 2|Rabi al-Thani|Rabi al-Sani|Rabi II|Rabi 2|جمادى الأولى|جمادى الاولى|جمادي الأولى|جمادي الاولى|جمادى أولى|جمادى 1|Jumada al-Ula|Jumada al-Oula|Jumada I|جمادى الآخرة|جمادى الاخرة|جمادي الآخرة|جمادي الاخرة|جمادى الثانية|جمادى 2|Jumada al-Akhirah|Jumada al-Akhira|Jumada II|رجب|الرجب|Rajab|شعبان|الشعبان|Shaban|Shaaban|رمضان|شهر رمضان|Ramadan|Ramadhan|شوال|Shawwal|ذو القعدة|ذو القعده|ذي القعدة|Dhu al-Qadah|Dhul Qadah|ذو الحجة|ذو الحجه|ذي الحجة|Dhu al-Hijjah|Dhul Hijjah|Zul Hijjah';
   window._hijriMonths = '(' + window._hijriMonthNames + '|1|2|3|4|5|6|7|8|9|10|11|12|01|02|03|04|05|06|07|08|09)';
@@ -524,9 +525,9 @@ window.MASTER_CITIES=window.MASTER_CITIES_FALLBACK.slice();</script></head>
     }catch(e){}
   }
   try{
+    /* الخطوة 2: شيل فحص المدينة كل 800ms - storage event بيكفي، والمدينة بتتغير بس لما انت تغيرها */
     if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', updateCityInDate);
     else updateCityInDate();
-    setInterval(updateCityInDate, 800);
     window.addEventListener('storage', updateCityInDate);
   }catch(e){}
 })();
@@ -1468,18 +1469,11 @@ function applyManualHijri(){
   if(!ok) console.log('[Manual] انتظار React...');
  }
 
- if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(initManualBinding,500); });
- else setTimeout(initManualBinding,500);
- setTimeout(initManualBinding,1500);
- setTimeout(initManualBinding,3000);
- setTimeout(initManualBinding,5000);
+ /* الخطوة 1: ربط واحد عند جاهزية الصفحة، من دون 4 مؤقتات */
+ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', initManualBinding); else initManualBinding();
 
- var obs=new MutationObserver(function(muts){
-  // كلما تغير DOM (React يعيد الرسم) حاول الربط
-  bindSurgically();
- });
- obs.observe(document.body,{childList:true,subtree:true});
- obs.observe(document.documentElement,{childList:true,subtree:true});
+ /* الخطوة 1: تفويض واحد على document بدل مراقبة كل DOM - bindSurgically محمي بـ dataset.manualBound */
+ document.addEventListener('click', function(){ try{ bindSurgically(); }catch(e){} }, true);
 
  // اغلاق المودال عند الضغط على الخلفية
  var modal=document.getElementById('manual-hijri-modal');
@@ -1497,13 +1491,8 @@ function applyManualHijri(){
  });
 
  // تشخيص: اطبع كل الأزرار بعد 2 ثانية لمعرفة الأسماء
- setTimeout(function(){
-  var all=document.querySelectorAll('button');
-  console.log('[Manual] كل الأزرار في الصفحة:');
-  for(var i=0;i<all.length;i++){
-   console.log(' - ', (all[i].textContent||'').trim().slice(0,30), all[i].className.slice(0,40));
-  }
- },2500);
+ /* الخطوة 1: تشخيص من دون مؤقت - عند جاهزية الصفحة فقط */
+ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', function(){ var all=document.querySelectorAll('button'); console.log('[Manual] كل الأزرار في الصفحة: '+all.length); }); else { var all2=document.querySelectorAll('button'); console.log('[Manual] كل الأزرار في الصفحة: '+all2.length); }
 })();
 </script>
 <!-- ========== نهاية العملية الجراحية ========== -->
@@ -1598,16 +1587,22 @@ select:disabled{opacity:0.78;pointer-events:none}
   // مجدول موحد واحد: كل المهام الزمنية تسجل هنا، وفاصل واحد فقط يعمل
   window._schedulerJobs = window._schedulerJobs || [];
   window._unifiedInterval = window._unifiedInterval || null;
+  /* الخطوة 2: مجدول موحد مصلح - يحفظ intervalMs و nextRun، ويشغل المهمة بس لما يجي وقتها، من دون setTimeout للفوتة الأولى */
   window._registerSchedulerJob = function(name, fn, intervalMs, initialDelayMs){
     try{
       if(typeof fn!=='function') return false;
       for(var i=0;i<window._schedulerJobs.length;i++){ if(window._schedulerJobs[i].name===name) return true; }
-      window._schedulerJobs.push({name:name, fn:fn});
-      setTimeout(function(){ try{ fn(); }catch(e){} }, initialDelayMs||0);
+      var now = Date.now();
+      var interval = intervalMs||60000;
+      var delay = initialDelayMs||0;
+      var job = {name:name, fn:fn, intervalMs:interval, nextRun: now + delay, lastRun: 0};
+      window._schedulerJobs.push(job);
+      if(delay===0){ try{ fn(); }catch(e){} job.lastRun = Date.now(); job.nextRun = Date.now() + interval; }
       if(!window._unifiedInterval){
         window._unifiedInterval = setInterval(function(){
-          for(var k=0;k<window._schedulerJobs.length;k++){ try{ window._schedulerJobs[k].fn(); }catch(e){} }
-        }, 60000);
+          var tt = Date.now();
+          for(var k=0;k<window._schedulerJobs.length;k++){ var j=window._schedulerJobs[k]; if(tt>=j.nextRun){ j.lastRun=tt; j.nextRun=tt+j.intervalMs; try{ j.fn(); }catch(e){} } }
+        }, 5000);
       }
       return true;
     }catch(e){ return false; }
@@ -2670,7 +2665,8 @@ function bindAll(){
  var delB=document.getElementById('btn-delete-city'); if(delB) delB.addEventListener('click',function(e){e.stopPropagation(); window.deleteSayeghCity();});
  var editB=document.getElementById('btn-edit-city'); if(editB) editB.addEventListener('click',function(e){e.stopPropagation(); window.editSayeghCity();});
  var openB=document.getElementById('btn-open-city'); if(openB) openB.addEventListener('click',function(e){e.stopPropagation(); window.openDynamicSayegh();});
- var fetchB=document.getElementById('btn-fetch-city'); if(fetchB) fetchB.addEventListener('click',function(e){e.stopPropagation(); window.fetchSayeghBeirut();});
+ /* الخطوة 3: الزر اليدوي - باب واحد مع سبب يدوي، بيجبر الجلب، مش طريق لحاله */
+ var fetchB=document.getElementById('btn-fetch-city'); if(fetchB) fetchB.addEventListener('click',function(e){e.stopPropagation(); if(window.autoFetchActiveBoxGlobal) window.autoFetchActiveBoxGlobal('يدوي - جلب حي'); else if(window.fetchSayeghBeirut) window.fetchSayeghBeirut();});
  // إصلاح: استدعاء موحد يقرأ من localStorage ويحدث كل شيء
  try{ applyBoxMute(); }catch(e){ loadActivationState(); applyMuteStateForAll(); }
 }
@@ -2698,10 +2694,9 @@ function bindLive(){
  }
  return false;
 }
-setTimeout(bindLive,500);
-setTimeout(bindLive,1500);
-var obs=new MutationObserver(bindLive);
-if(document.body) obs.observe(document.body,{childList:true,subtree:true});
+/* الخطوة 1: ربط واحد عند جاهزية الصفحة + تفويض على document، من دون مؤقتين ومراقب - bindLive محمي بـ dataset.liveHijacked */
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bindLive); else bindLive();
+document.addEventListener('click', function(e){ try{ var b=e.target && e.target.closest ? e.target.closest('button') : null; if(b && (b.textContent||'').indexOf('التحديث الحي')!==-1) bindLive(); }catch(err){} }, true);
 
 // ===== نظام الجلب التلقائي v16 - أول فتح + تبديل اليوم + استهلال 28/29/30 من 16 لـ 00 =====
  // v16: حذف نهائي - لا 12 ساعة ولا 12-23، لا ترقيعات قديمة، قرار واحد نظيف
@@ -2725,11 +2720,18 @@ if(document.body) obs.observe(document.body,{childList:true,subtree:true});
  }
 
  // 1- أول فتح إطلاقاً - مرة واحدة فقط في حياة التطبيق
+ /* الخطوة 3: باب واحد للفتح - أول مرة + يوم جديد بنفس الدالة، من دون مؤقت 1800، عبر الباب الموحد */
  function firstOpenFetch(){
   try{
-   if(!localStorage.getItem('_first_auto_fetch_done')){
-    localStorage.setItem('_first_auto_fetch_done','1');
-    setTimeout(function(){ autoFetchActiveBox('🚀 أول فتح'); }, 1800);
+   var todayStr = new Date().toISOString().slice(0,10);
+   var ldStr = localStorage.getItem('_last_fetch_date_str');
+   var isFirstEver = !localStorage.getItem('_first_auto_fetch_done');
+   var isNewDay = !ldStr || ldStr!==todayStr;
+   if(isFirstEver) localStorage.setItem('_first_auto_fetch_done','1');
+   if(isFirstEver || isNewDay){
+    var reasonOpen = isFirstEver && !isNewDay ? '🚀 أول فتح' : '📅 يوم جديد';
+    if(window.autoFetchActiveBoxGlobal) window.autoFetchActiveBoxGlobal(reasonOpen);
+    else autoFetchActiveBox(reasonOpen);
    }
   }catch(e){}
  }
@@ -2777,7 +2779,8 @@ if(document.body) obs.observe(document.body,{childList:true,subtree:true});
    if(localStorage.getItem(keyIstihlal)) return;
    localStorage.setItem(keyIstihlal,'1');
    console.log('🌙 Istihlal v16 day '+hijriDay+' at '+slot);
-   autoFetchActiveBox('🌙 استهلال يوم '+hijriDay+' - '+slot);
+   /* الخطوة 3: الاستهلال عبر الباب الموحد - حارس + إعادة محاولة، مش طريق لحاله */
+   if(window.autoFetchActiveBoxGlobal) window.autoFetchActiveBoxGlobal('🌙 استهلال يوم '+hijriDay+' - '+slot); else autoFetchActiveBox('🌙 استهلال يوم '+hijriDay+' - '+slot);
    // إذا ثبت وقلب إلى 1، في المرة القادمة hijriDay سيصبح 1 ولن يدخل هذا الشرط
   }catch(e){ console.log('daily check error', e); }
  }
@@ -2786,17 +2789,18 @@ if(document.body) obs.observe(document.body,{childList:true,subtree:true});
  // لا مجدول عام، لا فحص كل دقيقة
  function startScheduler(){
   cleanupOldFetchKeys();
+  /* الخطوة 2: لا ساعة بديلة - المجدول الموحد موجود من أول الملف */
   if(window._registerSchedulerJob) window._registerSchedulerJob('istihlal', dailyAndIstihlalCheck, 300000, 5000);
-  else { setInterval(dailyAndIstihlalCheck, 300000); setTimeout(dailyAndIstihlalCheck, 5000); }
  }
 
+ /* الخطوة 3: الفتح فورا عند DOMContentLoaded، من دون انتظار 1000 */
  if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded', function(){
-   setTimeout(firstOpenFetch, 1000);
+   firstOpenFetch();
    startScheduler();
   });
  } else {
-  setTimeout(firstOpenFetch, 1000);
+  firstOpenFetch();
   startScheduler();
  }
 })();
@@ -2874,14 +2878,9 @@ if(document.body) obs.observe(document.body,{childList:true,subtree:true});
  }
 
  // حاول التهيئة الآن وبعد التحميل
- setTimeout(initSayeghSearch, 800);
- document.addEventListener('DOMContentLoaded', function(){ setTimeout(initSayeghSearch, 1000); });
- // إعادة التهيئة عند فتح البوكس
- var observer=new MutationObserver(function(){ setTimeout(initSayeghSearch, 300); });
- setTimeout(function(){
-  var box=document.getElementById('box-city');
-  if(box) observer.observe(box, {attributes:true});
- }, 1000);
+ /* الخطوة 1: تهيئة واحدة عند جاهزية الصفحة + تفويض على كبسة داخل بوكس المدينة، من دون 3 مؤقتات ومراقب */
+ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', initSayeghSearch); else initSayeghSearch();
+ document.addEventListener('click', function(e){ try{ var box=document.getElementById('box-city'); if(box && box.contains(e.target)) initSayeghSearch(); }catch(err){} });
 })();
 
 </script>
@@ -3405,9 +3404,9 @@ window._bindEstehlalNajaf = function(){
  });
  btn._bayanBound = true;
 };
-document.addEventListener('DOMContentLoaded', function(){ window._bindEstehlalNajaf(); });
-setTimeout(function(){ window._bindEstehlalNajaf(); }, 800);
-setTimeout(function(){ window._bindEstehlalNajaf(); }, 2000);
+/* الخطوة 1: ربط واحد عند جاهزية الصفحة + تفويض مباشر، من دون مؤقتين - _bindEstehlalNajaf محمي بـ _bayanBound */
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', function(){ window._bindEstehlalNajaf(); }); else window._bindEstehlalNajaf();
+document.addEventListener('click', function(e){ try{ if(e.target && e.target.closest && e.target.closest('#btn-estehlal-najaf')){ e.preventDefault(); if(window.showNojumiBayan) window.showNojumiBayan(); } }catch(err){} });
 })();
 </script>
 
@@ -3439,7 +3438,7 @@ box.innerHTML="<div style=\"padding:16px;border-bottom:1px solid rgba(255,255,25
 document.getElementById("btn-close-final").onclick=function(){document.getElementById("nojumi-bayan-modal").remove()};document.getElementById("btn-close-final2").onclick=function(){document.getElementById("nojumi-bayan-modal").remove()};document.getElementById("btn-research-city").onclick=function(){document.getElementById("nojumi-bayan-modal").remove();if(window.showSayeghBayanList)window.showSayeghBayanList();};document.getElementById("btn-share-city").onclick=function(){var t=found?found.text:"";if(navigator.share){navigator.share({title:"بيان الاستهلال - مدينتك",text:t}).catch(function(){});}else{navigator.clipboard.writeText(t).then(function(){var el=document.getElementById("btn-share-city");if(el){el.textContent="✅ تم النسخ";setTimeout(function(){el.textContent="📤 مشاركة";},1500);}});}};
 };
 function bindCity(){var btn=document.getElementById("btn-estehlal-city");if(!btn||btn._cityBound)return;btn.addEventListener("click",function(e){e.preventDefault();if(window.showSayeghBayanList)window.showSayeghBayanList();});btn._cityBound=true;}
-document.addEventListener("DOMContentLoaded",bindCity);setTimeout(bindCity,800);setTimeout(bindCity,2000);
+/* الخطوة 1: ربط واحد + تفويض، من دون مؤقتين - bindCity محمي بـ _cityBound */ if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",bindCity); else bindCity(); document.addEventListener("click", function(e){ try{ if(e.target && e.target.closest && e.target.closest("#btn-estehlal-city")){ e.preventDefault(); if(window.showSayeghBayanList) window.showSayeghBayanList(); } }catch(err){} });
 var _origApply=window.applyMuteStateForAll;window.applyMuteStateForAll=function(){if(_origApply)_origApply();try{var isCityActive=window._boxState?!window._boxState.boxesMuted.madina:true;var btn=document.getElementById("btn-estehlal-city");if(btn){if(!isCityActive){btn.disabled=true;btn.style.opacity="0.35";btn.style.pointerEvents="none";}else{btn.disabled=false;btn.style.opacity="1";btn.style.pointerEvents="auto";}}}catch(e){}};
 })();
 </script>
@@ -4785,13 +4784,15 @@ let fetching=false;
    }
   }catch(e){}
  }
- function startGMTScheduler(){ if(window._registerSchedulerJob) window._registerSchedulerJob('prayer', checkAndFetch, 60000, 0); else {checkAndFetch(); setInterval(checkAndFetch,60000);} }
- function initAuto(){if(window.fetchSayeghBridge){startGMTScheduler();return;}setTimeout(function(){if(window.fetchSayeghBridge) startGMTScheduler();},2000);}
+ /* الخطوة 2: لا ساعة بديلة للصلاة - المجدول الموحد هو الوحيد */
+ function startGMTScheduler(){ if(window._registerSchedulerJob) window._registerSchedulerJob('prayer', checkAndFetch, 60000, 0); }
+ function initAuto(){ if(window.fetchSayeghBridge){ startGMTScheduler(); return; } if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', function(){ if(window.fetchSayeghBridge) startGMTScheduler(); }); } }
  // Expose for APK background
  window.fetchPrayersAuto = fetchPrayersAuto;
  window.checkAndFetchBackgroundPrayer = checkAndFetchBackground;
  window.getPrayerCityCode = getCityCode;
- if(document.readyState==='complete'){setTimeout(initAuto,2000);} else {window.addEventListener('load', function(){setTimeout(initAuto,2000);});}
+ /* الخطوة 2: شغل مجدول الصلاة عند التحميل فورا، من دون انتظار 2000 */
+ if(document.readyState==='complete'){ initAuto(); } else { window.addEventListener('load', initAuto); }
 })();
 </script>
 
@@ -5124,9 +5125,12 @@ let fetching=false;
  };
  if(document.readyState==="complete") setTimeout(window.ensureNotifChannel,2000);
  else window.addEventListener('load', function(){ setTimeout(window.ensureNotifChannel,2000); });
- // Background fetch init
+ /* الخطوة 4: تعريف واحد لليوم المكثف - الكل بينده هيدا التعريف */
+ window._isIntensiveDay = window._isIntensiveDay || function(hd){ return hd===28 || hd===29 || hd===30; };
+ // Background fetch init - التهيئة الرئيسية الوحيدة، مع حارس يمنع التهيئة مرتين
  async function initBg(){
   try{
+   if(window._bgFetchConfigured) return;
    if(!window.isNativeAPK()) return;
    const { BackgroundFetch } = Capacitor.Plugins;
    if(!BackgroundFetch) return;
@@ -5156,7 +5160,7 @@ let fetching=false;
      }catch(e){ console.log('prayer bg err',e); }
 
      // ===== 2- التحديث الحي =====
-     var isIntensiveDay = (hd===28 || hd===29 || hd===30);
+     var isIntensiveDay = window._isIntensiveDay ? window._isIntensiveDay(hd) : (hd===28 || hd===29 || hd===30);
      var isIntensiveHour = (devHour>=16 && devHour<=23);
      var shouldFetchLive = false;
 
@@ -5196,10 +5200,12 @@ let fetching=false;
     }catch(e){ console.log('bg fetch err',e); }
     BackgroundFetch.finish();
    });
+   window._bgFetchConfigured = true;
    console.log("BackgroundFetch configured");
   }catch(e){ console.log("bg err",e); }
  }
- setTimeout(initBg,3000);
+ /* الخطوة 4: تهيئة الخلفية فورا عند التحميل، من دون انتظار 3000 */
+ if(document.readyState==='complete') initBg(); else window.addEventListener('load', initBg);
   /* v13: حُذف Patch Notification - كان يغلّف window.Notification كله بعد 2500ms، ويكسر instanceof وpermission. الاشعارات التجريبية صارت تستدعي window._notify صريحا، وapkNotify بقي هو القانوني للـ APK والويب */
 })();
 </script>
@@ -5299,7 +5305,7 @@ let fetching=false;
   var now = new Date();
   var devHour = now.getHours();
   var devDateKey = now.getFullYear()+'-'+(now.getMonth()+1)+'-'+now.getDate();
-  var isIntensiveDay = (hd===28 || hd===29 || hd===30);
+  var isIntensiveDay = window._isIntensiveDay ? window._isIntensiveDay(hd) : (hd===28 || hd===29 || hd===30);
   var isIntensiveHour = (devHour>=16 && devHour<=23);
   if(hd===1){
    return !localStorage.getItem('_live_daily_last_'+devDateKey);
@@ -5326,7 +5332,7 @@ let fetching=false;
      var hd = getHd();
      var now = new Date();
      var devDateKey = now.getFullYear()+'-'+(now.getMonth()+1)+'-'+now.getDate();
-     var isIntensiveDay = (hd===28 || hd===29 || hd===30);
+     var isIntensiveDay = window._isIntensiveDay ? window._isIntensiveDay(hd) : (hd===28 || hd===29 || hd===30);
      var isIntensiveHour = (now.getHours()>=16 && now.getHours()<=23);
      // تحقق من المنطق
      var isIntensive = isIntensiveDay && isIntensiveHour;
@@ -5838,6 +5844,8 @@ button.old-export-hidden {
 (function(){
  async function initBackgroundFetchAPK(){
   try{
+   /* الخطوة 4: اذا الخلفية تهيأت من التهيئة الرئيسية، ما نعيد تهيئتها */
+   if(window._bgFetchConfigured) return;
    if(!window.Capacitor || !Capacitor.isNativePlatform || !Capacitor.isNativePlatform()) return;
    if(!Capacitor.Plugins || !Capacitor.Plugins.BackgroundFetch){
     console.log('BackgroundFetch plugin not available - skipping (add @capacitor/background-fetch)');
@@ -5886,12 +5894,8 @@ button.old-export-hidden {
   }catch(e){ console.log('BackgroundFetch init error', e); }
  }
 
- // شغل بعد التحميل
- if(document.readyState==='complete'){
-  setTimeout(initBackgroundFetchAPK, 4000);
- } else {
-  window.addEventListener('load', function(){ setTimeout(initBackgroundFetchAPK, 4000); });
- }
+ /* الخطوة 4: تهيئة الخلفية فورا، من دون انتظار 4000 مرتين - والحارس بيمنع التكرار */
+ if(document.readyState==='complete'){ initBackgroundFetchAPK(); } else { window.addEventListener('load', initBackgroundFetchAPK); }
 
  // Expose للاختبار
  window.initBackgroundFetchAPK = initBackgroundFetchAPK;
@@ -6054,8 +6058,9 @@ button.old-export-hidden {
    }, true);
   }catch(e){}
  }
- setTimeout(patchReminderButtons,1000);
- document.addEventListener('DOMContentLoaded', function(){ setTimeout(patchReminderButtons,1500); });
+ /* الخطوة 1: ربط واحد عند جاهزية الصفحة + تفويض على زر التذكير، من دون مؤقتين */
+ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', patchReminderButtons); else patchReminderButtons();
+ document.addEventListener('click', function(e){ try{ if(e.target && e.target.closest && e.target.closest('[data-reminder]')) patchReminderButtons(); }catch(err){} });
 })();
 </script>
 <script>
@@ -6358,10 +6363,11 @@ button.old-export-hidden {
 
 <script id="apk-step2-long-fetch">
 (function(){
-  console.log('⏳ Step2 - Long fetch 100s x 3 attempts');
+  /* الخطوة 4: أرقام إعادة المحاولة موحدة - الكود والرسالة يقولوا نفس الشي: 30 ثانية × 3 محاولات، فاصل 5 ثواني */
+  console.log('⏳ Long fetch 30s x 3 attempts');
   const FETCH_TIMEOUT_MS = 30000;
-  const RETRY_GAP_MS = 0;
-  const MAX_ATTEMPTS = 1;
+  const RETRY_GAP_MS = 5000;
+  const MAX_ATTEMPTS = 3;
 
   // حفظ الدالة الأصلية
   let originalAutoFetch = null;
@@ -6371,7 +6377,7 @@ button.old-export-hidden {
 
   async function fetchWithTimeout(fetchFn){
     return new Promise(async (resolve, reject)=>{
-      let timeout = setTimeout(()=>{ reject(new Error('timeout 100s')); }, FETCH_TIMEOUT_MS);
+      let timeout = setTimeout(()=>{ reject(new Error('timeout 30s')); }, FETCH_TIMEOUT_MS);
       try{
         // fetchSayeghBeirut و fetchNajaf لا ترجع Promise دائماً، لكنها async
         let result = await fetchFn();
@@ -6405,7 +6411,7 @@ button.old-export-hidden {
         if(!active) active='najaf';
         
         // تحديث حالة الواجهة
-        let statusMsg = `${reason} - محاولة ${attempt}/${MAX_ATTEMPTS} (قد تستغرق 90 ثانية)`;
+        let statusMsg = `${reason} - محاولة ${attempt}/${MAX_ATTEMPTS} (قد تستغرق 30 ثانية)`;
         if(active==='city'){
           let st=document.getElementById('sayegh-beirut-status');
           if(st) st.textContent=statusMsg;
@@ -6415,7 +6421,10 @@ button.old-export-hidden {
         }
 
         window._isBackgroundAutoFetch=true;
-        if(active==='city' && window.fetchSayeghBeirut){
+        /* الخطوة 3: إعادة المحاولة عبر الباب الموحد (الحارس) - مش طريق جلب لحاله */
+        if(typeof originalAutoFetch==='function'){
+          await fetchWithTimeout(()=>originalAutoFetch(reason));
+        }else if(active==='city' && window.fetchSayeghBeirut){
           await fetchWithTimeout(()=>window.fetchSayeghBeirut());
         }else if(window.fetchNajaf){
           await fetchWithTimeout(()=>window.fetchNajaf());
@@ -6474,51 +6483,11 @@ button.old-export-hidden {
       window.autoFetchActiveBoxGlobal = autoFetchWithRetry;
       console.log('✅ autoFetchActiveBoxGlobal overridden with long 100s retry logic');
 
-      // v16: فتح التطبيق - تبديل اليوم فقط، حذف 12 ساعة نهائيا
-      setTimeout(function(){
-        try{
-          let today = new Date().toISOString().slice(0,10);
-          let ld = localStorage.getItem('_last_fetch_date_str');
-          let last = parseInt(localStorage.getItem('_last_successful_fetch_time')||'0');
-          if(last===0 || !ld || ld!==today){
-            console.log('🚀 App opened new day v16, forcing fetch');
-            autoFetchWithRetry(last===0 ? '🚀 أول فتح' : '📅 يوم جديد');
-          }
-        }catch(e){}
-      },2000);
+      /* الخطوة 3: شيل فحص يوم جديد المكرر - firstOpenFetch الموحد بيغطي أول فتح + يوم جديد */
   }
   if(window._waitForFn) window._waitForFn('autoFetchActiveBoxGlobal', doOverrideAutoFetch); else doOverrideAutoFetch();
 
-  // v16: عند رجوع التطبيق - تبديل اليوم فقط، حذف 12 ساعة
-  document.addEventListener('visibilitychange', function(){
-    if(!document.hidden){
-      setTimeout(function(){
-        try{
-          let today = new Date().toISOString().slice(0,10);
-          let ld = localStorage.getItem('_last_fetch_date_str');
-          let last = parseInt(localStorage.getItem('_last_successful_fetch_time')||'0');
-          if(last===0 || !ld || ld!==today){
-            console.log('👁️ App resumed new day v16, fetching');
-            if(window.autoFetchActiveBoxGlobal) window.autoFetchActiveBoxGlobal('👁️ يوم جديد');
-          }
-        }catch(e){}
-      },1000);
-    }
-  });
-
-  // v16: Capacitor App resume - تبديل اليوم فقط، حذف 12 ساعة
-  if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App){
-    window.Capacitor.Plugins.App.addListener('appStateChange', function(state){
-      if(state && state.isActive){
-        setTimeout(function(){
-          try{
-            let today = new Date().toISOString().slice(0,10);
-            let ld = localStorage.getItem('_last_fetch_date_str');
-            let last = parseInt(localStorage.getItem('_last_successful_fetch_time')||'0');
-            if(last===0 || !ld || ld!==today){
-              if(window.autoFetchActiveBoxGlobal) window.autoFetchActiveBoxGlobal('📱 يوم جديد');
-            }
-          }catch(e){}
+  /* الخطوة 4: شيل رجوعين مكررين - smartUpdate بالسطر 6085 بيغطي visible + resume + online + focus عبر الباب الموحد */          }catch(e){}
         },1500);
       }
     });
@@ -6552,7 +6521,7 @@ button.old-export-hidden {
 
   function isIntensiveDay(){
     let hd = getHijriDay();
-    return hd===28 || hd===29 || hd===30;
+    return window._isIntensiveDay ? window._isIntensiveDay(hd) : (hd===28 || hd===29 || hd===30);
   }
 
   async function backgroundFetchTask(taskId){
@@ -6584,6 +6553,8 @@ button.old-export-hidden {
 
   async function initBackgroundFetch(){
     try{
+      /* الخطوة 4: اذا الخلفية تهيأت، تخطى configure، وضل Fallback للـ BackgroundTask والـ PeriodicSync */
+      if(window._bgFetchConfigured) return;
       // 1- Capacitor Background Fetch Plugin (إذا موجود)
       if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BackgroundFetch){
         const BackgroundFetch = window.Capacitor.Plugins.BackgroundFetch;
@@ -6609,14 +6580,8 @@ button.old-export-hidden {
 
         console.log('BackgroundFetch configured status',status);
 
-        // تعديل الفترة حسب اليوم الهجري كل ساعة
-        setInterval(async ()=>{
-          try{
-            let newInterval = isIntensiveDay() ? INTENSIVE_INTERVAL : IDLE_INTERVAL;
-            await BackgroundFetch.configure({minimumFetchInterval: newInterval});
-            console.log('BackgroundFetch interval updated to',newInterval,'intensive=',isIntensiveDay());
-          }catch(e){}
-        }, 60*60*1000);
+        /* الخطوة 2: مهمة كل ساعة داخل المجدول الموحد، مش ساعة لحالها */
+        if(window._registerSchedulerJob) window._registerSchedulerJob('bg-interval', async function(){ try{ let newInterval = isIntensiveDay() ? INTENSIVE_INTERVAL : IDLE_INTERVAL; await BackgroundFetch.configure({minimumFetchInterval: newInterval}); console.log('BackgroundFetch interval updated to',newInterval,'intensive=',isIntensiveDay()); }catch(e){} }, 60*60*1000, 0);
 
       }
       // 2- Capacitor Background Task (fallback)
@@ -6661,10 +6626,8 @@ button.old-export-hidden {
     };
   }
 
-  // تهيئة بعد تحميل الصفحة
-  window.addEventListener('load', function(){
-    setTimeout(initBackgroundFetch, 3000);
-  });
+  /* الخطوة 4: تهيئة الخلفية فورا عند التحميل، من دون انتظار 3000 */
+  if(document.readyState==='complete') initBackgroundFetch(); else window.addEventListener('load', initBackgroundFetch);
 
   // تسجيل Service Worker بسيط للـ APK إذا لم يكن موجود (للمستقبل)
   if('serviceWorker' in navigator){
@@ -6740,15 +6703,7 @@ button.old-export-hidden {
       }catch(e){ console.log('select fix error',e); }
     }, 800);
 
-    // اتصال النجف بعد 4 ثواني فقط (للسرعة)
-    setTimeout(function(){
-      try{
-        if(window.autoFetchActiveBoxGlobal){
-          console.log('🚀 PRO: Fetch Najaf after 4s for fast open');
-          window.autoFetchActiveBoxGlobal('🚀 فتح سريع - النجف 107');
-        }
-      }catch(e){}
-    }, 4000);
+    /* الخطوة 3: شيل جلب 4 ثواني المكرر - firstOpenFetch الموحد بيغطي الفتح */
   });
 })();
 </script>
