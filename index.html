@@ -762,7 +762,9 @@ function addGregorian(gy,gm,gd,offset){
  return{gy:d.getFullYear(),gm:d.getMonth()+1,gd:d.getDate(),dow:d.getDay(),date:d};
 }
 let days=[];
-for(let hd=1;hd<=30;hd++){
+let _monthLenFromSayegh=null;try{if(window._sayeghHijriMonthLen)_monthLenFromSayegh=window._sayeghHijriMonthLen(FINAL.hm,FINAL.hy);}catch(e){}
+let MONTH_LEN=(_monthLenFromSayegh===29||_monthLenFromSayegh===30)?_monthLenFromSayegh:((FINAL.len===29||FINAL.len===30)?FINAL.len:30);
+for(let hd=1;hd<=MONTH_LEN;hd++){
  let off=hd - FINAL.hd;
  let g=addGregorian(DEVICE.gy,DEVICE.gm,DEVICE.gd,off);
  days.push({
@@ -785,17 +787,19 @@ let firstDow = days.length>0 ? days[0].dow : 0;
 // تحويل: (dow+1)%7 يعطي عمود Gy الصحيح
 let offset = (firstDow + 1) % 7;
 let devStart=new Date(DEVICE.gy,DEVICE.gm-1,1);
-return{days:days,offset:offset,daysInMonth:30,start:devStart,DEVICE:DEVICE,FINAL:FINAL,firstDow:firstDow};
+return{days:days,offset:offset,daysInMonth:MONTH_LEN,start:devStart,DEVICE:DEVICE,FINAL:FINAL,firstDow:firstDow};
 }catch(e){
 let FINAL={hd:28,hm:2,hy:1448,hmn:"صفر المظفر"};
 let dev=new Date();
-let o=Array.from({length:30},(f,k)=>{
+let _ml2=null;try{if(window._sayeghHijriMonthLen)_ml2=window._sayeghHijriMonthLen(FINAL.hm,FINAL.hy);}catch(e){}
+let MONTH_LEN2=(_ml2===29||_ml2===30)?_ml2:30;
+let o=Array.from({length:MONTH_LEN2},(f,k)=>{
  let g=new Date(dev.getFullYear(),dev.getMonth(),dev.getDate() + (k+1 - FINAL.hd));
  return{hd:k+1,hm:FINAL.hm,hy:FINAL.hy,hmn:FINAL.hmn,gDay:g.getDate(),gMonth:g.getMonth()+1,gYear:g.getFullYear(),gDate:g,isToday:k+1===FINAL.hd, pos:k, dow:g.getDay()};
 });
 let firstDow2 = o.length>0 ? o[0].dow : 0;
 let offset2 = (firstDow2 + 1) % 7;
-return{days:o,offset:offset2,daysInMonth:30,start:new Date,firstDow:firstDow2}
+return{days:o,offset:offset2,daysInMonth:MONTH_LEN2,start:new Date,firstDow:firstDow2}
 }},[i,p,U]),Ie=N.useMemo(()=>{return Jl;},[Jl]),Wi=N.useMemo(()=>{if(rn==="gregorian"){if(!Xn)return null;let o=Ie.days.find((f)=>f&&f.gd===Xn);if(!o)return null;return o.gDate}else{if(!v)return null;let o=Jl.days.find((f)=>f&&f.hd===v);if(!o)return null;return o.gDate}},[v,Xn,Jl,Ie,rn]),Al=N.useMemo(()=>{if(!Wi)return"";try{return $r(Wi)}catch{return""}},[Wi]),Br=N.useMemo(()=>{if(rn!=="gregorian"||!Xn)return null;return Ie.days.find((f)=>f&&f.gd===Xn)?.hijri||null},[rn,Xn,Ie]),pr=N.useMemo(()=>{if(rn==="gregorian"){let o=Br;if(!o)return[];let f=`${o.hm}-${o.hd}`;return ve.get(f)||[]}else{if(!v)return[];let o=`${p}-${v}`;return ve.get(o)||[]}},[v,Br,p,ve,rn]),Ml=N.useMemo(()=>{if(!l)return[];let o=`${l.hm}-${l.hd}`;return ve.get(o)||[]},[l,ve]),Xa=N.useMemo(()=>{if(rn==="gregorian"){let o=new Set,f=[];for(let k of Ie.days){if(!k)continue;let z=k.hijri;if(!z)continue;let $=`${z.hm}-${z.hd}`,g=ve.get($)||[];for(let L of g)if(!o.has(L.id))o.add(L.id),f.push(L)}return f.sort((k,z)=>k.day-z.day).slice(0,40)}return Fr.filter((o)=>o.month===p).sort((o,f)=>o.day-f.day).slice(0,40)},[Fr,p,rn,Ie,ve]),Ja=N.useMemo(()=>{if(!l)return[];let o=new Date(Ra),f=[],k=(g,L)=>{try{let F=ir(L),P=new Intl.DateTimeFormat("en-GB",{year:"numeric",timeZone:"Asia/Beirut"}).format(L),mn=parseInt(P,10)||L.getFullYear(),Fn=Date.UTC(mn,F.month-1,F.day),Fe=ir(g),Gn=new Intl.DateTimeFormat("en-GB",{year:"numeric",timeZone:"Asia/Beirut"}).format(g),cn=parseInt(Gn,10)||g.getUTCFullYear(),yn=Date.UTC(cn,Fe.month-1,Fe.day);return Math.max(0,Math.round((yn-Fn)/86400000))}catch{let F=g.getTime()-L.getTime();return Math.max(0,Math.ceil(F/86400000))}};for(let g of ha){let L=l.hy;if(g.month<l.hm||g.month===l.hm&&g.day<l.hd)L=l.hy+1;let F;try{F=$e(L,g.month,g.day),F=In(F,-U)}catch{continue}let P=k(F,o);f.push({key:g.key,month:g.month,day:g.day,hy:L,gDate:F,dl:P,title:g.shortTitle,label:g.label})}if(f.length<3){let g=new Set;for(let L of ki){let F=`${L.month}-${L.day}`;if(g.has(F))continue;g.add(F);let P=l.hy;if(L.month<l.hm||L.month===l.hm&&L.day<l.hd)P=l.hy+1;let mn;try{mn=$e(P,L.month,L.day),mn=In(mn,-U)}catch{continue}let Fn=k(mn,o);f.push({key:`ev-${L.id}`,month:L.month,day:L.day,hy:P,gDate:mn,dl:Fn,title:L.title,label:L.title})}}f.sort((g,L)=>g.dl-L.dl);let z=[],$=new Set;for(let g of f){let L=`${g.month}-${g.day}`;if($.has(L))continue;if($.add(L),z.push(g),z.length>=3)break}return z},[l,U,Ra]),Aa=(window.__TAQ_DATA__&&window.__TAQ_DATA__.sections||[]),ae=N.useMemo(()=>{return cr&&cr.length>0?cr:Aa},[cr]),Xi=(o)=>{if(o.ownerGroupId&&typeof o.ownerGroupId==="number")return o.ownerGroupId;let f=o.title;if(f.includes("فاطمة بنت أسد"))return 34;if(f.includes("عقيل بن أبي طالب")||f==="ولادة عقيل بن أبي طالب (ع)"||f.includes("عقيل")){if(f.includes("عقيل"))return 34}if(f.includes("عبد الله بن جعفر")||f.includes("عبد الله بن جعفر الطيار"))return 34;if(f.includes("إبراهيم")&&f.includes("ابن النبي")||f.includes("إبراهيم ابن النبي")||f.includes("إبراهيم بن محمد"))return 34;if(f.includes("سلمان المحمدي")||f.includes("سلمان الفارسي")||f.includes("أبو ذر")||f.includes("أبي ذر")||f.includes("المقداد")||f.includes("عمار بن ياسر")||f.includes("مالك الأشتر")||f.includes("حجر بن عدي")||f.includes("ميثم التمار")||f.includes("كميل بن زياد")||f.includes("بلال الحبشي")||f.includes("محمد بن أبي بكر")||f.includes("قنبر"))return 35;if(f.includes("زيد الشهيد")||f.includes("زيد بن علي الشهيد")||f.includes("يحيى بن زيد")||f.includes("زيد بن علي")&&!f.includes("زين العابدين")&&!f.includes("السجاد"))return 36;if(f.includes("الكليني")||f.includes("الصدوق")||f.includes("المفيد")||f.includes("الشريف الرضي")||f.includes("الشريف المرتضى")||f.includes("الشيخ الطوسي")||f.includes("العلامة الحلي")||f.includes("السيد الخوئي")||f.includes("الخوئي")||f.includes("السيد السيستاني"))return 37;if(f.includes("فاطمة المعصومة")||f.includes("المعصومة"))return 24;if(f.includes("سكينة"))return 25;if(f.includes("رقية"))return 26;if(f.includes("أم البنين"))return 21;if(f.includes("عبد المطلب"))return 27;if(f.includes("عبد الله")&&f.includes("والد النبي"))return 28;if(f.includes("آمنة بنت وهب")||f.includes("امنة بنت وهب")||f.includes("آمنة")&&f.includes("وهب"))return 29;if(f.includes("أم النبي")||f.includes("آمنة")&&!f.includes("أم البنين")){if(f.includes("آمنة")||f.includes("امنة")||f.includes("أم النبي"))return 29}if(f.includes("حمزة"))return 30;if(f.includes("جعفر الطيار")||f.includes("جعفر بن أبي طالب"))return 31;if(f.includes("القاسم بن الحسن")||f.includes("القاسم")&&f.includes("الحسن"))return 32;if(f.includes("الرضيع")||f.includes("عبد الله الرضيع")||f.includes("عبدالله الرضيع"))return 33;if(f.includes("العباس")||f.includes("أبو الفضل")||f.includes("قمر بني هاشم"))return 16;if(f.includes("زينب"))return 17;if(f.includes("خديجة"))return 18;if(f.includes("الأكبر")||f.includes("علي الأكبر"))return 19;if(f.includes("مسلم بن عقيل")||f.includes("أولاد مسلم"))return 20;if(f.includes("أبي طالب")||f.includes("أبو طالب")||f.includes("ابو طالب")||f.includes("إيمان سيدنا أبي طالب"))return 22;if((f.includes("غزوة")||f.includes("معركة")||f.includes("بدر")||f.includes("الخندق")||f.includes("الأحزاب")||f.includes("خيبر")||f.includes("فتح مكة")||f.includes("حنين")||f.includes("تبوك")||f.includes("صفين")||f.includes("الجمل"))&&!f.includes("الحسين")&&!f.includes("كربلاء")&&!f.includes("حمزة")&&!f.includes("جعفر")){if(f.includes("أحد")&&f.includes("حمزة"))return 30;return 23}if(f.includes("غزوة أحد")&&!f.includes("حمزة"))return 23;if(f.includes("أحد")&&f.includes("استشهاد حمزة"))return 30;if(f.includes("المهدي")||f.includes("المنتظر")||f.includes("النصف من شعبان")||f.includes("النصف")&&f.includes("شعبان")||f.includes("زيارة النصف"))return 14;if(f.includes("العسكري"))return 13;if(f.includes("الهادي"))return 12;if(f.includes("الجواد"))return 11;if(f.includes("الرضا"))return 10;if(f.includes("الكاظم"))return 9;if(f.includes("الصادق")||f.includes("جعفر الصادق"))return 8;if(f.includes("الباقر"))return 7;if(f.includes("السجاد")||f.includes("زين العابدين")||f.includes("العابدين")&&!f.includes("زينب"))return 6;if(f.includes("الحسين")||f.includes("عاشوراء")||f.includes("كربلاء")||f.includes("الأربعين")||f.includes("أربعين")||f.includes("السبايا")&&!f.includes("العباس")||f.includes("رأس الحسين")||f.includes("وصول رأس")||f.includes("منع الماء")||f.includes("حركة السبايا")||f.includes("دخول السبايا")||f.includes("وصول الإمام الحسين"))return 5;if(f.includes("المجتبى")||f.includes("الحسن")&&f.includes("(ع)")&&!f.includes("القاسم")&&!f.includes("الرضيع")&&!f.includes("العسكري")){if(f.includes("القاسم"))return 32;return 4}if(f.includes("فاطمة الزهراء")||f.includes("فرحة الزهراء")||f.includes("عيد البقر")||f.includes("الزهراء")&&!f.includes("فاطمة المعصومة"))return 2;if(f.includes("أمير المؤمنين")||f.includes("الإمام علي أمير")||f.includes("ضربة الإمام علي")||f.includes("شهادة الإمام علي")||f.includes("ولادة الإمام علي أمير")||f.includes("بيعة الناس للإمام علي")||f.includes("زواج الإمام علي من فاطمة")||f.includes("الإمام علي (ع)")&&!f.includes("الرضا")&&!f.includes("الهادي")&&!f.includes("السجاد")&&!f.includes("الأكبر")&&!f.includes("أم البنين")&&!f.includes("أبي طالب"))return 3;if(f.includes("النبي")||f.includes("محمد (ص)")||f.includes("المبعث")||f.includes("الإسراء")||f.includes("قباء")||f.includes("المؤاخاة")||f.includes("قدوم النبي")||f.includes("هجرة النبي")||f.includes("مبيت الإمام علي")||f.includes("بعثة"))return 1;return 15},Lt=N.useMemo(()=>{let o=(window._normalizeArabic?window._normalizeArabic(Il):Il.trim().toLowerCase());return Ir.filter((f)=>{if(Fl!=="all"&&f.type!==Fl)return!1;if(!o)return!0;let k=(window._normalizeArabic?window._normalizeArabic(f.title+" "+f.desc+" "+(f.source||"")):(f.title+" "+f.desc+" "+(f.source||"")).toLowerCase()),z=Xi(f),$=ae.find((g)=>g.id===z)?(window._normalizeArabic?window._normalizeArabic(ae.find((g)=>g.id===z).label||""):(ae.find((g)=>g.id===z).label||"").toLowerCase()):"";return k.includes(o)||$.includes(o)}).sort((f,k)=>f.month-k.month||f.day-k.day)},[Il,Fl,ae,Ir]),fd=N.useMemo(()=>{let _base=[1,18,3,2,4,5,6,7,8,9,10,11,12,13,14,17,21,20,27,28,29,22,30,31,24,25,26,16,19,32,33,23,34,35,36,37,15],o=[..._base,...ae.map(a=>a.id).filter(id=>!_base.includes(id))],f=new Map;ae.forEach(($)=>f.set($.id,[])),Lt.forEach(($)=>{let g=Xi($);if(!f.has(g))f.set(g,[]);f.get(g).push($)});let k=new Set,z=new Map;ae.forEach(($)=>z.set($.id,[]));for(let $ of o){let g=f.get($)||[];for(let L of g){let F=Bs(L);if(k.has(F))continue;if(k.add(F),!z.has($))z.set($,[]);z.get($).push(L)}}for(let[$,g]of z.entries())g.sort((L,F)=>L.month-F.month||L.day-F.day);return z},[Lt,ae]),ad=(o)=>{Li((f)=>{let k=new Set(f);if(k.has(o))k.delete(o);else k.add(o);return k})},cd=(o)=>{Ct(!1),Si("hijri"),c((f)=>f||l?.hy||1447),m(o.month),setNetworkDay({hd:o.day,gDay:`${ln[o.month-1]}`,month:o.month}),setShowNetwork(!0),T(`انتقال إلى ${o.day} ${ln[o.month-1]}: ${o.title} - بطاقة يوم الشبكة`),setTimeout(()=>{try{document.getElementById("main-calendar")?.scrollIntoView({behavior:"smooth",block:"start"})}catch{}},100)},pd=(o,f)=>{try{let k=$e(f,o.month,o.day);return In(k,-U)}catch{return null}};N.useEffect(()=>{if(Pi)La(U)},[Pi]);let sd=()=>{if(rn==="gregorian"){if(zn===1)Oe((o)=>o-1),ie(12);else ie((o)=>o-1);Ve(null),T(`تم الانتقال إلى ${ht[zn===1?11:zn-2]}`);return}if(p===1)c((o)=>o-1),m(12);else m((o)=>o-1);C(null),T(`تم الانتقال إلى ${ln[p===1?11:p-2]}`)},dd=()=>{if(rn==="gregorian"){if(zn===12)Oe((o)=>o+1),ie(1);else ie((o)=>o+1);Ve(null),T(`تم الانتقال إلى ${ht[zn===12?0:zn]}`);return}if(p===12)c((o)=>o+1),m(1);else m((o)=>o+1);C(null),T(`تم الانتقال إلى ${ln[p===12?0:p]}`)},ch=()=>{c((o)=>o-1),C(null),T("تم الرجوع سنة للخلف")},ph=()=>{c((o)=>o+1),C(null),T("تم التقدم سنة للأمام")},Ma=()=>{if(rn==="gregorian"&&oe){Oe(oe.gy),ie(oe.gm),Ve(oe.gd),y(!0),T(`اليوم: ${oe.gd} ${ht[oe.gm-1]} - تم التحديث`);return}if(l)c(l.hy),m(l.hm),C(l.hd),y(!0),T(`اليوم: ${l.hd} ${ln[l.hm-1]} - تم التحديث`);else T("تم الرجوع إلى تاريخ اليوم")},md=()=>{},qa=()=>{if(!l)return;if(typeof window<"u"&&!("Notification"in window))return;if(Notification.permission!=="granted")return;let o=new Date;
  // ===== قراءة من الكل: أساسي + مضاف + مخصص =====
  let allEvents=[];
@@ -2380,12 +2384,76 @@ window.hijriMonthsCanonical = window.hijriMonthsCanonical || ['محرم الحر
 window.HIJRI_MONTHS = window.hijriMonthsCanonical;
 window.ln = window.hijriMonthsCanonical;
 
+// طول الشهر الهجري من الصايغ فقط: عدّ الأيام المميزة لذلك الشهر في جلبة المدينة الواحدة.
+// يرجع 29 أو 30 عند الاكتمال فقط، ويرجع null عند عدم الاكتمال، فلا يخمن.
+// الاكتمال = وجود اليوم 1 من الشهر نفسه + وجود اليوم 1 من الشهر التالي في الجلبة نفسها.
+// دون ذلك لا يمكن الجزم، لأن الجلبة سنة ميلادية واحدة وقد يقطع الشهر حدودها.
+window._sayeghHijriMonthLen = function(hm, hy){
+ try{
+  var _hm = parseInt(hm, 10), _hy = parseInt(hy, 10);
+  if(!_hm || !_hy || _hm < 1 || _hm > 12) return null;
+  var _full = window._sayeghFullCity;
+  if(!_full || !_full.months || !_full.months.length) return null;
+  var _canon = window.hijriMonthsCanonical || [];
+  var _nextHm = _hm === 12 ? 1 : _hm + 1;
+  var _nextHy = _hm === 12 ? _hy + 1 : _hy;
+  var _seen = {}, _hasFirst = false, _hasNextFirst = false;
+  for(var _i = 0; _i < _full.months.length; _i++){
+   var _m = _full.months[_i];
+   if(!_m || !_m.days) continue;
+   for(var _k = 0; _k < _m.days.length; _k++){
+    var _d = _m.days[_k];
+    if(!_d) continue;
+    var _pHy = null, _pHm = null, _pHd = null;
+    var _raw = _d.hijriDate != null ? String(_d.hijriDate).trim() : '';
+    var _mm = _raw.match(/^(14\d{2})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    var _mm2 = !_mm ? _raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](14\d{2})$/) : null;
+    if(_mm){ _pHy = parseInt(_mm[1], 10); _pHm = parseInt(_mm[2], 10); _pHd = parseInt(_mm[3], 10); }
+    else if(_mm2){ _pHd = parseInt(_mm2[1], 10); _pHm = parseInt(_mm2[2], 10); _pHy = parseInt(_mm2[3], 10); }
+    else if(_raw){
+     var _yM = _raw.match(/14\d{2}/);
+     var _dM = _raw.match(/^\s*(\d{1,2})/);
+     var _hM = null;
+     for(var _c = 0; _c < _canon.length; _c++){ if(_canon[_c] && _raw.indexOf(_canon[_c]) !== -1){ _hM = _c + 1; break; } }
+     if(!_hM){ for(var _c2 = 0; _c2 < _canon.length; _c2++){ var _first = String(_canon[_c2] || '').split(' ')[0]; if(_first && _raw.indexOf(_first) !== -1){ _hM = _c2 + 1; break; } } }
+     if(_yM && _dM && _hM){ _pHy = parseInt(_yM[0], 10); _pHd = parseInt(_dM[1], 10); _pHm = _hM; }
+    }
+    if(_pHy == null || _pHm == null || _pHd == null){
+     var _hdF = _d.hijriDay != null ? parseInt(_d.hijriDay, 10) : NaN;
+     var _hyF = _d.hijriYear != null ? parseInt(String(String(_d.hijriYear).match(/14\d\d/) || _d.hijriYear), 10) : NaN;
+     var _hmF = null;
+     var _hmAr = _d.hijriMonthAr != null ? String(_d.hijriMonthAr) : '';
+     if(_hmAr){ for(var _c3 = 0; _c3 < _canon.length; _c3++){ if(_canon[_c3] && (_hmAr.indexOf(_canon[_c3]) !== -1 || _canon[_c3].indexOf(_hmAr) !== -1)){ _hmF = _c3 + 1; break; } } }
+     if(!isNaN(_hdF) && !isNaN(_hyF) && _hmF){ _pHd = _hdF; _pHy = _hyF; _pHm = _hmF; }
+    }
+    if(_pHy == null || _pHm == null || _pHd == null) continue;
+    if(_pHy === _hy && _pHm === _hm){ _seen[_pHd] = true; if(_pHd === 1) _hasFirst = true; }
+    if(_pHy === _nextHy && _pHm === _nextHm && _pHd === 1) _hasNextFirst = true;
+   }
+  }
+  if(!_hasFirst || !_hasNextFirst) return null;
+  var _count = 0;
+  for(var _key in _seen){ if(Object.prototype.hasOwnProperty.call(_seen, _key)) _count++; }
+  if(_count === 29 || _count === 30) return _count;
+  return null;
+ }catch(e){ return null; }
+};
+
 window.buildUnifiedFinalObj = function(hd, hm, hy, hmn){
  var canonical = window.hijriMonthsCanonical;
  var name = hmn || canonical[(hm-1+12)%12] || 'صفر المظفر';
  var cleanHd = parseInt(hd)||hd;
  var cleanHy = parseInt(hy)||hy;
  var str = cleanHd + ' ' + name + ' ' + cleanHy;
+ var _lenSayegh = null;
+ try{ if(window._sayeghHijriMonthLen) _lenSayegh = window._sayeghHijriMonthLen(parseInt(hm), parseInt(hy)); }catch(e){}
+ var _len = (_lenSayegh === 29 || _lenSayegh === 30) ? _lenSayegh : 30;
+ if(_len === 30){
+  try{
+   var _prev = window.FINAL_HIJRI;
+   if(_prev && parseInt(_prev.hm, 10) === parseInt(hm, 10) && parseInt(_prev.hy, 10) === parseInt(hy, 10) && (parseInt(_prev.len, 10) === 29 || parseInt(_prev.len, 10) === 30)) _len = parseInt(_prev.len, 10);
+  }catch(e){}
+ }
  return {
   hd: parseInt(hd),
   hm: parseInt(hm),
@@ -2394,7 +2462,7 @@ window.buildUnifiedFinalObj = function(hd, hm, hy, hmn){
   hmName: name,
   dt: str + ' هـ',
   finalStr: str + ' هـ',
-  len: 30
+  len: _len
  };
 };
 
@@ -2444,6 +2512,10 @@ window.applyLiveUpdate = function(objFinal, sourceLabel, displayStr){
    try{
      var _cur = window.FINAL_HIJRI;
      if(_cur && String(parseInt(_cur.hd,10))===String(parseInt(cleanObj.hd,10)) && String(parseInt(_cur.hm,10))===String(parseInt(cleanObj.hm,10)) && String(parseInt(_cur.hy,10))===String(parseInt(cleanObj.hy,10))){
+       if((cleanObj.len === 29 || cleanObj.len === 30) && parseInt(_cur.len, 10) !== cleanObj.len){
+         _cur.len = cleanObj.len;
+         try{ var _stored = JSON.parse(localStorage.getItem('taqweem_final_unified') || 'null'); if(_stored){ _stored.len = cleanObj.len; localStorage.setItem('taqweem_final_unified', JSON.stringify(_stored)); } }catch(e){}
+       }
        return;
      }
    }catch(e){}
