@@ -4133,6 +4133,10 @@ let fetching=false;
      <div class="sayegh-row" style="margin-top:12px"><button class="sayegh-btn primary" id="nj-p-month" style="flex:1">📅 جدول الشهر كامل</button></div>
      <div id="nj-p-month-status" class="prayer-status" style="display:none"></div>
      <div id="nj-p-month-table" style="overflow-x:auto"></div>
+     <!-- الخطوة 21: القمر في العقرب - حساب دقيق لكل أفق + احتياط العراق + تسمية النجف -->
+     <div class="sayegh-row" style="margin-top:12px"><button class="sayegh-btn primary" id="nj-p-aqrab" style="flex:1">🌙 القمر في العقرب</button></div>
+     <div id="nj-p-aqrab-status" class="prayer-status" style="display:none"></div>
+     <div id="nj-p-aqrab-table" style="overflow-x:auto"></div>
      <!-- v20: تنبيه الاحتياط انشال -->
      <div class="sayegh-row" style="margin-top:12px"><button class="sayegh-btn primary" id="nj-p-refresh" style="flex:1">🔄 تحديث</button><button class="sayegh-btn" id="nj-p-share-img" style="flex:1;background:linear-gradient(135deg,#0f3218,#132a1a);border:1px solid rgba(212,175,55,0.4);color:#d4af37">📸 مشاركة كصورة</button></div>
      <!-- v20: نص الشرح الطويل انشال -->
@@ -4631,9 +4635,275 @@ let fetching=false;
       var copyBtn=document.getElementById('nj-p-export-copy'); if(copyBtn) copyBtn.onclick=function(){ njP_copyMonthTable(); };
      }catch(e){}
    }
+   /* الخطوة 21: القمر في العقرب - دقيق لكل أفق + احتياط العراق + تسمية النجف */
+   let njP_aqrabBtn=document.getElementById('nj-p-aqrab');
+   let njP_aqrabStatus=document.getElementById('nj-p-aqrab-status');
+   let njP_aqrabTable=document.getElementById('nj-p-aqrab-table');
+   let njP_aqrabLoading=false;
+   function njP_isNajafPin(pin){
+     try{
+       var nm=String(pin&&pin.name||'').replace(/[أإآ]/g,'ا');
+       if(nm.indexOf('النجف')!==-1) return true;
+       var d1=Math.abs(pin.lat-31.9996), d2=Math.abs(pin.lng-44.3143);
+       if(d1<0.05 && d2<0.05) return true;
+       var d3=Math.abs(pin.lat-32.026), d4=Math.abs(pin.lng-44.346);
+       if(d3<0.05 && d4<0.05) return true;
+       return false;
+     }catch(e){ return false; }
+   }
+   function njP_aqrabLabel(pin, isPrecise, isFallback){
+     var short='';
+     try{ short=njP_shortName(pin.name)||pin.name||''; }catch(e){ short=pin.name||''; }
+     if(njP_isNajafPin(pin)){
+       if(isFallback) return 'على أفق مدينة النجف الأشرف - من لائحة العراق (احتياط)';
+       return 'على أفق مدينة النجف الأشرف';
+     }
+     if(isPrecise) return 'على أفق مدينة '+short+' - '+pin.lat+' , '+pin.lng;
+     return 'على أفق العراق (احتياط - تعذر الحساب الدقيق)';
+   }
+   function njP_aqrabMonthNum(name){
+     var map={'كانون الثاني':1,'كانون الاول':1,'كانون الأول':1,'يناير':1,'شباط':2,'فبراير':2,'اذار':3,'آذار':3,'مارس':3,'نيسان':4,'ابريل':4,'أبريل':4,'ايار':5,'أيار':5,'مايو':5,'حزيران':6,'يونيو':6,'تموز':7,'يوليو':7,'اب':8,'آب':8,'اغسطس':8,'أغسطس':8,'ايلول':9,'أيلول':9,'سبتمبر':9,'تشرين الاول':10,'تشرين الأول':10,'اكتوبر':10,'أكتوبر':10,'تشرين الثاني':11,'نوفمبر':11,'كانون الاول':12,'كانون الأول':12,'ديسمبر':12};
+     var k=String(name||'').trim();
+     if(map[k]) return map[k];
+     var nk='';
+     try{ nk=window._normalizeArabic ? window._normalizeArabic(k) : k; }catch(e){ nk=k; }
+     for(var key in map){ try{ var nk2=window._normalizeArabic ? window._normalizeArabic(key) : key; if(nk2===nk) return map[key]; }catch(e){} }
+     return 0;
+   }
+   function njP_aqrabParseTime(raw){
+     try{
+       var t=String(raw||'');
+       try{ if(window.toWesternDigits) t=window.toWesternDigits(t); }catch(e){}
+       var m=t.match(/(\d{1,2})[:\.](\d{2})/);
+       if(!m) { var m2=t.match(/ساعة\s+(\d{1,2})/); if(m2) return {h:parseInt(m2[1],10), mi:0, has:true, raw:t}; return {h:0, mi:0, has:false, raw:t}; }
+       var h=parseInt(m[1],10), mi=parseInt(m[2],10);
+       if(t.indexOf('مساء')!==-1 && h<12) h+=12;
+       if(t.indexOf('صباح')!==-1 && h===12) h=0;
+       return {h:h, mi:mi, has:true, raw:t};
+     }catch(e){ return {h:0, mi:0, has:false, raw:String(raw||'')}; }
+   }
+   function njP_aqrabExtractEventsFromText(raw){
+     var out=[];
+     try{
+       var text=String(raw||'');
+       try{ if(window.toWesternDigits) text=window.toWesternDigits(text); }catch(e){}
+       if(text.indexOf('العقرب')===-1) return out;
+       var isEntry = (text.indexOf('يدخل')!==-1 || text.indexOf('دخول')!==-1);
+       var isExit = (text.indexOf('يخرج')!==-1 || text.indexOf('خروج')!==-1);
+       if(!isEntry && !isExit) return out;
+       if(isEntry && isExit){
+         var parts=text.split(/يخرج|خروج/);
+         var p1=parts[0];
+         var p2='يخرج '+(parts[1]||'');
+         var a1=njP_aqrabExtractEventsFromText(p1);
+         var a2=njP_aqrabExtractEventsFromText(p2);
+         return a1.concat(a2);
+       }
+       var type = isEntry ? 'دخول' : 'خروج';
+       var y=0, mo=0, d=0;
+       var now=new Date();
+       var mYMD=text.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+       var mDMY=text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+       if(mYMD){ y=parseInt(mYMD[1],10); mo=parseInt(mYMD[2],10); d=parseInt(mYMD[3],10); }
+       else if(mDMY){ d=parseInt(mDMY[1],10); mo=parseInt(mDMY[2],10); y=parseInt(mDMY[3],10); }
+       else {
+         var mAr=text.match(/(\d{1,2})\s+(كانون الثاني|كانون الأول|كانون الاول|شباط|آذار|اذار|نيسان|أيار|ايار|حزيران|تموز|آب|اب|أيلول|ايلول|تشرين الأول|تشرين الاول|تشرين الثاني|يناير|فبراير|مارس|أبريل|ابريل|مايو|يونيو|يوليو|أغسطس|اغسطس|سبتمبر|أكتوبر|اكتوبر|نوفمبر|ديسمبر)\s+(\d{4})?/);
+         if(mAr){ d=parseInt(mAr[1],10); mo=njP_aqrabMonthNum(mAr[2]); y=mAr[3] ? parseInt(mAr[3],10) : now.getFullYear(); }
+         else {
+           var mAr2=text.match(/(كانون الثاني|كانون الأول|كانون الاول|شباط|آذار|اذار|نيسان|أيار|ايار|حزيران|تموز|آب|اب|أيلول|ايلول|تشرين الأول|تشرين الاول|تشرين الثاني|يناير|فبراير|مارس|أبريل|ابريل|مايو|يونيو|يوليو|أغسطس|اغسطس|سبتمبر|أكتوبر|اكتوبر|نوفمبر|ديسمبر)\s+(\d{1,2})[،,]?[^\d]*(\d{4})?/);
+           if(mAr2){ mo=njP_aqrabMonthNum(mAr2[1]); d=parseInt(mAr2[2],10); y=mAr2[3] ? parseInt(mAr2[3],10) : now.getFullYear(); }
+         }
+       }
+       if(!y || !mo || !d) return out;
+       var tm=njP_aqrabParseTime(text);
+       var ts=new Date(y, mo-1, d, tm.has?tm.h:0, tm.has?tm.mi:0, 0, 0).getTime();
+       var dateStr=y+'/'+String(mo).padStart(2,'0')+'/'+String(d).padStart(2,'0');
+       var timeStr=tm.has ? String(tm.h).padStart(2,'0')+':'+String(tm.mi).padStart(2,'0') : '--:--';
+       out.push({type:type, dateStr:dateStr, timeStr:timeStr, ts:ts, raw:text.replace(/\s+/g,' ').trim().slice(0,180)});
+     }catch(e){}
+     return out;
+   }
+   function njP_aqrabDedup(entries){
+     var seen={}; var out=[];
+     entries.forEach(function(e){
+       if(!e || !e.ts) return;
+       var k=e.type+'|'+e.dateStr+'|'+e.timeStr;
+       if(seen[k]) return; seen[k]=true; out.push(e);
+     });
+     out.sort(function(a,b){ return a.ts-b.ts; });
+     return out;
+   }
+   function njP_parseAqrabHtml(html){
+     if(!html) return [];
+     var txtA=String(html);
+     try{ if(window.toWesternDigits) txtA=window.toWesternDigits(txtA); }catch(e){}
+     var entries=[];
+     try{
+       var trRe=/<tr[^>]*>([\s\S]*?)<\/tr>/gi; var m=null;
+       while((m=trRe.exec(txtA))!==null){
+         var row=m[1];
+         if(row.indexOf('العقرب')===-1 && row.indexOf('برج')===-1) continue;
+         var cells=[]; var tdRe=/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi; var cm=null;
+         while((cm=tdRe.exec(row))!==null){
+           var cell=cm[1].replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+           if(cell) cells.push(cell);
+         }
+         if(cells.length>=2){
+           var raw=cells.join(' | ');
+           var evs=njP_aqrabExtractEventsFromText(raw);
+           evs.forEach(function(e){ entries.push(e); });
+         }
+       }
+     }catch(e){}
+     if(entries.length>0) return njP_aqrabDedup(entries);
+     try{
+       var plain=txtA.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,'\n').replace(/&nbsp;/g,' ');
+       var lines=plain.split('\n');
+       for(var i=0;i<lines.length;i++){
+         var line=lines[i].replace(/\s+/g,' ').trim();
+         if(!line || line.length<10) continue;
+         if(line.indexOf('العقرب')===-1) continue;
+         var evs2=njP_aqrabExtractEventsFromText(line);
+         evs2.forEach(function(e){ entries.push(e); });
+       }
+     }catch(e){}
+     return njP_aqrabDedup(entries);
+   }
+   function njP_aqrabRender(entries, info){
+     if(!njP_aqrabTable) return;
+     var dayNames=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+     var nowD=new Date(); nowD.setHours(0,0,0,0);
+     var todayTs=nowD.getTime();
+     var lastEntry=null, nextExit=null;
+     for(var i=0;i<entries.length;i++){ if(entries[i].type==='دخول' && entries[i].ts<=Date.now()) lastEntry=entries[i]; }
+     if(lastEntry){
+       for(var j=0;j<entries.length;j++){ if(entries[j].type==='خروج' && entries[j].ts>lastEntry.ts){ nextExit=entries[j]; break; } }
+     }
+     var inAqrab = !!(lastEntry && nextExit && Date.now()>=lastEntry.ts && Date.now()<nextExit.ts);
+     var label=info&&info.label||'';
+     var border = (info&&info.isFallback) ? '#fbbf24' : '#4ade80';
+     var head='<div style="text-align:center;font-weight:900;font-size:16px;margin:10px 0 4px">القمر في العقرب</div>'
+       +'<div style="text-align:center;font-size:13px;color:#e8d9a3;margin-bottom:8px">📍 '+njP_esc(label)+'</div>'
+       +'<div style="text-align:center;font-size:13px;font-weight:800;margin-bottom:10px;padding:8px;border-radius:8px;border:1px solid '+border+';background:'+(inAqrab?'rgba(245,158,11,0.15)':'rgba(16,185,129,0.10)')+'">'
+       +(inAqrab ? '🌙 القمر الآن في العقرب - دخل '+njP_esc(lastEntry.dateStr)+' '+njP_esc(lastEntry.timeStr)+' - يخرج '+njP_esc(nextExit.dateStr)+' '+njP_esc(nextExit.timeStr) : '✅ القمر الآن ليس في العقرب')
+       +'</div>'
+       +'<div style="text-align:center;font-size:12px;color:#e8d9a3;margin-bottom:10px">المصدر: مركز البحوث والدراسات الفلكية - arabic.nojumi.org</div>';
+     var h='<table style="width:100%;border-collapse:collapse;font-size:12px;direction:rtl;background:#fff;color:#111;border-radius:10px;overflow:hidden"><thead><tr style="background:#0f2418;color:#e8d9a3"><th style="padding:6px;border:1px solid #ddd">الحدث</th><th style="padding:6px;border:1px solid #ddd">اليوم</th><th style="padding:6px;border:1px solid #ddd">التاريخ</th><th style="padding:6px;border:1px solid #ddd">الوقت</th></tr></thead><tbody>';
+     var shown=0;
+     entries.forEach(function(e){
+       if(e.ts < todayTs - 2*24*60*60*1000) return;
+       if(shown>=6) return;
+       shown++;
+       var dt=new Date(e.ts); var wd=dayNames[dt.getDay()]||'';
+       var isNext = (e.ts>=Date.now());
+       h+='<tr style="'+(isNext&&shown===1?'background:#fff3cd;font-weight:900':'')+'"><td style="padding:5px;border:1px solid #eee;text-align:center">'+njP_esc(e.type)+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+wd+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;direction:ltr">'+njP_esc(e.dateStr)+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;direction:ltr">'+njP_esc(e.timeStr)+'</td></tr>';
+     });
+     h+='</tbody></table>';
+     if(shown===0) h+='<div style="text-align:center;padding:10px;color:#111;background:#fff;border-radius:10px;margin-top:8px">لم توجد إدخالات قريبة في النطاق الحالي.</div>';
+     njP_aqrabTable.innerHTML=head+h;
+   }
+   async function njP_aqrabFetchPrecise(lat, lng){
+     var baseUrl='https://arabic.nojumi.org/Default.aspx/WebPages/WebPages/Events.aspx?Id=1758';
+     var html0=null;
+     try{ if(window._nojumiFetchHtml) html0=await window._nojumiFetchHtml(baseUrl); }catch(e){}
+     if(!html0) throw new Error('تعذر فتح صفحة الحاسبة');
+     function hiddenVal(nm){
+       var r=new RegExp('name=["\']'+nm+'["\'][^>]*value=["\']([^"\']*)["\']','i');
+       var mm=html0.match(r); return mm?mm[1]:'';
+     }
+     var vs=hiddenVal('__VIEWSTATE');
+     var vsg=hiddenVal('__VIEWSTATEGENERATOR');
+     var ev=hiddenVal('__EVENTVALIDATION');
+     if(!vs) throw new Error('تعذر قراءة ختم الصفحة');
+     var today=new Date();
+     var end=new Date(today.getTime()+60*24*60*60*1000);
+     function fmt(d){ return d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0'); }
+     var tzVal=String(-today.getTimezoneOffset()/60);
+     var form=new URLSearchParams();
+     form.append('__VIEWSTATE', vs);
+     if(vsg) form.append('__VIEWSTATEGENERATOR', vsg);
+     if(ev) form.append('__EVENTVALIDATION', ev);
+     var latS=String(lat), lngS=String(lng);
+     ['lat','Lat','latitude','Latitude'].forEach(function(k){ form.append(k, latS); });
+     ['lng','Lng','lon','Lon','long','longitude','Longitude'].forEach(function(k){ form.append(k, lngS); });
+     ['from','From','fromDate','FromDate','start','Start','startDate','StartDate'].forEach(function(k){ form.append(k, fmt(today)); });
+     ['to','To','toDate','ToDate','end','End','endDate','EndDate'].forEach(function(k){ form.append(k, fmt(end)); });
+     ['tz','timezone','Timezone','TimeZone'].forEach(function(k){ form.append(k, tzVal); });
+     var sm=html0.match(/<input[^>]*type=["']submit["'][^>]*name=["']([^"']+)["']/i);
+     if(sm) form.append(sm[1], 'حساب');
+     var html1=null;
+     try{
+       if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp){
+         var r=await window.Capacitor.Plugins.CapacitorHttp.post({url:baseUrl, headers:{'Content-Type':'application/x-www-form-urlencoded'}, data:form.toString()});
+         if(r && r.status>=200 && r.status<300 && r.data!=null) html1=(typeof r.data==='string')?r.data:JSON.stringify(r.data);
+       }
+     }catch(e){}
+     if(!html1 || html1.length<500){
+       var ctrl=new AbortController(); var to=setTimeout(function(){ try{ctrl.abort();}catch(e){} }, 12000);
+       try{
+         var res=await fetch(baseUrl, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:form.toString(), cache:'no-store', signal:ctrl.signal});
+         if(res && res.ok) html1=await res.text();
+       }finally{ clearTimeout(to); }
+     }
+     if(!html1 || html1.length<500) throw new Error('تعذر إرسال استمارة الحاسبة');
+     var hasLat = html1.indexOf(latS)!==-1 || html1.indexOf(String(Math.round(lat*100)/100))!==-1;
+     var hasLng = html1.indexOf(lngS)!==-1 || html1.indexOf(String(Math.round(lng*100)/100))!==-1;
+     var entries=njP_parseAqrabHtml(html1);
+     if(!entries || entries.length===0) throw new Error('الحاسبة لم ترجع جدولا');
+     if(!hasLat || !hasLng) throw new Error('الحاسبة رجعت الافتراضي وليس الدقيق');
+     return {entries:entries};
+   }
+   async function njP_aqrabFetchIraqFallback(){
+     var baseUrl='https://arabic.nojumi.org/Default.aspx/WebPages/WebPages/Events.aspx?Id=1758';
+     var html0=null;
+     try{ if(window._nojumiFetchHtml) html0=await window._nojumiFetchHtml(baseUrl); }catch(e){}
+     if(html0){
+       var e0=njP_parseAqrabHtml(html0);
+       if(e0 && e0.length>0) return {entries:e0};
+     }
+     throw new Error('تعذر جلب لائحة العراق');
+   }
+   async function njP_loadAqrab(force){
+     if(njP_aqrabLoading) return; njP_aqrabLoading=true;
+     try{
+       if(njP_aqrabStatus){ njP_aqrabStatus.style.display='block'; njP_aqrabStatus.textContent='⏳ جارٍ جلب القمر في العقرب...'; }
+       var lat=njP_cur.lat, lng=njP_cur.lng;
+       var cacheKey='_nojumi_aqrab_v1_'+lat.toFixed(4)+'_'+lng.toFixed(4)+'_'+njP_todayKey();
+       if(!force){
+         try{
+           var cached=JSON.parse(localStorage.getItem(cacheKey)||'null');
+           if(cached && cached.entries && cached.entries.length>0){
+             njP_aqrabRender(cached.entries, {label:cached.label, isPrecise:cached.isPrecise, isFallback:cached.isFallback});
+             if(njP_aqrabStatus) njP_aqrabStatus.textContent='✅ من الكاش - '+cached.label;
+             return;
+           }
+         }catch(e){}
+       }
+       var result=null, isPrecise=false, isFallback=false;
+       try{
+         var precise=await njP_aqrabFetchPrecise(lat, lng);
+         result=precise.entries; isPrecise=true;
+       }catch(ePrecise){
+         try{
+           var fb=await njP_aqrabFetchIraqFallback();
+           result=fb.entries; isPrecise=false; isFallback=true;
+         }catch(eFallback){
+           throw new Error('تعذر الجلب من المصدر');
+         }
+       }
+       var label=njP_aqrabLabel(njP_cur, isPrecise, isFallback);
+       try{ localStorage.setItem(cacheKey, JSON.stringify({entries:result, label:label, isPrecise:isPrecise, isFallback:isFallback, savedAt:Date.now()})); }catch(e){}
+       njP_aqrabRender(result, {label:label, isPrecise:isPrecise, isFallback:isFallback});
+       if(njP_aqrabStatus) njP_aqrabStatus.textContent=(isPrecise?'✅ نجح - حساب دقيق - ':'⚠️ احتياط - ')+label;
+     }catch(e){
+       if(njP_aqrabStatus){ njP_aqrabStatus.style.display='block'; njP_aqrabStatus.textContent='❌ تعذر الجلب من المصدر: '+(e&&e.message?e.message:String(e)); }
+       if(njP_aqrabTable) njP_aqrabTable.innerHTML='';
+     }finally{ njP_aqrabLoading=false; }
+   }
    if(njP_btnTimes) njP_btnTimes.onclick=function(){njP_getTimes(false);};
    if(njP_refresh) njP_refresh.onclick=function(){njP_getTimes(true);};
    if(njP_monthBtn) njP_monthBtn.onclick=function(){njP_loadMonth();};
+   if(njP_aqrabBtn) njP_aqrabBtn.onclick=function(){njP_loadAqrab(true);};
    if(njP_shareBtn) njP_shareBtn.onclick=function(){njP_share();};
    async function njP_share(){
     try{
