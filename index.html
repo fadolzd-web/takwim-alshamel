@@ -3738,70 +3738,44 @@ var _origApply=window.applyMuteStateForAll;window.applyMuteStateForAll=function(
  function normalizeMiladiRaw(raw){
   if(!raw) return null;
   try{
-   raw=String(raw).trim();
-   raw=raw.replace(' م','').replace('م','').trim().replace(/\s+/g,' ');
-   let m;
-   // 24 آب 2026
-   m=raw.match(/(\d{1,2})\s+([\u0600-\u06FFa-zA-Z\s]+)\s+(\d{4})/);
-   if(m){
-    return {day:m[1], month:m[2].trim(), year:m[3]};
-   }
-   // آب 24 2026 أو آب 2026 24
-   m=raw.match(/([\u0600-\u06FFa-zA-Z\s]+)\s+(\d{1,2})\s+(\d{4})/);
-   if(m){
-    return {day:m[2], month:m[1].trim(), year:m[3]};
-   }
-   // 2026-08-24
-   m=raw.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
-   if(m){
-    return {day:m[3], month:m[2], year:m[1]};
-   }
+   var s=String(raw).trim().replace(/،/g,',').replace(/,/g,' ').replace(/\s+/g,' ');
+   s=s.replace(/^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sun|Mon|Tue|Wed|Thu|Fri|Sat)\s+/i,'');
+   s=s.replace(/^(الأحد|الإثنين|الاثنين|الثلاثاء|الأربعاء|الاربعاء|الخميس|الجمعة|الجمعه|السبت)\s+/,'');
+   s=s.replace(/\s+م\s*$/,'');
+   var m;
+   m=s.match(/^(\d{1,2})\s+([^\d\s][^0-9]*?)\s+(\d{4})$/);
+   if(m) return {day:m[1], month:m[2].trim(), year:m[3]};
+   m=s.match(/^([^\d\s][^0-9]*?)\s+(\d{1,2})\s+(\d{4})$/);
+   if(m) return {day:m[2], month:m[1].trim(), year:m[3]};
+   m=s.match(/^([^\d\s][^0-9]*?)\s+(\d{4})\s+(\d{1,2})$/);
+   if(m) return {day:m[3], month:m[1].trim(), year:m[2]};
+   m=s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+   if(m) return {day:m[3], month:m[2], year:m[1]};
+   m=s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+   if(m) return {day:m[1], month:m[2], year:m[3]};
   }catch(e){}
   return null;
  }
- function formatHijriUnified(raw, dayNameOverride){
-  try{
-   let days=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-   let dayName=dayNameOverride||days[new Date().getDay()];
-   // إذا كان raw بالفعل يحتوي يوم، استخرجه
-   let parsed=normalizeHijriRaw(raw);
-   if(parsed){
-    return dayName+' '+parsed.day+' '+parsed.month+' '+parsed.year+' هـ';
-   }
-   // إذا فشل، جرّب استخدام FINAL_HIJRI
-   if(window.FINAL_HIJRI){
-    let h=window.FINAL_HIJRI;
-    let hd=h.hd||'10';
-    let hmName=h.hmName||h.hmn||'ربيع الأول';
-    hmName=hmName.replace(' الحرام','').replace(' المظفر','').replace(' المكرم','').replace(' المعظم','').replace(' المبارك','').replace(' الأصب','');
-    let hy=h.hy||'1448';
-    return dayName+' '+hd+' '+hmName+' '+hy+' هـ';
-   }
-   // أخيراً رجّع الخام
-   return (dayName+' '+raw).trim();
-  }catch(e){return raw;}
- }
  function formatMiladiUnified(raw, dayNameOverride){
   try{
-   let days=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-   let dayName=dayNameOverride||days[new Date().getDay()];
-   let parsed=normalizeMiladiRaw(raw);
+   var days=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+   var dayName=dayNameOverride||days[new Date().getDay()];
+   var parsed=normalizeMiladiRaw(raw);
    if(parsed){
-    // حوّل رقم الشهر إذا كان رقماً إلى اسم عربي
-    let monthNames=['','كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
-    let month=parsed.month;
+    var monthNames=['','كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
+    var enMap={january:1,jan:1,february:2,feb:2,march:3,mar:3,april:4,apr:4,may:5,june:6,jun:6,july:7,jul:7,august:8,aug:8,september:9,sep:9,sept:9,october:10,oct:10,november:11,nov:11,december:12,dec:12};
+    var arMap={'كانون الثاني':1,'شباط':2,'آذار':3,'نيسان':4,'أيار':5,'حزيران':6,'تموز':7,'آب':8,'أيلول':9,'تشرين الأول':10,'تشرين الثاني':11,'كانون الأول':12,'يناير':1,'فبراير':2,'مارس':3,'أبريل':4,'مايو':5,'يونيو':6,'يوليو':7,'أغسطس':8,'سبتمبر':9,'أكتوبر':10,'نوفمبر':11,'ديسمبر':12};
+    var month=String(parsed.month||'').trim();
+    var low=month.toLowerCase();
     if(/^\d+$/.test(month)){
-     let idx=parseInt(month);
+     var idx=parseInt(month,10);
      if(idx>=1&&idx<=12) month=monthNames[idx];
+    } else if(enMap[low]){
+     month=monthNames[enMap[low]];
+    } else if(arMap[month]){
+     month=monthNames[arMap[month]];
     }
     return dayName+' '+parsed.day+' '+month+' '+parsed.year+' م';
-   }
-   // إذا كان raw مثل "24 آب 2026 م" بالفعل، أضف يوم فقط
-   if(raw && raw.includes('آب') || raw.includes('كانون') || raw.includes('شباط')){
-    // إذا لم يبدأ بيوم، أضف يوم
-    if(!/^(الأحد|الإثنين|الثلاثاء|الأربعاء|الخميس|الجمعة|السبت)/.test(raw)){
-     return dayName+' '+raw.replace(' م','').trim()+' م';
-    }
    }
    return raw;
   }catch(e){return raw;}
@@ -4172,8 +4146,8 @@ let fetching=false;
      <div id="p-status" class="prayer-status" style="display:${cached?'none':'block'}"><div style="font-size:20px">⏳</div>جاري جلب أحدث بيانات الصلاة...<br><span style="font-size:11px;opacity:0.8">قد تستغرق بعض الوقت</span><div style="margin-top:8px;height:4px;background:rgba(255,255,255,0.08);border-radius:999px;overflow:hidden"><div style="width:100%;height:100%;background:linear-gradient(90deg,#d4af37,#fff,#d4af37);background-size:200% 100%;animation:loadBar 1.2s infinite linear"></div></div></div>
      <div class="sg-tabs"><button class="sg-tab active" data-sg-view="day">اليوم</button><button class="sg-tab" data-sg-view="month">الشهر</button><button class="sg-tab" data-sg-view="year">السنة</button><button class="sg-tab" data-sg-view="moon">القمر والإضافات</button></div>
      <div id="sg-view-day"><div id="p-cards">${cached? prayerDarkHTML(cached.data.prayers):''}</div><div id="sg-day-extra"></div><details id="sg-day-details"><summary>تفاصيل أكتر</summary><div id="sg-day-details-body"></div></details></div>
-     <div id="sg-view-month" style="display:none"><div class="sg-month-head"><select id="sg-month-sel"></select><div class="sg-month-note">من بيانات المدينة نفسها، دون جلب جديد. اضغط على اليوم لعرض جميع مواقيته.</div></div><div id="sg-month-list"></div></div>
-     <div id="sg-view-year" style="display:none"><div class="sg-year-note">تقويم السنة - مرتب من كانون الثاني إلى كانون الأول. اضغط على الشهر لعرض التقويم الهجري للشهر.</div><div id="sg-year-grid"></div><div id="sg-year-hijri-detail" style="display:none"></div></div>
+     <div id="sg-view-month" style="display:none"><div class="sg-month-head"><select id="sg-month-sel"></select></div><div id="sg-month-list"></div></div>
+     <div id="sg-view-year" style="display:none"><div id="sg-year-grid"></div><div id="sg-year-hijri-detail" style="display:none"></div></div>
      <div id="sg-view-moon" style="display:none"><div id="sg-moon-today"></div><div class="sg-tabs" style="margin-top:10px"><button class="sg-extra-btn" data-sg-extra="crescent">الهلال</button><button class="sg-extra-btn" data-sg-extra="moon">منازل القمر</button></div><div id="sg-moon-which-wrap" style="display:none;gap:8px;align-items:center;margin-top:8px"><label style="font-size:12px;color:#e8d9a3">نوع القمر:</label><select id="sg-moon-which"><option value="man">المنازل</option><option value="zod" selected>الأبراج</option><option value="true">الحقيقي</option></select></div><div id="sg-extra-box" style="margin-top:10px"></div></div>
      <div style="background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.25);border-radius:8px;padding:10px 8px;text-align:center;color:#d4af37;font-size:12px;line-height:1.5;margin-top:12px">⚠️ نلفت انتباه جنابكم الى وجوب الاحتياط بضع دقائق..و شكرا</div>
      <div class="sayegh-row" style="margin-top:12px"><button class="sayegh-btn primary" id="p-refresh" style="flex:1">🔄 تحديث</button><button class="sayegh-btn" id="p-change" style="flex:1">📍 حدد مدينتك</button></div>
@@ -4240,14 +4214,14 @@ let fetching=false;
   document.getElementById('p-refresh').onclick=async()=>{
    statusEl.style.display='block';statusEl.innerHTML='⏳ جاري التحديث...';
    let r=await fetchPrayers(code);
-   if(r){cardsEl.innerHTML=prayerDarkHTML(r.prayers);hijriEl.textContent=r.hijri;miladiEl.textContent=r.miladi+' م';statusEl.textContent='✅ تم التحديث';} /* الخطوة 8: التنبيه بيضل ظاهر لحد ما تسكر المودال، بلا تايمر 1000ms */
+   if(r){cardsEl.innerHTML=prayerDarkHTML(r.prayers);hijriEl.textContent=r.hijri;miladiEl.textContent=r.miladi+' م';statusEl.style.display='none';statusEl.innerHTML='';} /* الخطوة 8: التنبيه بيضل ظاهر لحد ما تسكر المودال، بلا تايمر 1000ms */
    else statusEl.textContent='❌ فشل التحديث';
   };
   if(!cached){
    (async()=>{
     let r=await fetchPrayers(code);
     let still=document.getElementById('prayer-main-overlay');
-    if(still&&r){let c=document.getElementById('p-cards');if(c)c.innerHTML=prayerDarkHTML(r.prayers);let h=document.getElementById('p-center-hijri');if(h)h.textContent=r.hijri;let m=document.getElementById('p-center-miladi');if(m)m.textContent=r.miladi+' م';let s=document.getElementById('p-status');if(s){s.textContent='✅ تم الحفظ';}} /* الخطوة 8: بلا تايمر 800ms */
+    if(still&&r){let c=document.getElementById('p-cards');if(c)c.innerHTML=prayerDarkHTML(r.prayers);let h=document.getElementById('p-center-hijri');if(h)h.textContent=r.hijri;let m=document.getElementById('p-center-miladi');if(m)m.textContent=r.miladi+' م';let s=document.getElementById('p-status');if(s){s.style.display='none';s.innerHTML='';}} /* الخطوة 8: بلا تايمر 800ms */
    })();
   }
 
@@ -4768,7 +4742,7 @@ let fetching=false;
        var days=new Date(y, m, 0).getDate();
        var startStr=y+'/'+String(m).padStart(2,'0')+'/01';
        var endStr=y+'/'+String(m).padStart(2,'0')+'/'+String(days).padStart(2,'0');
-       var cacheKey='_nojumi_month_single_v26_'+njP_cur.lat.toFixed(4)+'_'+njP_cur.lng.toFixed(4)+'_'+y+'-'+m;
+       var cacheKey='_nojumi_month_single_v28_'+njP_cur.lat.toFixed(4)+'_'+njP_cur.lng.toFixed(4)+'_'+y+'-'+m;
        if(njP_monthLoadedKey===cacheKey && njP_monthCards && njP_monthCards.innerHTML.trim()) return;
        var cached=null; try{ cached=JSON.parse(localStorage.getItem(cacheKey)||'null'); }catch(e){}
        if(cached && cached.rows && cached.rows.length===days){
@@ -4819,7 +4793,7 @@ let fetching=false;
        var y=njP_getSelectedYear();
        var startStr=y+'/01/01'; var endStr=y+'/12/31';
        var daysInYear=((y%4===0 && y%100!==0) || (y%400===0)) ? 366 : 365;
-       var cacheKey='_nojumi_year_single_v26_'+njP_cur.lat.toFixed(4)+'_'+njP_cur.lng.toFixed(4)+'_'+y;
+       var cacheKey='_nojumi_year_single_v28_'+njP_cur.lat.toFixed(4)+'_'+njP_cur.lng.toFixed(4)+'_'+y;
        if(njP_yearLoadedKey===cacheKey && njP_yearCards && njP_yearCards.innerHTML.trim()) return;
        var cached=null; try{ cached=JSON.parse(localStorage.getItem(cacheKey)||'null'); }catch(e){}
        if(cached && cached.rowsByMonth){
@@ -5024,6 +4998,18 @@ let fetching=false;
      var datePart=s.substr(0,10); var timePart=s.substr(11);
      return {datePart:datePart, timePart:timePart, year:datePart.substr(0,4), month:datePart.substr(5,2), day:datePart.substr(8,2), hour:String(timePart).split(':')[0]||'', minute:String(timePart).split(':')[1]||'', second:String(timePart).split(':')[2]||''};
    }
+   function njP_borjNameOnly(s){
+     try{
+       var txt=String(s||'').replace(/\s+/g,' ').trim();
+       if(!txt) return '';
+       var m=txt.match(/برج\s+(الحمل|الثور|الجوزاء|السرطان|الأسد|العذراء|الميزان|العقرب|القوس|الجدي|الدلو|الحوت)/);
+       if(m) return m[1];
+       var m2=txt.match(/القمر\s+في\s+(الحمل|الثور|الجوزاء|السرطان|الأسد|العذراء|الميزان|العقرب|القوس|الجدي|الدلو|الحوت)/);
+       if(m2) return m2[1];
+       for(var i=0;i<NJ_BORJ_NAMES.length;i++){ if(txt.indexOf(NJ_BORJ_NAMES[i])!==-1) return NJ_BORJ_NAMES[i]; }
+     }catch(e){}
+     return '';
+   }
    function njP_aqrabParseMoonCards(html){
      var out=[];
      try{
@@ -5034,29 +5020,60 @@ let fetching=false;
          cards.forEach(function(card){
            var dayEl=card.querySelector('.day-name'); var dateEl=card.querySelector('.date-text'); var borjEl=card.querySelector('.borj-text');
            var day=dayEl?dayEl.textContent.trim():'';
-           var borj=borjEl?borjEl.textContent.trim():'';
            var dateRaw=dateEl?dateEl.textContent.trim():'';
-           var date=njP_extractGregorian(dateRaw)||njP_extractGregorian(card.getAttribute('data-date')||'')||njP_extractGregorian(card.textContent||'');
-           if(!borj) borj=card.textContent.replace(/\s+/g,' ').trim().slice(0,60);
-           if(!date && !borj) return;
+           var date=njP_extractGregorian(dateRaw)||njP_extractGregorian(card.getAttribute('data-date')||'')||njP_extractGregorian(card.getAttribute('data-gregorian')||'');
+           if(!date){
+             var alt=card.querySelector('[data-date], .date, .gregorian-date, .miladi-date');
+             if(alt) date=njP_extractGregorian(alt.textContent||alt.getAttribute('data-date')||'');
+           }
            if(!date) return;
-           var isS=(borj.indexOf('عقرب')!==-1 || borj.toLowerCase().indexOf('scorpio')!==-1);
+           var borjRaw=borjEl?borjEl.textContent.trim():'';
+           var borj=njP_borjNameOnly(borjRaw)||njP_borjNameOnly(card.textContent||'');
+           if(!borj) return;
+           var isS=(borj.indexOf('عقرب')!==-1);
            out.push({day:day, date:date, borj:borj, isScorpio:isS});
          });
-         return out;
+         if(out.length>0) return out;
        }
        var plain=String(html).replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,'\n');
        var lines=plain.split('\n');
-       var lastDate='';
+       var seen={};
+       var pushEntry=function(d,b){
+         if(!d||!b) return;
+         var k=d+'|'+b;
+         if(seen[k]) return;
+         seen[k]=true;
+         out.push({day:'', date:d, borj:b, isScorpio:(b.indexOf('عقرب')!==-1)});
+       };
+       var tokens=[];
        lines.forEach(function(line){
          var txt=njP_toLatinDigits(line.replace(/\s+/g,' ').trim());
+         if(!txt) return;
          var d=njP_extractGregorian(txt);
-         if(d) lastDate=d;
-         if(txt && (txt.indexOf('عقرب')!==-1 || txt.toLowerCase().indexOf('scorpio')!==-1)){
-           var useDate=d||lastDate;
-           if(useDate) out.push({day:'', date:useDate, borj:txt.slice(0,120), isScorpio:true});
-         }
+         var b=njP_borjNameOnly(txt);
+         if(d && b){ pushEntry(d,b); return; }
+         if(d){ tokens.push({kind:'date', val:d}); return; }
+         if(b){ tokens.push({kind:'borj', val:b}); return; }
        });
+       if(tokens.length){
+         if(tokens[0].kind==='date'){
+           for(var ti=0;ti<tokens.length;ti++){
+             if(tokens[ti].kind!=='date') continue;
+             for(var tj=ti+1;tj<tokens.length;tj++){
+               if(tokens[tj].kind==='date') break;
+               if(tokens[tj].kind==='borj'){ pushEntry(tokens[ti].val,tokens[tj].val); break; }
+             }
+           }
+         } else {
+           for(var ti2=0;ti2<tokens.length;ti2++){
+             if(tokens[ti2].kind!=='borj') continue;
+             for(var tj2=ti2+1;tj2<tokens.length;tj2++){
+               if(tokens[tj2].kind==='borj') break;
+               if(tokens[tj2].kind==='date'){ pushEntry(tokens[tj2].val,tokens[ti2].val); break; }
+             }
+           }
+         }
+       }
      }catch(e){}
      return out;
    }
@@ -7466,7 +7483,7 @@ let fetching=false;
 #sg-moon-which{background:#0f2418;border:1px solid rgba(212,175,55,.25);color:#e8d9a3;border-radius:8px;padding:8px;font-size:13px}
 #sg-moon-which option{background:#0f2418;color:#e8d9a3}
 #sg-moon-which-wrap{display:none}
-.sg-month-note,.sg-year-note{font-size:12px;color:#9ca3af;line-height:1.6}
+
 .sg-month-row{border:1px solid rgba(212,175,55,.15);border-radius:10px;padding:10px 12px;margin-bottom:6px;background:rgba(0,0,0,.18);cursor:pointer}
 .sg-month-row-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .sg-month-day{font-weight:900;color:#fde68a;font-size:14px}
@@ -7578,8 +7595,8 @@ let fetching=false;
     html += '<span class="sg-pill"><b>غروب القمر</b>'+num(moonset || '-')+'</span>';
     if(anwaa) html += '<span class="sg-pill"><b>الأنواء</b>'+esc(anwaa)+'</span>';
     if(mawasem) html += '<span class="sg-pill"><b>المواسم</b>'+esc(mawasem)+'</span>';
-    if(trueZ) html += '<span class="sg-pill"><b>البرج الحقيقي</b>'+esc(trueZ)+'</span>';
-    if(commonZ) html += '<span class="sg-pill"><b>البرج الشائع</b>'+esc(commonZ)+'</span>';
+    if(trueZ) html += '<span class="sg-pill"><b>برج الشمس الحقيقي</b>'+esc(trueZ)+'</span>';
+    if(commonZ) html += '<span class="sg-pill"><b>برج الشمس الشائع</b>'+esc(commonZ)+'</span>';
     html += '</div></div>';
     if(box) box.innerHTML = html;
     if(det){
@@ -7597,7 +7614,7 @@ let fetching=false;
     if(!list) return;
     var full = window._sayeghFullCity;
     if(!full || !full.months){
-      list.innerHTML = '<div class="prayer-status">اختر المدينة أولاً. يعرض الشهر من بيانات المدينة نفسها، دون جلب جديد.</div>';
+      list.innerHTML = '<div class="prayer-status">اختر المدينة أولاً.</div>';
       return;
     }
     var m = monthNum || (new Date().getMonth()+1);
