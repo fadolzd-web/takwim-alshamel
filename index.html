@@ -4290,7 +4290,7 @@ let fetching=false;
    let njP_yearLoadedKey='';
    /* step26: أسماء الشهور والسنوات 2024-2031 للاختيار */
    var NJP_MONTH_NAMES=['','كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
-   var NJP_YEARS=[2024,2025,2026,2027,2028,2029,2030,2031];
+   var NJP_YEARS=(function(){var _cy=new Date().getFullYear();var _a=[];for(var _y=_cy-2;_y<=_cy+15;_y++)_a.push(_y);return _a;})();
    let njP_hijriEl=document.getElementById('nj-p-center-hijri');
    let njP_miladiEl=document.getElementById('nj-p-center-miladi');
    let njP_shareBtn=document.getElementById('nj-p-share-img');
@@ -4605,9 +4605,11 @@ let fetching=false;
     finally{njP_fetching=false;}
    }
       /* step25: تطبيع التاريخ إلى YYYY/MM/DD مهما كان شكل رد الخادم. */
+   function njP_toLatinDigits(s){try{return String(s||'').replace(/[٠-٩]/g,function(d){return String('٠١٢٣٤٥٦٧٨٩'.indexOf(d));}).replace(/[۰-۹]/g,function(d){return String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d));});}catch(e){return String(s||'');}}
+   function njP_extractGregorian(s){try{var txt=njP_toLatinDigits(String(s||''));var all=txt.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/g)||[];for(var i=0;i<all.length;i++){var mm=all[i].match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);if(mm&&+mm[1]>=1900&&+mm[1]<=2100)return mm[1]+'/'+String(mm[2]).padStart(2,'0')+'/'+String(mm[3]).padStart(2,'0');}var m2=txt.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);if(m2&&+m2[3]>=1900&&+m2[3]<=2100)return m2[3]+'/'+String(m2[2]).padStart(2,'0')+'/'+String(m2[1]).padStart(2,'0');var months={'كانون الثاني':1,'شباط':2,'آذار':3,'نيسان':4,'أيار':5,'حزيران':6,'تموز':7,'آب':8,'أيلول':9,'تشرين الأول':10,'تشرين الثاني':11,'كانون الأول':12,'يناير':1,'فبراير':2,'مارس':3,'أبريل':4,'مايو':5,'يونيو':6,'يوليو':7,'أغسطس':8,'سبتمبر':9,'أكتوبر':10,'نوفمبر':11,'ديسمبر':12};var keys=Object.keys(months);for(var k=0;k<keys.length;k++){var re=new RegExp('(\\d{1,2})\\s*'+keys[k].replace(/([.*+?^${}()|[\]\\])/g,'\\$1')+'\\s*(\\d{4})','i');var mm2=txt.match(re);if(mm2&&+mm2[2]>=1900&&+mm2[2]<=2100)return mm2[2]+'/'+String(months[keys[k]]).padStart(2,'0')+'/'+String(mm2[1]).padStart(2,'0');}}catch(e){}return '';}
    function njP_normDate(s){
      try{
-       var t=String(s||'').trim();
+       var t=njP_toLatinDigits(String(s||'').trim()).replace(/\s*[\/\-]\s*/g,'/');
        var m=t.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
        if(m) return m[1]+'/'+String(m[2]).padStart(2,'0')+'/'+String(m[3]).padStart(2,'0');
        var m2=t.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
@@ -4713,7 +4715,7 @@ let fetching=false;
        var days=njP_aqrabParseMoonCards(r3.json.d);
        var entries=[];
        (days||[]).forEach(function(d){
-         var nd=njP_normDate(d.date||'');
+         var nd=njP_normDate(njP_extractGregorian(d.date||'')||d.date||'');
          if(!nd || nd.indexOf('/')===-1) return;
          entries.push({date:nd, borj:d.borj||'', isScorpio:!!d.isScorpio});
        });
@@ -4735,6 +4737,7 @@ let fetching=false;
        var now=new Date(); var curY=now.getFullYear(); var curM=now.getMonth()+1;
        var prevM=(njP_monthSelect && njP_monthSelect.value) ? njP_monthSelect.value : String(curM);
        var prevY=(njP_yearSelectMonth && njP_yearSelectMonth.value) ? njP_yearSelectMonth.value : ((njP_yearSelect && njP_yearSelect.value) ? njP_yearSelect.value : String(curY));
+       if(NJP_YEARS.indexOf(parseInt(prevY,10))===-1) prevY=String(curY);
        if(njP_monthSelect){ njP_monthSelect.innerHTML=''; NJP_MONTH_NAMES.forEach(function(nm,idx){ if(!idx) return; var o=document.createElement('option'); o.value=String(idx); o.textContent=nm; if(String(idx)===String(prevM)) o.selected=true; njP_monthSelect.appendChild(o); }); }
        [njP_yearSelectMonth, njP_yearSelect].forEach(function(sel){ if(!sel) return; sel.innerHTML=''; NJP_YEARS.forEach(function(yy){ var o=document.createElement('option'); o.value=String(yy); o.textContent=String(yy); if(String(yy)===String(prevY)) o.selected=true; sel.appendChild(o); }); });
        if(njP_monthSelect && !njP_monthSelect._njBound){ njP_monthSelect._njBound=true; njP_monthSelect.addEventListener('change', function(){ njP_monthLoadedKey=''; njP_loadMonth(); }); }
@@ -4864,11 +4867,12 @@ let fetching=false;
      var city=njP_shortName(njP_cur.name)||njP_cur.name||'';
      var scorpioCount=0; for(var mk=1;mk<=12;mk++){ (rowsByMonth[mk]||[]).forEach(function(r){ if(r&&r.isScorpio) scorpioCount++; }); }
      var todayKey=njP_todayKey();
-     var head='<div style="text-align:center;font-weight:900;font-size:16px;margin:10px 0 4px">بسمه تعالى</div><div style="text-align:center;font-size:13px;color:#e8d9a3;margin-bottom:6px">الأوقات الشرعية حسب أفق '+njP_esc(city)+' - سنة '+y+'</div><div style="text-align:center;font-size:12px;color:#e8d9a3;margin-bottom:10px">المصدر: مركز البحوث والدراسات الفلكية - النجومي | عدد أيام العقرب في السنة: '+scorpioCount+'</div>';
+     var head='<div style="text-align:center;font-weight:900;font-size:16px;margin:10px 0 4px;color:#e8d9a3">بسمه تعالى</div><div style="text-align:center;font-size:13px;color:#e8d9a3;margin-bottom:6px">الأوقات الشرعية حسب أفق '+njP_esc(city)+' - سنة '+y+'</div><div style="text-align:center;font-size:12px;color:#e8d9a3;margin-bottom:10px">المصدر: مركز البحوث والدراسات الفلكية - النجومي | عدد أيام العقرب في السنة: '+scorpioCount+'</div>';
+     var _jump=''; for(var _jm=1;_jm<=12;_jm++){ _jump+='<button type="button" data-nj-jump="'+_jm+'" style="background:#0f3218;color:#e8d9a3;border:1px solid rgba(212,175,55,0.4);border-radius:999px;padding:6px 10px;font-size:12px;font-weight:900;cursor:pointer">'+njP_esc(NJP_MONTH_NAMES[_jm]||_jm)+'</button>'; } head+='<div style="position:sticky;top:0;z-index:2;background:#0a1f14;padding:8px 0;display:flex;flex-wrap:wrap;gap:6px;justify-content:center">'+_jump+'</div>';
      var h=head;
      for(var m=1;m<=12;m++){
        var rows=rowsByMonth[m]||[]; if(!rows.length) continue;
-       h+='<div style="text-align:center;font-weight:900;font-size:15px;color:#ffffff;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.35);border-radius:10px;padding:10px;margin:14px 0 10px">'+njP_esc(NJP_MONTH_NAMES[m]||m)+' '+y+'</div>';
+       h+='<div id="nj-year-'+y+'-'+m+'" style="text-align:center;font-weight:900;font-size:15px;color:#ffffff;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.35);border-radius:10px;padding:10px;margin:14px 0 10px">'+njP_esc(NJP_MONTH_NAMES[m]||m)+' '+y+'</div>';
        rows.forEach(function(r){
          if(!r) return;
          var dt=new Date(y, m-1, r.day); var wd=dayNames[dt.getDay()]||'';
@@ -4888,6 +4892,7 @@ let fetching=false;
      }
      window._njYearExport={rowsByMonth:rowsByMonth, y:y, city:city};
      njP_yearCards.innerHTML=h;
+     try{ njP_yearCards.querySelectorAll('[data-nj-jump]').forEach(function(btn){ btn.onclick=function(){ try{ var el=document.getElementById('nj-year-'+y+'-'+btn.getAttribute('data-nj-jump')); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){} }; }); }catch(e){}
    }
    function njP_monthToCSV(rows, y, m, city){
      var head='اليوم,التاريخ,أذان الفجر,طلوع الشمس,أذان الظهر,غروب الشمس,أذان المغرب,نصف الليل الشرعي,نصف الليل الفلكي\n';
@@ -4941,7 +4946,7 @@ let fetching=false;
      var city=njP_shortName(njP_cur.name)||njP_cur.name||'';
      var scorpioCount=0; (rows||[]).forEach(function(r){ if(r&&r.isScorpio) scorpioCount++; });
      var todayKey=njP_todayKey();
-     var head='<div style="text-align:center;font-weight:900;font-size:16px;margin:10px 0 4px">بسمه تعالى</div><div style="text-align:center;font-size:13px;color:#e8d9a3;margin-bottom:6px">الأوقات الشرعية حسب أفق '+njP_esc(city)+' - '+(monthNames[m]||m)+' '+y+'</div><div style="text-align:center;font-size:12px;color:#e8d9a3;margin-bottom:10px">المصدر: مركز البحوث والدراسات الفلكية - النجومي | عدد أيام العقرب في الشهر: '+scorpioCount+'</div>';
+     var head='<div style="text-align:center;font-weight:900;font-size:16px;margin:10px 0 4px;color:#e8d9a3">بسمه تعالى</div><div style="text-align:center;font-size:13px;color:#e8d9a3;margin-bottom:6px">الأوقات الشرعية حسب أفق '+njP_esc(city)+' - '+(monthNames[m]||m)+' '+y+'</div><div style="text-align:center;font-size:12px;color:#e8d9a3;margin-bottom:10px">المصدر: مركز البحوث والدراسات الفلكية - النجومي | عدد أيام العقرب في الشهر: '+scorpioCount+'</div>';
      var h=head;
      (rows||[]).forEach(function(r){
        if(!r) return;
@@ -5028,9 +5033,13 @@ let fetching=false;
        if(cards && cards.length>0){
          cards.forEach(function(card){
            var dayEl=card.querySelector('.day-name'); var dateEl=card.querySelector('.date-text'); var borjEl=card.querySelector('.borj-text');
-           var day=dayEl?dayEl.textContent.trim():''; var date=dateEl?dateEl.textContent.trim():''; var borj=borjEl?borjEl.textContent.trim():'';
+           var day=dayEl?dayEl.textContent.trim():'';
+           var borj=borjEl?borjEl.textContent.trim():'';
+           var dateRaw=dateEl?dateEl.textContent.trim():'';
+           var date=njP_extractGregorian(dateRaw)||njP_extractGregorian(card.getAttribute('data-date')||'')||njP_extractGregorian(card.textContent||'');
            if(!borj) borj=card.textContent.replace(/\s+/g,' ').trim().slice(0,60);
            if(!date && !borj) return;
+           if(!date) return;
            var isS=(borj.indexOf('عقرب')!==-1 || borj.toLowerCase().indexOf('scorpio')!==-1);
            out.push({day:day, date:date, borj:borj, isScorpio:isS});
          });
@@ -5038,9 +5047,15 @@ let fetching=false;
        }
        var plain=String(html).replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,'\n');
        var lines=plain.split('\n');
+       var lastDate='';
        lines.forEach(function(line){
-         var t=line.replace(/\s+/g,' ').trim();
-         if(t && t.indexOf('عقرب')!==-1 && t.length<200){ out.push({day:'', date:'', borj:t, isScorpio:true}); }
+         var txt=njP_toLatinDigits(line.replace(/\s+/g,' ').trim());
+         var d=njP_extractGregorian(txt);
+         if(d) lastDate=d;
+         if(txt && (txt.indexOf('عقرب')!==-1 || txt.toLowerCase().indexOf('scorpio')!==-1)){
+           var useDate=d||lastDate;
+           if(useDate) out.push({day:'', date:useDate, borj:txt.slice(0,120), isScorpio:true});
+         }
        });
      }catch(e){}
      return out;
