@@ -4194,13 +4194,12 @@ let fetching=false;
        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#e8d9a3;white-space:nowrap;cursor:pointer"><input type="checkbox" id="nj-p-auto-checkbox" checked style="width:16px;height:16px;accent-color:#d4af37;margin:0"> تلقائي</label>
      </div>
      <div id="nj-p-search-wrap" style="display:none;margin-top:10px">
-       <label class="nj-p-label" for="nj-p-searchInput" style="margin:0">🔍 ابحث عن اسم المدينة أو القرية</label>
-       <input id="nj-p-searchInput" class="city-search-input" placeholder="اكتب اسم المدينة ثم اختر من النتائج" />
+       <input id="nj-p-searchInput" class="city-search-input" placeholder="ابحث عن مدينة" />
        <div id="nj-p-searchStatus" class="prayer-status" style="display:none"></div>
        <div id="nj-p-searchResults" class="nj-p-results"></div>
      </div>
      <input type="hidden" id="nj-p-dateInput" />
-     <div class="sg-tabs" id="nj-p-tabs" style="margin-top:12px"><button class="sg-tab active" data-nj-view="day">اليوم</button><button class="sg-tab" data-nj-view="month">الشهر</button></div>
+     <div class="sg-tabs" id="nj-p-tabs" style="margin-top:12px"><button class="sg-tab active" data-nj-view="day">اليوم</button><button class="sg-tab" data-nj-view="month">الشهر</button><button class="sg-tab" data-nj-view="year">السنة</button></div>
      <div id="nj-p-view-day">
        <div id="nj-p-status" class="prayer-status" style="display:none"></div>
        <div id="nj-p-cards"></div>
@@ -4209,10 +4208,16 @@ let fetching=false;
        <div class="sayegh-row" style="margin-top:12px"><button class="sayegh-btn" id="nj-p-share-img" style="flex:1;background:linear-gradient(135deg,#0f3218,#132a1a);border:1px solid rgba(212,175,55,0.4);color:#d4af37">📸 مشاركة كصورة</button></div>
      </div>
      <div id="nj-p-view-month" style="display:none">
+       <div style="display:flex;gap:8px;align-items:center;margin:10px 0"><label style="font-size:13px;color:#e8d9a3;white-space:nowrap">الشهر</label><select id="nj-p-month-select" style="flex:1;background:#0f3218;color:#fff;border:1px solid rgba(212,175,55,0.4);border-radius:8px;padding:8px"></select><label style="font-size:13px;color:#e8d9a3;white-space:nowrap">السنة</label><select id="nj-p-year-select-month" style="flex:1;background:#0f3218;color:#fff;border:1px solid rgba(212,175,55,0.4);border-radius:8px;padding:8px"></select></div>
        <div id="nj-p-month-status" class="prayer-status" style="display:none"></div>
        <div id="nj-p-month-cards"></div>
      </div>
-     <!-- step25: نهاية لوحة النجومي -->
+     <div id="nj-p-view-year" style="display:none">
+       <div style="display:flex;gap:8px;align-items:center;margin:10px 0"><label style="font-size:13px;color:#e8d9a3;white-space:nowrap">السنة</label><select id="nj-p-year-select" style="flex:1;background:#0f3218;color:#fff;border:1px solid rgba(212,175,55,0.4);border-radius:8px;padding:8px"></select></div>
+       <div id="nj-p-year-status" class="prayer-status" style="display:none"></div>
+       <div id="nj-p-year-cards"></div>
+     </div>
+     <!-- step26: نهاية لوحة النجومي -->
      </div>
     </div>
    </div>`;
@@ -4271,10 +4276,21 @@ let fetching=false;
    let njP_viewMonth=document.getElementById('nj-p-view-month');
    let njP_monthStatus=document.getElementById('nj-p-month-status');
    let njP_monthCards=document.getElementById('nj-p-month-cards');
+   let njP_viewYear=document.getElementById('nj-p-view-year');
+   let njP_yearStatus=document.getElementById('nj-p-year-status');
+   let njP_yearCards=document.getElementById('nj-p-year-cards');
+   let njP_monthSelect=document.getElementById('nj-p-month-select');
+   let njP_yearSelectMonth=document.getElementById('nj-p-year-select-month');
+   let njP_yearSelect=document.getElementById('nj-p-year-select');
    let njP_dayBorj=document.getElementById('nj-p-day-borj');
    let njP_monthLoading=false;
+   let njP_yearLoading=false;
    let njP_currentView='day';
    let njP_monthLoadedKey='';
+   let njP_yearLoadedKey='';
+   /* step26: أسماء الشهور والسنوات 2024-2031 للاختيار */
+   var NJP_MONTH_NAMES=['','كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
+   var NJP_YEARS=[2024,2025,2026,2027,2028,2029,2030,2031];
    let njP_hijriEl=document.getElementById('nj-p-center-hijri');
    let njP_miladiEl=document.getElementById('nj-p-center-miladi');
    let njP_shareBtn=document.getElementById('nj-p-share-img');
@@ -4314,7 +4330,7 @@ let fetching=false;
       getPin: function(){ return {name: njP_cur.name, lat: njP_cur.lat, lng: njP_cur.lng}; },
       setPin: function(pin){ try{ if(pin && isFinite(pin.lat) && isFinite(pin.lng)){ njP_cur = {name: pin.name||njP_cur.name, lat: pin.lat, lng: pin.lng}; njP_setPin(); } }catch(e){} },
       getTimes: function(force){ try{ return njP_getTimes(force); }catch(e){} },
-      setPinAndFetch: function(pin){ try{ if(pin && isFinite(pin.lat) && isFinite(pin.lng)){ njP_cur = {name: pin.name||njP_cur.name, lat: pin.lat, lng: pin.lng}; njP_setPin(); njP_getTimes(false); if(njP_currentView==='month'){ njP_monthLoadedKey=''; njP_loadMonth(); } } }catch(e){} }
+      setPinAndFetch: function(pin){ try{ if(pin && isFinite(pin.lat) && isFinite(pin.lng)){ njP_cur = {name: pin.name||njP_cur.name, lat: pin.lat, lng: pin.lng}; njP_setPin(); njP_getTimes(false); if(njP_currentView==='month'){ njP_monthLoadedKey=''; njP_loadMonth(); } if(njP_currentView==='year'){ njP_yearLoadedKey=''; njP_loadYear(); } } }catch(e){} }
     };
     window._v19_updateNojumiAutoBar = function(){
       try{
@@ -4381,12 +4397,12 @@ let fetching=false;
      if(njP_searchWrap) njP_searchWrap.style.display='none';
      njP_showStatus('تم تحديد الموقع: '+njP_esc(njP_cur.name)+' — '+la+' , '+lo+' — جارٍ جلب الأوقات.');
      njP_getTimes(false);
-     if(njP_currentView==='month'){ njP_monthLoadedKey=''; njP_loadMonth(); }
+     if(njP_currentView==='month'){ njP_monthLoadedKey=''; njP_loadMonth(); } if(njP_currentView==='year'){ njP_yearLoadedKey=''; njP_loadYear(); }
     });
    });
    async function njP_searchCity(){
     let q=(njP_searchInp?njP_searchInp.value:'').trim();
-    if(!q){if(njP_searchStatus){njP_searchStatus.style.display='block';njP_searchStatus.textContent='اكتب اسم المدينة أو القرية أولا';}return;}
+    if(!q){if(njP_searchStatus){njP_searchStatus.style.display='none';njP_searchStatus.textContent='';}return;}
     if(njP_searchStatus){njP_searchStatus.style.display='block';njP_searchStatus.textContent='جارٍ البحث...';}
     if(njP_searchResults) njP_searchResults.innerHTML='';
     try{
@@ -4415,7 +4431,7 @@ let fetching=false;
         if(njP_searchStatus) njP_searchStatus.innerHTML='تم تحديد الموقع: '+njP_esc(r.display_name)+' — '+la+' , '+lo+' — جارٍ جلب الأوقات.';
         njP_showStatus('تم تحديد الموقع: '+njP_esc(r.display_name)+' — '+la+' , '+lo);
         njP_getTimes(false);
-        if(njP_currentView==='month'){ njP_monthLoadedKey=''; njP_loadMonth(); }
+        if(njP_currentView==='month'){ njP_monthLoadedKey=''; njP_loadMonth(); } if(njP_currentView==='year'){ njP_yearLoadedKey=''; njP_loadYear(); }
        };
        njP_searchResults.appendChild(div);
       });
@@ -4669,7 +4685,7 @@ let fetching=false;
      var isS=(String(borj).indexOf('عقرب')!==-1 || String(borj).toLowerCase().indexOf('scorpio')!==-1);
      var line=isS ? '🌙 القمر الآن في العقرب' : 'القمر الآن في '+borj;
      njP_dayBorj.style.display='block';
-     njP_dayBorj.innerHTML='<div style="background:'+(isS?'rgba(245,158,11,0.15)':'rgba(0,0,0,0.35)')+';border:1px solid '+(isS?'#f59e0b':'rgba(212,175,55,0.25)')+';border-radius:10px;padding:10px;text-align:center"><div style="font-size:12px;color:#9ca3af">🌙 البرج</div><div style="font-size:18px;font-weight:900;color:#ffffff;margin-top:4px">'+njP_esc(line)+'</div><div style="font-size:12px;color:#e8d9a3;margin-top:4px">المصدر: مركز البحوث والدراسات الفلكية</div></div>';
+     njP_dayBorj.innerHTML='<div style="background:'+(isS?'rgba(245,158,11,0.15)':'rgba(0,0,0,0.35)')+';border:1px solid '+(isS?'#f59e0b':'rgba(212,175,55,0.25)')+';border-radius:10px;padding:10px;text-align:center"><div style="font-size:12px;color:#9ca3af">🌙 البرج</div><div style="font-size:18px;font-weight:900;color:#ffffff;margin-top:4px">'+njP_esc(line)+'</div></div></div>';
    }
    async function njP_fetchDayBorj(){
      try{
@@ -4713,25 +4729,43 @@ let fetching=false;
      }
      return found;
    }
+   /* step26: تعبئة قوائم الشهر والسنة والربط — القيمة الافتراضية شهر وسنة الجهاز */
+   function njP_initMonthYearSelects(){
+     try{
+       var now=new Date(); var curY=now.getFullYear(); var curM=now.getMonth()+1;
+       var prevM=(njP_monthSelect && njP_monthSelect.value) ? njP_monthSelect.value : String(curM);
+       var prevY=(njP_yearSelectMonth && njP_yearSelectMonth.value) ? njP_yearSelectMonth.value : ((njP_yearSelect && njP_yearSelect.value) ? njP_yearSelect.value : String(curY));
+       if(njP_monthSelect){ njP_monthSelect.innerHTML=''; NJP_MONTH_NAMES.forEach(function(nm,idx){ if(!idx) return; var o=document.createElement('option'); o.value=String(idx); o.textContent=nm; if(String(idx)===String(prevM)) o.selected=true; njP_monthSelect.appendChild(o); }); }
+       [njP_yearSelectMonth, njP_yearSelect].forEach(function(sel){ if(!sel) return; sel.innerHTML=''; NJP_YEARS.forEach(function(yy){ var o=document.createElement('option'); o.value=String(yy); o.textContent=String(yy); if(String(yy)===String(prevY)) o.selected=true; sel.appendChild(o); }); });
+       if(njP_monthSelect && !njP_monthSelect._njBound){ njP_monthSelect._njBound=true; njP_monthSelect.addEventListener('change', function(){ njP_monthLoadedKey=''; njP_loadMonth(); }); }
+       if(njP_yearSelectMonth && !njP_yearSelectMonth._njBound){ njP_yearSelectMonth._njBound=true; njP_yearSelectMonth.addEventListener('change', function(){ try{ if(njP_yearSelect) njP_yearSelect.value=njP_yearSelectMonth.value; }catch(e){} njP_monthLoadedKey=''; njP_loadMonth(); }); }
+       if(njP_yearSelect && !njP_yearSelect._njBound){ njP_yearSelect._njBound=true; njP_yearSelect.addEventListener('change', function(){ try{ if(njP_yearSelectMonth) njP_yearSelectMonth.value=njP_yearSelect.value; }catch(e){} njP_yearLoadedKey=''; njP_loadYear(); }); }
+     }catch(e){}
+   }
+   function njP_getSelectedMonthYear(){ var now=new Date(); var y=now.getFullYear(); var m=now.getMonth()+1; try{ if(njP_yearSelectMonth && njP_yearSelectMonth.value) y=parseInt(njP_yearSelectMonth.value)||y; }catch(e){} try{ if(njP_monthSelect && njP_monthSelect.value) m=parseInt(njP_monthSelect.value)||m; }catch(e){} return {y:y, m:m}; }
+   function njP_getSelectedYear(){ var now=new Date(); var y=now.getFullYear(); try{ if(njP_yearSelect && njP_yearSelect.value) y=parseInt(njP_yearSelect.value)||y; else if(njP_yearSelectMonth && njP_yearSelectMonth.value) y=parseInt(njP_yearSelectMonth.value)||y; }catch(e){} return y; }
    function njP_switchNjView(view){
-     njP_currentView=(view==='month'?'month':'day');
+     njP_currentView=(view==='month'?'month':(view==='year'?'year':'day'));
      try{
        var tabs=document.querySelectorAll('#nj-p-tabs .sg-tab');
        tabs.forEach(function(t){ t.classList.toggle('active', t.dataset.njView===njP_currentView); });
      }catch(e){}
+     if(njP_monthStatus){ njP_monthStatus.style.display='none'; njP_monthStatus.textContent=''; }
+     if(njP_yearStatus){ njP_yearStatus.style.display='none'; njP_yearStatus.textContent=''; }
      if(njP_viewDay) njP_viewDay.style.display=(njP_currentView==='day'?'block':'none');
      if(njP_viewMonth) njP_viewMonth.style.display=(njP_currentView==='month'?'block':'none');
-     if(njP_currentView==='month'){ njP_loadMonth(); }
+     if(njP_viewYear) njP_viewYear.style.display=(njP_currentView==='year'?'block':'none');
+     if(njP_currentView==='month'){ njP_initMonthYearSelects(); njP_loadMonth(); }
+     if(njP_currentView==='year'){ njP_initMonthYearSelects(); njP_loadYear(); }
    }
    async function njP_loadMonth(){
      if(njP_monthLoading) return; njP_monthLoading=true;
      try{
-       var dateStr=(njP_dateInp&&njP_dateInp.value.trim())||njP_todayStr();
-       var parts=dateStr.split('/'); var y=parseInt(parts[0])||new Date().getFullYear(); var m=parseInt(parts[1])||(new Date().getMonth()+1);
+       var sel=njP_getSelectedMonthYear(); var y=sel.y; var m=sel.m;
        var days=new Date(y, m, 0).getDate();
        var startStr=y+'/'+String(m).padStart(2,'0')+'/01';
        var endStr=y+'/'+String(m).padStart(2,'0')+'/'+String(days).padStart(2,'0');
-       var cacheKey='_nojumi_month_single_v25_'+njP_cur.lat.toFixed(4)+'_'+njP_cur.lng.toFixed(4)+'_'+y+'-'+m;
+       var cacheKey='_nojumi_month_single_v26_'+njP_cur.lat.toFixed(4)+'_'+njP_cur.lng.toFixed(4)+'_'+y+'-'+m;
        if(njP_monthLoadedKey===cacheKey && njP_monthCards && njP_monthCards.innerHTML.trim()) return;
        var cached=null; try{ cached=JSON.parse(localStorage.getItem(cacheKey)||'null'); }catch(e){}
        if(cached && cached.rows && cached.rows.length===days){
@@ -4775,6 +4809,86 @@ let fetching=false;
      }catch(e){ if(njP_monthStatus){ njP_monthStatus.style.display='block'; njP_monthStatus.textContent='❌ فشل جدول الشهر: '+(e&&e.message?e.message:String(e)); } }
      finally{ njP_monthLoading=false; }
    }
+   /* step26: جلبة وحدة للسنة — GET واحد + MoonInBorjs واحد، بطاقات مجمعة حسب الشهر */
+   async function njP_loadYear(){
+     if(njP_yearLoading) return; njP_yearLoading=true;
+     try{
+       var y=njP_getSelectedYear();
+       var startStr=y+'/01/01'; var endStr=y+'/12/31';
+       var daysInYear=((y%4===0 && y%100!==0) || (y%400===0)) ? 366 : 365;
+       var cacheKey='_nojumi_year_single_v26_'+njP_cur.lat.toFixed(4)+'_'+njP_cur.lng.toFixed(4)+'_'+y;
+       if(njP_yearLoadedKey===cacheKey && njP_yearCards && njP_yearCards.innerHTML.trim()) return;
+       var cached=null; try{ cached=JSON.parse(localStorage.getItem(cacheKey)||'null'); }catch(e){}
+       if(cached && cached.rowsByMonth){
+         var tot=0; Object.keys(cached.rowsByMonth||{}).forEach(function(k){ tot+=(cached.rowsByMonth[k]||[]).length; });
+         if(tot===daysInYear){ njP_renderYearCards(cached.rowsByMonth, y); njP_yearLoadedKey=cacheKey; if(njP_yearStatus){ njP_yearStatus.style.display='block'; njP_yearStatus.textContent='✅ من الكاش - جدول '+y+' - جلبة وحدة'; } return; }
+       }
+       if(njP_yearStatus){ njP_yearStatus.style.display='block'; njP_yearStatus.textContent='⏳ جارٍ الجلب من مركز البحوث — جلبة وحدة للسنة...'; }
+       if(njP_yearCards) njP_yearCards.innerHTML='';
+       var lat=njP_cur.lat, lng=njP_cur.lng;
+       var r1=await njP_nojumiPost(NJ_MOON_TZ, {lat:lat, lng:lng});
+       if(!r1.ok || !r1.json || r1.json.d===undefined){ if(njP_yearStatus) njP_yearStatus.textContent='❌ تعذر الجلب من مركز البحوث - المنطقة الزمنية.'; return; }
+       var p1=null; try{ p1=JSON.parse(r1.json.d); }catch(e){ p1=null; }
+       if(!p1 || p1.status!=='OK'){ if(njP_yearStatus) njP_yearStatus.textContent='❌ تعذر الجلب من مركز البحوث - المنطقة الزمنية.'; return; }
+       var tc=p1.gmtOffset/3600;
+       var pt=njP_nojumiParseFormatted(p1.formatted||'');
+       var zoneName=p1.zoneName||'';
+       var single=await njP_fetchRangeSingle(lat,lng,startStr,endStr,zoneName);
+       if(!single.ok || !single.days || !single.days.length){
+         if(njP_yearStatus) njP_yearStatus.textContent='❌ تعذر الجلب من مركز البحوث - '+(single.reason||'الخادم لم يرجع الجدول');
+         return;
+       }
+       var borjMap=await njP_fetchBorjMap(startStr,endStr,tc,pt);
+       var rowsByMonth={}; for(var mm=1;mm<=12;mm++) rowsByMonth[mm]=[];
+       single.days.forEach(function(p){
+         var rawDate=p.prayerDate||p.date||p.prayer_date||'';
+         var nd=njP_normDate(rawDate);
+         var dp=nd.split('/'); var yy=parseInt(dp[0])||y; var mon=parseInt(dp[1])||0; var dd=parseInt(dp[2])||0;
+         if(!dd || !mon) return;
+         var t={fajr:njP_pick(p, ['fajr','fajr_time','azan_fajr']), sunrise:njP_pick(p, ['sunrise','sun_rise','tulou']), dhuhr:njP_pick(p, ['dhuhr','zuhr','dhuhr_time','azan_dhuhr','azan_zuhr']), sunset:njP_pick(p, ['sunset','ghurub','sun_set']), maghreb:njP_pick(p, ['maghrib','maghreb','maghrib_time','azan_maghrib']), midnight:njP_pick(p, ['midnight','nisf_allayl','half_night']), astronomicalMidnight:njP_pick(p, ['astronomicalmidnight','astronomical_midnight','midnight_astronomical','nisf_falaki','sharee_midnight'])};
+         var b=njP_borjForDate(borjMap.entries||[], nd);
+         rowsByMonth[mon].push({day:dd, date:nd, times:t, borj:(b?b.borj:''), isScorpio:!!(b&&b.isScorpio)});
+       });
+       var total=0; for(var k2=1;k2<=12;k2++){ rowsByMonth[k2].sort(function(a,b){ return a.day-b.day; }); total+=rowsByMonth[k2].length; }
+       if(!total){ if(njP_yearStatus) njP_yearStatus.textContent='❌ تعذر الجلب من مركز البحوث - لم يرجع الخادم أي يوم.'; return; }
+       try{ localStorage.setItem(cacheKey, JSON.stringify({rowsByMonth:rowsByMonth, savedAt:Date.now()})); }catch(e){}
+       njP_renderYearCards(rowsByMonth, y);
+       njP_yearLoadedKey=cacheKey;
+       if(njP_yearStatus) njP_yearStatus.textContent='✅ نجح - جلبة وحدة - '+total+' يوم من مركز البحوث والدراسات الفلكية';
+     }catch(e){ if(njP_yearStatus){ njP_yearStatus.style.display='block'; njP_yearStatus.textContent='❌ فشل جدول السنة: '+(e&&e.message?e.message:String(e)); } }
+     finally{ njP_yearLoading=false; }
+   }
+   function njP_renderYearCards(rowsByMonth, y){
+     if(!njP_yearCards) return;
+     var dayNames=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+     var city=njP_shortName(njP_cur.name)||njP_cur.name||'';
+     var scorpioCount=0; for(var mk=1;mk<=12;mk++){ (rowsByMonth[mk]||[]).forEach(function(r){ if(r&&r.isScorpio) scorpioCount++; }); }
+     var todayKey=njP_todayKey();
+     var head='<div style="text-align:center;font-weight:900;font-size:16px;margin:10px 0 4px">بسمه تعالى</div><div style="text-align:center;font-size:13px;color:#e8d9a3;margin-bottom:6px">الأوقات الشرعية حسب أفق '+njP_esc(city)+' - سنة '+y+'</div><div style="text-align:center;font-size:12px;color:#e8d9a3;margin-bottom:10px">المصدر: مركز البحوث والدراسات الفلكية - النجومي | عدد أيام العقرب في السنة: '+scorpioCount+'</div>';
+     var h=head;
+     for(var m=1;m<=12;m++){
+       var rows=rowsByMonth[m]||[]; if(!rows.length) continue;
+       h+='<div style="text-align:center;font-weight:900;font-size:15px;color:#ffffff;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.35);border-radius:10px;padding:10px;margin:14px 0 10px">'+njP_esc(NJP_MONTH_NAMES[m]||m)+' '+y+'</div>';
+       rows.forEach(function(r){
+         if(!r) return;
+         var dt=new Date(y, m-1, r.day); var wd=dayNames[dt.getDay()]||'';
+         var t=r.times||{};
+         var isToday=(y+'-'+m+'-'+r.day)===todayKey;
+         var borjTxt=r.borj||'';
+         var borjLine=borjTxt ? ('البرج: '+borjTxt+(r.isScorpio?' 🌙':'')) : 'البرج: —';
+         var border=r.isScorpio ? '#f59e0b' : (isToday ? '#d4af37' : 'rgba(212,175,55,0.25)');
+         var bg=r.isScorpio ? 'rgba(245,158,11,0.12)' : 'rgba(0,0,0,0.18)';
+         function row2(label,val){ return '<div class="prayer-row-dark"><span class="prayer-row-dark-label">'+label+'</span><span class="prayer-row-dark-time">'+njP_esc(val==null||val===''?'--:--':String(val))+'</span></div>'; }
+         h+='<div style="border:1px solid '+border+';border-radius:12px;background:'+bg+';padding:12px;margin-bottom:10px">'
+           +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-weight:900;color:#ffffff">'+njP_esc(wd)+' — '+njP_esc(r.date)+'</div>'+(isToday?'<span style="font-size:11px;background:#d4af37;color:#121c2e;padding:2px 8px;border-radius:999px;font-weight:900">اليوم</span>':'')+'</div>'
+           +row2('أذان الفجر', t.fajr)+row2('طلوع الشمس', t.sunrise)+row2('أذان الظهر', t.dhuhr)+row2('غروب الشمس', t.sunset)+row2('أذان المغرب', t.maghreb)+row2('نصف الليل الشرعي', t.midnight)+row2('نصف الليل الفلكي', t.astronomicalMidnight)
+           +'<div style="text-align:center;font-size:13px;font-weight:900;color:'+(r.isScorpio?'#fbbf24':'#e8d9a3')+';margin-top:8px;padding:8px;border-radius:8px;border:1px solid '+(r.isScorpio?'#f59e0b':'rgba(212,175,55,0.18)')+';background:'+(r.isScorpio?'rgba(245,158,11,0.15)':'rgba(0,0,0,0.18)')+'">'+njP_esc(borjLine)+'</div>'
+           +'</div>';
+       });
+     }
+     window._njYearExport={rowsByMonth:rowsByMonth, y:y, city:city};
+     njP_yearCards.innerHTML=h;
+   }
    function njP_monthToCSV(rows, y, m, city){
      var head='اليوم,التاريخ,أذان الفجر,طلوع الشمس,أذان الظهر,غروب الشمس,أذان المغرب,نصف الليل الشرعي,نصف الليل الفلكي\n';
      var dayNames=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
@@ -4816,7 +4930,7 @@ let fetching=false;
      ex.rows.forEach(function(r){ if(!r) return; var dt=new Date(ex.y, ex.m-1, r.day); var wd=dayNames[dt.getDay()]||''; var t=r.times||{}; function v(x){ return x==null?'--:--':String(x); } lines.push(wd+'\t'+r.date+'\t'+v(t.fajr)+'\t'+v(t.sunrise)+'\t'+v(t.dhuhr)+'\t'+v(t.sunset)+'\t'+v(t.maghreb)+'\t'+v(t.midnight)+'\t'+v(t.astronomicalMidnight)); });
      var text=lines.join('\n');
      try{
-      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(function(){ if(njP_monthStatus) njP_monthStatus.textContent='✅ تم نسخ الجدول — الصقه في Excel أو Sheets'; }, function(){ throw new Error('النسخ غير متاح'); }); }
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(function(){ if(njP_monthStatus) njP_monthStatus.textContent='✅ تم نسخ الجدول'; }, function(){ throw new Error('النسخ غير متاح'); }); }
       else{ var ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); if(njP_monthStatus) njP_monthStatus.textContent='✅ تم نسخ الجدول'; }
      }catch(e){ alert('تعذر النسخ: '+String(e&&e.message?e.message:e)); }
    }
