@@ -4166,7 +4166,7 @@ let fetching=false;
       <div class="prayer-center-miladi" id="p-center-miladi">${miladiText}</div>
      </div>
      <div id="p-status" class="prayer-status" style="display:${cached?'none':'block'}"><div style="font-size:20px">⏳</div>جاري جلب أحدث بيانات الصلاة...<br><span style="font-size:11px;opacity:0.8">قد تستغرق بعض الوقت</span><div style="margin-top:8px;height:4px;background:rgba(255,255,255,0.08);border-radius:999px;overflow:hidden"><div style="width:100%;height:100%;background:linear-gradient(90deg,#d4af37,#fff,#d4af37);background-size:200% 100%;animation:loadBar 1.2s infinite linear"></div></div></div>
-     <div class="sg-tabs"><button class="sg-tab active" data-sg-view="day">اليوم</button><button class="sg-tab" data-sg-view="month">الشهر</button><button class="sg-tab" data-sg-view="year">السنة</button><button class="sg-tab" data-sg-view="moon">القمر والإضافات</button></div>
+     <div class="sg-tabs"><button class="sg-tab active" data-sg-view="day">اليوم</button><button class="sg-tab" data-sg-view="month">الشهر</button><button class="sg-tab" data-sg-view="year" style="display:none">السنة</button><button class="sg-tab" data-sg-view="moon" style="display:none">القمر والإضافات</button></div>
      <div id="sg-view-day"><div id="p-cards">${cached? prayerDarkHTML(cached.data.prayers):''}</div><div id="sg-day-extra"></div><details id="sg-day-details"><summary>تفاصيل أكتر</summary><div id="sg-day-details-body"></div></details></div>
      <div id="sg-view-month" style="display:none"><div class="sg-month-head"><select id="sg-month-sel"></select></div><div id="sg-month-list"></div></div>
      <div id="sg-view-year" style="display:none"><div id="sg-year-grid"></div><div id="sg-year-hijri-detail" style="display:none"></div></div>
@@ -7592,7 +7592,7 @@ let fetching=false;
     if(!d) return '';
     var map = window._sayeghMapDayToPrayers ? window._sayeghMapDayToPrayers(d) : null;
     if(!map) return '';
-    var pairs = [['السحر',d.saharTime],['الإمساك',d.imsakTime],['الفجر',d.dawnTime],['الصبح',d.subhTime],['الشروق',d.sunriseTime],['الزوال',d.zawalTime],['الظهر',d.dhuhrTime],['العصر 1',d.asrTime_1],['العصر 2',d.asrTime_2],['الغروب',d.sunsetTime],['المغرب',d.maghrebTime],['العشاء',d.ishaTime],['منتصف الليل',d.midnightTime]];
+    var pairs = [['السحر',d.saharTime],['الإمساك',d.imsakTime],['الفجر',d.dawnTime],['الصبح',d.subhTime],['الشروق',d.sunriseTime],['الزوال',d.zawalTime],['الظهر',d.dhuhrTime],['العصر',d.asrTime_1],['الغروب',d.sunsetTime],['المغرب',d.maghrebTime],['العشاء',d.ishaTime],['منتصف الليل',d.midnightTime]];
     var out = '';
     for(var i=0;i<pairs.length;i++){ if(pairs[i][1]) out += '<div>'+esc(pairs[i][0])+' : '+num(pairs[i][1])+'</div>'; }
     return out;
@@ -7614,24 +7614,17 @@ let fetching=false;
     var moonset = ex ? ex.moonsetTime : null;
     var borj = window._sayeghMoonBorj || null;
     var isScorpio = !!(borj && String(borj).indexOf('عقرب')!==-1);
+    var borjText = borj ? esc(borj) : (window._sayeghMoonBorjTried ? 'غير متوفر' : 'جارٍ الجلب…');
+    if(!borj && !window._sayeghMoonBorjTried && !window._sayeghMoonBorjFetching && typeof window._sayeghFetchMoonBorj==='function'){
+      window._sayeghMoonBorjFetching=true;
+      try{ window._sayeghFetchMoonBorj(); }catch(e){ window._sayeghMoonBorjFetching=false; }
+    }
     var html = '';
     html += '<div style="border:1px solid rgba(212,175,55,.18);border-radius:12px;padding:12px;background:rgba(0,0,0,.18);margin-top:10px">';
     html += '<div style="font-weight:900;color:#fde68a;font-size:13px">القمر اليوم</div>';
-    html += '<div class="sg-pill-row" style="margin-top:8px">';
-    if(borj){
-      html += '<span class="sg-pill" style="'+(isScorpio?'background:rgba(245,158,11,.18);border-color:#f59e0b':'')+'"><b>القمر في</b>'+esc(borj)+'</span>';
-    }else if(window._sayeghMoonBorjTried){
-      html += '<span class="sg-pill"><b>القمر في</b>غير متوفر</span>';
-    }else{
-      html += '<span class="sg-pill"><b>القمر في</b>جارٍ الجلب…</span>';
-      if(!window._sayeghMoonBorjFetching && typeof window._sayeghFetchMoonBorj==='function'){
-        window._sayeghMoonBorjFetching=true;
-        try{ window._sayeghFetchMoonBorj(); }catch(e){ window._sayeghMoonBorjFetching=false; }
-      }
-    }
-    html += '<span class="sg-pill"><b>طلوع القمر</b>'+num(moonrise || '-')+'</span>';
-    html += '<span class="sg-pill"><b>غروب القمر</b>'+num(moonset || '-')+'</span>';
-    html += '</div></div>';
+    html += '<div style="margin-top:8px;font-size:15px;font-weight:900;color:'+(isScorpio?'#fbbf24':'#ffffff')+'">القمر في '+borjText+'</div>';
+    html += '<div style="margin-top:6px;font-size:13px;color:#e8d9a3">طلوع القمر '+num(moonrise || '-')+'<span style="color:#9ca3af;margin:0 8px">•</span>غروب القمر '+num(moonset || '-')+'</div>';
+    html += '</div>';
     box.innerHTML = html;
     if(det) det.innerHTML = '';
   };
@@ -7685,16 +7678,33 @@ let fetching=false;
         return false;
       }
       var found=null;
+      var map={};
       for(var i2=0;i2<arr.length;i2++){
         var it=arr[i2]; var ds=String(it.date||it.miladi_date||it.miladiDate||it.day||it.gregorian||'');
-        if(ds && dateMatches(ds)){ found=findBorjIn(it); if(found) break; }
+        var b2=findBorjIn(it);
+        if(b2 && ds){
+          var nums2=String(ds).match(/\d+/g);
+          if(nums2){
+            var ns2=nums2.map(function(n){ return parseInt(n,10); });
+            var y2=null, m2=null, d2=null;
+            if(ns2.length>=3){
+              if(ns2[0]>1000){ y2=ns2[0]; m2=ns2[1]; d2=ns2[2]; }
+              else if(ns2[2]>1000){ d2=ns2[0]; m2=ns2[1]; y2=ns2[2]; }
+              else { m2=ns2[0]; d2=ns2[1]; y2=ns2[2]; }
+            }else if(ns2.length===2){ m2=ns2[0]; d2=ns2[1]; }
+            if(m2 && d2){ map[m2+'-'+d2]=b2; if(y2) map[y2+'-'+m2+'-'+d2]=b2; }
+          }
+        }
+        if(ds && dateMatches(ds) && !found){ found=findBorjIn(it); }
       }
+      window._sayeghMoonBorjMap=map;
       if(found){ window._sayeghMoonBorj=found; }
     }catch(e){
     }finally{
       window._sayeghMoonBorjFetching=false;
       window._sayeghMoonBorjTried=true;
       try{ if(window._sayeghRenderDayExtras && document.getElementById('sg-day-extra')) window._sayeghRenderDayExtras(); }catch(e2){}
+      try{ var _sel=document.getElementById('sg-month-sel'); var _cur=_sel && _sel.value ? parseInt(_sel.value,10) : (new Date().getMonth()+1); if(window._sayeghRenderMonth && document.getElementById('sg-month-list')) window._sayeghRenderMonth(_cur); }catch(e3){}
     }
   };
   window._sayeghRenderMonth = function(monthNum){
@@ -7722,12 +7732,19 @@ let fetching=false;
       list.innerHTML = '<div class="prayer-status">لا يوجد شهر '+esc(m)+'.</div>';
       return;
     }
+    if(!window._sayeghMoonBorjMap && !window._sayeghMoonBorjFetching && !window._sayeghMoonBorjTried && typeof window._sayeghFetchMoonBorj==='function'){
+      window._sayeghMoonBorjFetching=true;
+      try{ window._sayeghFetchMoonBorj(); }catch(e){ window._sayeghMoonBorjFetching=false; }
+    }
     var rows = '';
     for(var k=0;k<mm.days.length;k++){
       var d = mm.days[k];
       var detail = dayPrayerRows(d);
+      var borjForDay = (window._sayeghMoonBorjMap && window._sayeghMoonBorjMap[m+'-'+d.day]) || null;
       rows += '<div class="sg-month-row" data-day="'+esc(d.day)+'">';
       rows += '<div class="sg-month-row-head"><span class="sg-month-day">'+num(d.day)+' - '+esc(d.date || '')+'</span><span class="sg-month-hijri">هجري '+num(d.hijriDate || '')+'</span></div>';
+      if(borjForDay) rows += '<div style="margin-top:4px;font-size:12px;color:#e8d9a3">القمر في '+esc(borjForDay)+'</div>';
+      else if(!window._sayeghMoonBorjTried) rows += '<div style="margin-top:4px;font-size:12px;color:#9ca3af">القمر في جارٍ الجلب…</div>';
       rows += '<div class="sg-month-times"><span>إمساك <b>'+num(d.imsakTime || '-')+'</b></span><span>صبح <b>'+num(d.subhTime || '-')+'</b></span><span>ظهر <b>'+num(d.dhuhrTime || '-')+'</b></span><span>مغرب <b>'+num(d.maghrebTime || '-')+'</b></span><span>عشاء <b>'+num(d.ishaTime || '-')+'</b></span></div>';
       if(detail) rows += '<div class="sg-month-detail">'+detail+'</div>';
       rows += '</div>';
