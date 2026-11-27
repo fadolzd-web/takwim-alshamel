@@ -7755,34 +7755,33 @@ let fetching=false;
     }
     list.innerHTML = rows;
   };
-  window._sayeghRenderYear = function(){
+  window._sayeghRenderYear = async function(){
     var grid = document.getElementById('sg-year-grid');
     if(!grid) return;
-    var full = window._sayeghFullCity;
-    if(!full || !full.months){
-      grid.innerHTML = '<div class="prayer-status">اختر المدينة أولاً. تعرض السنة من بيانات المدينة نفسها.</div>';
-      return;
-    }
     var detail = document.getElementById('sg-year-hijri-detail');
     if(detail){ detail.style.display='none'; detail.innerHTML=''; }
     grid.style.display='grid';
-    var months = full.months.slice().sort(function(a,b){ return (a.month||0)-(b.month||0); });
-    var out = '';
-    for(var i=0;i<months.length;i++){
-      var mm = months[i];
-      if(!mm.days || !mm.days.length) continue;
-      var f = mm.days[0], l = mm.days[mm.days.length-1];
-      var name = f.monthNameAr || ('شهر '+mm.month);
-      var from = window._sayeghFmtHijriDate(f.hijriDate || '');
-      var to = window._sayeghFmtHijriDate(l.hijriDate || '');
-      var range = '';
-      if(from && to) range = 'من ' + esc(from) + ' إلى ' + esc(to);
-      else if(from) range = esc(from);
-      out += '<div class="sg-year-card" data-month="'+mm.month+'"><div><b>'+esc(name)+'</b><small>'+esc(range)+'</small></div><div style="text-align:left"><span>'+num(mm.days.length)+' يوم</span><div class="sg-year-num">'+num(mm.month)+'</div></div></div>';
+    grid.innerHTML = '<div class="prayer-status">جارٍ الجلب من المصدر...</div>';
+    try{
+      var hy = window._calCurrentHijriYear();
+      var code = window._sayeghFullCode || '';
+      var resolved = await window._calResolveHijriYear(hy, code);
+      if(!resolved || !resolved.months) throw new Error('NO_DATA');
+      var out = '';
+      for(var i=0;i<resolved.months.length;i++){
+        var mm = resolved.months[i];
+        var from = window._sayeghFmtMiladi(window._calFmtISO(mm.start));
+        var to = window._sayeghFmtMiladi(window._calFmtISO(mm.end));
+        var range = 'من ' + esc(from) + ' إلى ' + esc(to);
+        out += '<div class="sg-year-card" data-month="'+mm.n+'"><div><b>'+esc(mm.name)+' '+num(hy)+'</b><small>'+esc(range)+'</small></div><div style="text-align:left"><span>'+num(mm.len)+' يوم</span><div class="sg-year-num">'+num(mm.n)+'</div></div></div>';
+      }
+      out += '<div style="font-size:12px;color:#9ca3af;margin-top:8px">المصدر: ' + esc(resolved.source) + ' - السنة الحالية من الصايغ، وإذا تعذر الصايغ فمن أم القرى. السنوات السابقة واللاحقة من أم القرى.</div>';
+      grid.innerHTML = out;
+    }catch(e){
+      grid.innerHTML = '<div class="prayer-status">تعذر الجلب من المصدر. حاول مجدداً.</div>';
     }
-    grid.innerHTML = out;
   };
-  window._sayeghRenderMoon = function(){
+window._sayeghRenderMoon = function(){
     var box = document.getElementById('sg-moon-today');
     if(!box) return;
     var ex = window._sayeghLastExtras || null;
@@ -7910,39 +7909,220 @@ let fetching=false;
       window._sayeghActiveExtra = kind;
     }catch(e){}
   };
-  window._sayeghHijriCache = window._sayeghHijriCache || null;
-  window._sayeghShowHijriForMonth = async function(monthNum){
+  window._UMM_AL_QURA_1448 = { year: 1448, months: [
+    { n: 1, name: 'محرم', len: 29, start: '2026-06-16' },
+    { n: 2, name: 'صفر', len: 30, start: '2026-07-15' },
+    { n: 3, name: 'ربيع الأول', len: 29, start: '2026-08-14' },
+    { n: 4, name: 'ربيع الآخر', len: 30, start: '2026-09-12' },
+    { n: 5, name: 'جمادى الأولى', len: 30, start: '2026-10-12' },
+    { n: 6, name: 'جمادى الآخرة', len: 29, start: '2026-11-11' },
+    { n: 7, name: 'رجب', len: 30, start: '2026-12-10' },
+    { n: 8, name: 'شعبان', len: 30, start: '2027-01-09' },
+    { n: 9, name: 'رمضان', len: 29, start: '2027-02-08' },
+    { n: 10, name: 'شوال', len: 30, start: '2027-03-09' },
+    { n: 11, name: 'ذو القعدة', len: 29, start: '2027-04-08' },
+    { n: 12, name: 'ذو الحجة', len: 30, start: '2027-05-07' }
+  ] };
+  window._calSayeghCache = window._calSayeghCache || {};
+  window._calParseMiladi = function(s){
+    try{
+      var str = String(s||'').trim().replace(/-/g,'/');
+      var parts = str.split('/');
+      if(parts.length!==3) return null;
+      var y, mo, d;
+      if(parts[0].length===4){ y=parseInt(parts[0],10); mo=parseInt(parts[1],10); d=parseInt(parts[2],10); }
+      else { d=parseInt(parts[0],10); mo=parseInt(parts[1],10); y=parseInt(parts[2],10); }
+      if(!y||!mo||!d) return null;
+      var dt = new Date(Date.UTC(y, mo-1, d));
+      if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==mo-1||dt.getUTCDate()!==d) return null;
+      return dt;
+    }catch(e){ return null; }
+  };
+  window._calAddDays = function(dt, n){
+    try{ var c = new Date(dt.getTime()); c.setUTCDate(c.getUTCDate()+n); return c; }catch(e){ return null; }
+  };
+  window._calFmtISO = function(dt){
+    try{
+      var y = dt.getUTCFullYear();
+      var m = dt.getUTCMonth()+1;
+      var d = dt.getUTCDate();
+      return y + '-' + (m<10?'0'+m:''+m) + '-' + (d<10?'0'+d:''+d);
+    }catch(e){ return ''; }
+  };
+  window._calUmmMonths = function(hijriYear){
+    try{
+      if(parseInt(hijriYear,10)!==1448) return null;
+      var out = [];
+      var src = window._UMM_AL_QURA_1448.months;
+      for(var i=0;i<src.length;i++){
+        var st = window._calParseMiladi(src[i].start);
+        if(!st) return null;
+        var en = window._calAddDays(st, src[i].len-1);
+        out.push({ n: src[i].n, name: src[i].name, len: src[i].len, start: st, end: en, source: 'أم القرى' });
+      }
+      return out;
+    }catch(e){ return null; }
+  };
+  window._calCurrentHijriYear = function(){
+    try{
+      var ex = window._sayeghLastExtras || null;
+      if(ex && ex.hijriYear){ var y = parseInt(String(ex.hijriYear).match(/14\d\d/)||[''][0],10); if(y) return y; }
+      var full = window._sayeghFullCity || null;
+      if(full && full.months){
+        var now = new Date(); var mm = null;
+        for(var i=0;i<full.months.length;i++){ if(full.months[i] && full.months[i].month===now.getMonth()+1){ mm=full.months[i]; break; } }
+        if(mm && mm.days){
+          for(var k=0;k<mm.days.length;k++){
+            if(mm.days[k] && mm.days[k].day===now.getDate()){
+              var hy = mm.days[k].hijriYear || mm.days[k].hijriYearAr || mm.days[k].hijriYearEn || '';
+              var yy = parseInt(String(hy).match(/14\d\d/)||[''][0],10); if(yy) return yy;
+            }
+          }
+        }
+      }
+    }catch(e){}
+    return 1448;
+  };
+  window._calFetchSayeghYear = async function(cityCode, gregYear){
+    var key = String(cityCode||'') + '|' + String(gregYear);
+    if(window._calSayeghCache[key]) return window._calSayeghCache[key];
+    var url = 'https://api.sayeghcalendar.com/hijri-calendar/' + gregYear;
+    var fetched = null;
+    try{
+      if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp){
+        var r = await window.Capacitor.Plugins.CapacitorHttp.get({ url: url, headers: { Accept: 'application/json' }, connectTimeout: 15000, readTimeout: 15000, responseType: 'json' });
+        if(r && r.status>=200 && r.status<300 && r.data) fetched = (typeof r.data==='string') ? JSON.parse(r.data) : r.data;
+      }
+    }catch(e){}
+    if(!fetched){
+      var res = await fetch(url, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+      if(res && res.ok) fetched = await res.json();
+      else throw new Error('HTTP');
+    }
+    window._calSayeghCache[key] = fetched;
+    return fetched;
+  };
+  window._calBuildSayeghMonths = function(days, hijriYear){
+    try{
+      var names = window.hijriMonthsCanonical || ['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+      var norm = function(s){ return String(s||'').replace(/[\u064B-\u065F\u0670]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/\s+/g,'').trim(); };
+      var byMonth = {};
+      for(var i=0;i<days.length;i++){
+        var it = days[i] || {};
+        var hd = (it.hijri_day!=null ? parseInt(it.hijri_day,10) : (it.hijriDate!=null ? parseInt((String(it.hijriDate).match(/^\s*\d+/)||[''])[0],10) : NaN));
+        var hy = (it.hijri_year!=null ? parseInt(String(it.hijri_year).match(/14\d\d/)||[''][0],10) : NaN);
+        if(isNaN(hy) && it.hijriDate!=null){ hy = parseInt(String(it.hijriDate).match(/14\d\d/)||[''][0],10); }
+        if(isNaN(hd) || isNaN(hy) || hy!==hijriYear) continue;
+        var rawMonth = it.hijri_month_ar || it.hijriMonth || it.hijriMonthAr || '';
+        var idx = -1;
+        for(var mi=0;mi<names.length;mi++){ if(norm(names[mi])===norm(rawMonth)){ idx=mi+1; break; } }
+        if(idx===-1 && it.hijri_month!=null){ var cand=parseInt(it.hijri_month,10); if(cand>=1&&cand<=12) idx=cand; }
+        if(idx===-1) continue;
+        var mil = window._calParseMiladi(it.miladi_date || it.miladiDate || it.date || '');
+        if(!mil) continue;
+        if(!byMonth[idx]) byMonth[idx]=[];
+        byMonth[idx].push({ hd: hd, mil: mil });
+      }
+      var out = [];
+      for(var m=1;m<=12;m++){
+        var arr = byMonth[m] || [];
+        if(!arr.length) continue;
+        arr.sort(function(a,b){ return a.hd-b.hd; });
+        var first = arr[0]; var last = arr[arr.length-1];
+        out.push({ n: m, name: names[m-1], len: arr.length, start: first.mil, end: last.mil, source: 'الصايغ' });
+      }
+      return out.length ? out : null;
+    }catch(e){ return null; }
+  };
+  window._calApplySightingCorrection = function(months){
+    try{
+      if(!months || !months.length) return months;
+      var ex = window._sayeghLastExtras || null;
+      if(!ex || ex.hijriDay==null || !ex.hijriMonthAr) return months;
+      var today = new Date(); var todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+      var names = window.hijriMonthsCanonical || ['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+      var norm = function(s){ return String(s||'').replace(/[\u064B-\u065F\u0670]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/\s+/g,'').trim(); };
+      var curIdx = -1;
+      for(var i=0;i<names.length;i++){ if(norm(names[i])===norm(ex.hijriMonthAr)){ curIdx=i+1; break; } }
+      if(curIdx===-1) return months;
+      var cur = null;
+      for(var j=0;j<months.length;j++){ if(months[j].n===curIdx){ cur=months[j]; break; } }
+      if(!cur) return months;
+      var expectedStart = window._calAddDays(todayUTC, -(parseInt(ex.hijriDay,10)-1));
+      if(!expectedStart) return months;
+      if(window._calFmtISO(expectedStart)===window._calFmtISO(cur.start)) return months;
+      var prev = null;
+      for(var k=0;k<months.length;k++){ if(months[k].n===curIdx-1){ prev=months[k]; break; } }
+      cur.start = expectedStart;
+      if(prev){
+        var diff = Math.round((cur.start.getTime()-prev.start.getTime())/86400000);
+        if(diff>=29 && diff<=30){ prev.len = diff; prev.end = window._calAddDays(prev.start, diff-1); }
+      }
+      return months;
+    }catch(e){ return months; }
+  };
+  window._calResolveHijriYear = async function(hijriYear, cityCode){
+    var hy = parseInt(hijriYear,10);
+    var curHy = window._calCurrentHijriYear();
+    var umm = window._calUmmMonths(hy);
+    if(hy!==curHy){
+      if(umm) return { months: umm, source: 'أم القرى' };
+      return null;
+    }
+    var sayeghMonths = null;
+    try{
+      var code = cityCode || window._sayeghFullCode || '';
+      var gy = new Date().getFullYear();
+      var d1 = await window._calFetchSayeghYear(code, gy);
+      var d2 = null;
+      try{ d2 = await window._calFetchSayeghYear(code, gy+1); }catch(e2){}
+      var allDays = [];
+      var pushDays = function(d){ if(d && d.days && d.days.length){ for(var i=0;i<d.days.length;i++) allDays.push(d.days[i]); } else if(Array.isArray(d)){ for(var j=0;j<d.length;j++) allDays.push(d[j]); } };
+      pushDays(d1); if(d2) pushDays(d2);
+      if(allDays.length) sayeghMonths = window._calBuildSayeghMonths(allDays, hy);
+      if(sayeghMonths && sayeghMonths.length===12){
+        var corrected = window._calApplySightingCorrection(sayeghMonths);
+        return { months: corrected, source: 'الصايغ' };
+      }
+      if(sayeghMonths && sayeghMonths.length && umm){
+        var merged = [];
+        for(var mi=0;mi<umm.length;mi++){
+          var sm = null;
+          for(var si=0;si<sayeghMonths.length;si++){ if(sayeghMonths[si].n===umm[mi].n){ sm=sayeghMonths[si]; break; } }
+          merged.push(sm || umm[mi]);
+        }
+        var corr2 = window._calApplySightingCorrection(merged);
+        return { months: corr2, source: 'الصايغ' };
+      }
+    }catch(e){}
+    if(umm){
+      var corrUmm = window._calApplySightingCorrection(umm);
+      return { months: corrUmm, source: 'أم القرى' };
+    }
+    return null;
+  };
+  window._sayeghShowHijriForMonth = async function(hijriMonthNum, hijriYear){
     var grid = document.getElementById('sg-year-grid');
     var detail = document.getElementById('sg-year-hijri-detail');
     if(!grid || !detail) return;
-    var names = ['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
-    var mName = names[monthNum-1] || ('شهر '+monthNum);
+    var hijriNames = window.hijriMonthsCanonical || ['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+    var hm = parseInt(hijriMonthNum,10);
+    var hy = parseInt(hijriYear,10) || window._calCurrentHijriYear();
+    var mName = hijriNames[hm-1] || ('شهر '+hm);
     grid.style.display='none';
     detail.style.display='block';
     detail.innerHTML = '<div class="prayer-status">جارٍ الجلب من المصدر...</div>';
     try{
-      var d = window._sayeghHijriCache;
-      if(!d){
-        var url = 'https://api.sayeghcalendar.com/hijri-calendar/'+new Date().getFullYear();
-        var fetched = null;
-        try{
-          if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp){
-            var r = await window.Capacitor.Plugins.CapacitorHttp.get({ url:url, headers:{Accept:'application/json'}, connectTimeout:15000, readTimeout:15000, responseType:'json' });
-            if(r && r.status>=200 && r.status<300 && r.data){ fetched = (typeof r.data==='string') ? JSON.parse(r.data) : r.data; }
-          }
-        }catch(e){}
-        if(!fetched){
-          var res = await fetch(url, { headers:{'Accept':'application/json'}, cache:'no-store' });
-          if(res && res.ok) fetched = await res.json();
-          else throw new Error('HTTP');
-        }
-        d = fetched;
-        window._sayeghHijriCache = d;
-      }
+      var code = window._sayeghFullCode || '';
+      var resolved = await window._calResolveHijriYear(hy, code);
+      if(!resolved || !resolved.months) throw new Error('NO_DATA');
+      var month = null;
+      for(var i=0;i<resolved.months.length;i++){ if(resolved.months[i].n===hm){ month=resolved.months[i]; break; } }
+      if(!month) throw new Error('NO_MONTH');
       var html = '<button class="sg-hijri-back" id="sg-hijri-back">عودة إلى السنة</button>';
-      html += '<div class="sg-extra-head">التقويم الهجري - ' + esc(mName) + '</div>';
-      html += '<div style="font-size:12px;color:#9ca3af">المصدر: تقويم الصايغ</div>';
-      html += window._sayeghRenderHijriCalendar(d, monthNum);
+      html += '<div class="sg-extra-head">التقويم الهجري - ' + esc(mName) + ' ' + num(hy) + '</div>';
+      html += '<div style="font-size:12px;color:#9ca3af">المصدر: ' + esc(resolved.source) + ' - كل تاريخ هجري له ما يقابله بالميلادي.</div>';
+      html += window._sayeghRenderHijriCalendar(resolved.months, hm, hy, resolved.source);
       detail.innerHTML = html;
       var back = document.getElementById('sg-hijri-back');
       if(back) back.addEventListener('click', function(){ detail.style.display='none'; detail.innerHTML=''; grid.style.display='grid'; });
@@ -7978,34 +8158,22 @@ let fetching=false;
       return hh + ':' + mm;
     }catch(e){ return String(v); }
   };
-  window._sayeghRenderHijriCalendar = function(d, monthNum){
+  window._sayeghRenderHijriCalendar = function(months, hijriMonthNum, hijriYear, sourceLabel){
     try{
-      var days = (d && d.days) ? d.days : (Array.isArray(d) ? d : []);
-      var year = (d && d.year) ? d.year : (new Date().getFullYear());
-      if(!days || !days.length) return '<div class="prayer-status">لا توجد بيانات للتقويم الهجري.</div>';
-      var target = monthNum || (new Date().getMonth()+1);
-      var filtered = [];
-      for(var i=0;i<days.length;i++){
-        var it = days[i];
-        var ds = String(it.miladi_date || it.miladiDate || it.date || '');
-        var parts = ds.split(/[\/\-]/);
-        var mo = 0;
-        if(parts.length>=2){
-          if(parts[0].length===4) mo = parseInt(parts[1],10);
-          else mo = parseInt(parts[1],10);
-        }
-        if(mo===target) filtered.push(it);
-      }
-      if(!filtered.length) filtered = days.slice(0,30);
-      var names = ['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
-      var mName = names[target-1] || '';
-      var out = '<div class="sg-extra-head">التقويم الهجري - ' + esc(mName) + ' ' + num(year) + '</div>';
-      out += '<div class="sg-extra-note">يعرض أيام الشهر المختار فقط.</div>';
-      for(var k=0;k<filtered.length;k++){
-        var day = filtered[k];
-        var mil = window._sayeghFmtMiladi(day.miladi_date || day.miladiDate || day.date || '');
-        var hij = ((day.hijri_day!=null?day.hijri_day:'') + ' ' + (day.hijri_month_ar || day.hijri_month || '') + ' ' + (day.hijri_year!=null?day.hijri_year:'')).trim();
-        out += '<div class="sg-extra-card"><div class="sg-date">' + esc(mil) + '</div><div class="sg-line">التاريخ الهجري: <span class="sg-val">' + esc(hij || 'غير متوفر') + '</span></div></div>';
+      if(!months || !months.length) return '<div class="prayer-status">لا توجد بيانات للتقويم الهجري.</div>';
+      var hm = parseInt(hijriMonthNum,10);
+      var month = null;
+      for(var i=0;i<months.length;i++){ if(months[i].n===hm){ month=months[i]; break; } }
+      if(!month) return '<div class="prayer-status">لا توجد بيانات للتقويم الهجري.</div>';
+      var hijriNames = window.hijriMonthsCanonical || ['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+      var mName = hijriNames[hm-1] || '';
+      var out = '<div class="sg-extra-head">التقويم الهجري - ' + esc(mName) + ' ' + num(hijriYear) + '</div>';
+      out += '<div class="sg-extra-note">يعرض أيام الشهر الهجري، ولكل يوم هجري ما يقابله بالميلادي.</div>';
+      for(var d=1; d<=month.len; d++){
+        var milDate = window._calAddDays(month.start, d-1);
+        var milStr = window._sayeghFmtMiladi(window._calFmtISO(milDate));
+        var hijStr = d + ' ' + mName + ' ' + hijriYear;
+        out += '<div class="sg-extra-card"><div class="sg-date">' + esc(hijStr) + '</div><div class="sg-line">التاريخ الميلادي: <span class="sg-val">' + esc(milStr) + '</span></div></div>';
       }
       return out;
     }catch(e){ return '<div class="prayer-status">تعذر عرض التقويم الهجري.</div>'; }
