@@ -4695,19 +4695,22 @@ let fetching=false;
        var p1=null; try{ p1=JSON.parse(r1.json.d); }catch(e){ p1=null; }
        if(!p1 || p1.status!=='OK') return;
        var tc=p1.gmtOffset/3600;
+       var dstFromServer=false;
+       if(p1.zoneEnd===null||p1.zoneEnd===undefined){ dstFromServer=false; }
+       else if(p1.dst==='True'||p1.dst===true){ dstFromServer=true; tc=tc-1; }
        var pt=njP_nojumiParseFormatted(p1.formatted||'');
-       var r2=await njP_nojumiPost(NJ_MOON_CUR, {year:pt.year, month:pt.month, day:pt.day, hour:pt.hour, minute:pt.minute, second:pt.second, dst:false, tc:String(tc)});
+       var r2=await njP_nojumiPost(NJ_MOON_CUR, {year:pt.year, month:pt.month, day:pt.day, hour:pt.hour, minute:pt.minute, second:pt.second, dst:dstFromServer, tc:String(tc)});
        var html=''; if(r2.ok && r2.json && r2.json.d!==undefined) html=String(r2.json.d);
        var borj=njP_borjFromHtml(html);
        if(borj) njP_renderDayBorj(borj, html);
      }catch(e){}
    }
-   /* step25: خريطة البرج للشهر — MoonInBorjs يرجع بطاقة عند كل تغير برج، فنأخذ آخر بطاقة تاريخها قبل اليوم المطلوب أو يساويه. */
-   async function njP_fetchBorjMap(startStr,endStr,tc,pt){
+   /* step33: خريطة البرج للشهر — من فايل 80215988: borjFilter:'all' كما في الموقع، و dst من الخادم مع tc ناقص 1 عند الصيفي. MoonInBorjs يرجع بطاقة عند كل تغير برج، فنأخذ آخر بطاقة تاريخها قبل اليوم المطلوب أو يساويه. */
+   async function njP_fetchBorjMap(startStr,endStr,tc,pt,dstFromServer){
      try{
        var sParts=njP_normDate(startStr).split('/');
        var eParts=njP_normDate(endStr).split('/');
-       var r3=await njP_nojumiPost(NJ_MOON_LIST, {syear:sParts[0], smonth:sParts[1], sday:sParts[2], eyear:eParts[0], emonth:eParts[1], eday:eParts[2], hour:pt.hour, minute:pt.minute, second:pt.second, dst:false, tc:String(tc), borjFilter:'', showShamsi:false, showQamari:true, showGregorian:true, solarMonthDisplay:false, lunarMonthDisplay:'0', hijriAdjustment:'0'});
+       var r3=await njP_nojumiPost(NJ_MOON_LIST, {syear:sParts[0], smonth:sParts[1], sday:sParts[2], eyear:eParts[0], emonth:eParts[1], eday:eParts[2], hour:pt.hour, minute:pt.minute, second:pt.second, dst:(dstFromServer===undefined?false:dstFromServer), tc:String(tc), borjFilter:'all', showShamsi:false, showQamari:true, showGregorian:true, solarMonthDisplay:false, lunarMonthDisplay:'0', hijriAdjustment:'0'});
        if(!r3.ok || !r3.json || r3.json.d===undefined) return {entries:[], currentHtml:''};
        var days=njP_aqrabParseMoonCards(r3.json.d);
        var entries=[];
@@ -4767,7 +4770,7 @@ let fetching=false;
        var days=new Date(y, m, 0).getDate();
        var startStr=y+'/'+String(m).padStart(2,'0')+'/01';
        var endStr=y+'/'+String(m).padStart(2,'0')+'/'+String(days).padStart(2,'0');
-       var cacheKey='_nojumi_month_single_v32_'+njP_cur.lat.toFixed(4)+'_'+njP_cur.lng.toFixed(4)+'_'+y+'-'+m;
+       var cacheKey='_nojumi_month_single_v33_'+njP_cur.lat.toFixed(4)+'_'+njP_cur.lng.toFixed(4)+'_'+y+'-'+m;
        if(njP_monthLoadedKey===cacheKey && njP_monthCards && njP_monthCards.innerHTML.trim()) return;
        var cached=null; try{ cached=JSON.parse(localStorage.getItem(cacheKey)||'null'); }catch(e){}
        if(cached && cached.rows && cached.rows.length===days){
@@ -4784,6 +4787,9 @@ let fetching=false;
        var p1=null; try{ p1=JSON.parse(r1.json.d); }catch(e){ p1=null; }
        if(!p1 || p1.status!=='OK'){ if(njP_monthStatus){ njP_monthStatus.style.display='block'; njP_monthStatus.textContent='❌ تعذر الجلب من مركز البحوث - المنطقة الزمنية.'; } return; }
        var tc=p1.gmtOffset/3600;
+       var dstFromServer=false;
+       if(p1.zoneEnd===null||p1.zoneEnd===undefined){ dstFromServer=false; }
+       else if(p1.dst==='True'||p1.dst===true){ dstFromServer=true; tc=tc-1; }
        var pt=njP_nojumiParseFormatted(p1.formatted||'');
        var zoneName=p1.zoneName||'';
        var single=await njP_fetchRangeSingle(lat,lng,startStr,endStr,zoneName);
@@ -4791,7 +4797,7 @@ let fetching=false;
          if(njP_monthStatus){ njP_monthStatus.style.display='block'; njP_monthStatus.textContent='❌ تعذر الجلب من مركز البحوث - '+(single.reason||'الخادم لم يرجع الجدول'); }
          return;
        }
-       var borjMap=await njP_fetchBorjMap(startStr,endStr,tc,pt);
+       var borjMap=await njP_fetchBorjMap(startStr,endStr,tc,pt,dstFromServer);
        var rows=[];
        single.days.forEach(function(p){
          var rawDate=p.prayerDate||p.date||p.prayer_date||'';
@@ -4818,7 +4824,7 @@ let fetching=false;
        var y=njP_getSelectedYear();
        var startStr=y+'/01/01'; var endStr=y+'/12/31';
        var daysInYear=((y%4===0 && y%100!==0) || (y%400===0)) ? 366 : 365;
-       var cacheKey='_nojumi_year_single_v32_'+njP_cur.lat.toFixed(4)+'_'+njP_cur.lng.toFixed(4)+'_'+y;
+       var cacheKey='_nojumi_year_single_v33_'+njP_cur.lat.toFixed(4)+'_'+njP_cur.lng.toFixed(4)+'_'+y;
        if(njP_yearLoadedKey===cacheKey && njP_yearCards && njP_yearCards.innerHTML.trim()) return;
        var cached=null; try{ cached=JSON.parse(localStorage.getItem(cacheKey)||'null'); }catch(e){}
        if(cached && cached.rowsByMonth){
@@ -4833,6 +4839,9 @@ let fetching=false;
        var p1=null; try{ p1=JSON.parse(r1.json.d); }catch(e){ p1=null; }
        if(!p1 || p1.status!=='OK'){ if(njP_yearStatus){ njP_yearStatus.style.display='block'; njP_yearStatus.textContent='❌ تعذر الجلب من مركز البحوث - المنطقة الزمنية.'; } return; }
        var tc=p1.gmtOffset/3600;
+       var dstFromServer=false;
+       if(p1.zoneEnd===null||p1.zoneEnd===undefined){ dstFromServer=false; }
+       else if(p1.dst==='True'||p1.dst===true){ dstFromServer=true; tc=tc-1; }
        var pt=njP_nojumiParseFormatted(p1.formatted||'');
        var zoneName=p1.zoneName||'';
        var single=await njP_fetchRangeSingle(lat,lng,startStr,endStr,zoneName);
@@ -4840,7 +4849,7 @@ let fetching=false;
          if(njP_yearStatus){ njP_yearStatus.style.display='block'; njP_yearStatus.textContent='❌ تعذر الجلب من مركز البحوث - '+(single.reason||'الخادم لم يرجع الجدول'); }
          return;
        }
-       var borjMap=await njP_fetchBorjMap(startStr,endStr,tc,pt);
+       var borjMap=await njP_fetchBorjMap(startStr,endStr,tc,pt,dstFromServer);
        var rowsByMonth={}; for(var mm=1;mm<=12;mm++) rowsByMonth[mm]=[];
        single.days.forEach(function(p){
          var rawDate=p.prayerDate||p.date||p.prayer_date||'';
