@@ -4960,18 +4960,20 @@ let fetching=false;
        var t=r.times||{};
        var isToday=(y+'-'+m+'-'+r.day)===todayKey;
        var borjTxt=r.borj||'';
-       var borjLine=borjTxt ? ('البرج: '+borjTxt+(r.isScorpio?' 🌙':'')) : 'البرج: —';
        var border=r.isScorpio ? '#f59e0b' : (isToday ? '#d4af37' : 'rgba(212,175,55,0.25)');
        var bg=r.isScorpio ? 'rgba(245,158,11,0.12)' : 'rgba(0,0,0,0.18)';
        function row2(label,val){ return '<div class="prayer-row-dark"><span class="prayer-row-dark-label">'+label+'</span><span class="prayer-row-dark-time">'+njP_esc(val==null||val===''?'--:--':String(val))+'</span></div>'; }
-       h+='<div style="border:1px solid '+border+';border-radius:12px;background:'+bg+';padding:12px;margin-bottom:10px">'
-         +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-weight:900;color:#ffffff">'+njP_esc(wd)+' — '+njP_esc(r.date)+'</div>'+(isToday?'<span style="font-size:11px;background:#d4af37;color:#121c2e;padding:2px 8px;border-radius:999px;font-weight:900">اليوم</span>':'')+'</div>'
-         +row2('أذان الفجر', t.fajr)+row2('طلوع الشمس', t.sunrise)+row2('أذان الظهر', t.dhuhr)+row2('غروب الشمس', t.sunset)+row2('أذان المغرب', t.maghreb)+row2('نصف الليل الشرعي', t.midnight)+row2('نصف الليل الفلكي', t.astronomicalMidnight)
-         +'<div style="text-align:center;font-size:13px;font-weight:900;color:'+(r.isScorpio?'#fbbf24':'#e8d9a3')+';margin-top:8px;padding:8px;border-radius:8px;border:1px solid '+(r.isScorpio?'#f59e0b':'rgba(212,175,55,0.18)')+';background:'+(r.isScorpio?'rgba(245,158,11,0.15)':'rgba(0,0,0,0.18)')+'">'+njP_esc(borjLine)+'</div>'
+       var borjShort = borjTxt ? borjTxt : '—';
+       h+='<div class="sg-month-row" data-day="'+r.day+'" style="border-color:'+border+';background:'+bg+'">'
+         +'<div class="sg-month-row-head"><span class="sg-month-day">'+njP_esc(wd)+' — '+njP_esc(r.date)+'</span>'+(isToday?'<span style="font-size:11px;background:#d4af37;color:#121c2e;padding:2px 8px;border-radius:999px;font-weight:900">اليوم</span>':'')+'</div>'
+         +'<div style="margin-top:4px;font-size:12px;color:'+(r.isScorpio?'#fbbf24':'#e8d9a3')+'">القمر في '+njP_esc(borjShort)+(r.isScorpio?' 🌙':'')+'</div>'
+         +'<div class="sg-month-times"><span>فجر <b>'+njP_esc(t.fajr||'-')+'</b></span><span>شروق <b>'+njP_esc(t.sunrise||'-')+'</b></span><span>ظهر <b>'+njP_esc(t.dhuhr||'-')+'</b></span><span>مغرب <b>'+njP_esc(t.maghreb||'-')+'</b></span><span>منتصف <b>'+njP_esc(t.midnight||'-')+'</b></span></div>'
+         +'<div class="sg-month-detail">'+row2('أذان الفجر', t.fajr)+row2('طلوع الشمس', t.sunrise)+row2('أذان الظهر', t.dhuhr)+row2('غروب الشمس', t.sunset)+row2('أذان المغرب', t.maghreb)+row2('نصف الليل الشرعي', t.midnight)+row2('نصف الليل الفلكي', t.astronomicalMidnight)+'</div>'
          +'</div>';
      });
      window._njMonthExport={rows:rows, y:y, m:m, city:city};
      njP_monthCards.innerHTML=h;
+     if(njP_monthCards && njP_monthCards.dataset.njBound!=='1'){ njP_monthCards.dataset.njBound='1'; njP_monthCards.addEventListener('click', function(e){ var row=e.target && e.target.closest ? e.target.closest('.sg-month-row') : null; if(!row) return; row.classList.toggle('open'); }); }
      try{
        var expDiv=document.createElement('div'); expDiv.style.cssText='display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
        expDiv.innerHTML='<button class="sayegh-btn primary" id="nj-p-export-csv" style="flex:1">⬇ تصدير CSV</button><button class="sayegh-btn" id="nj-p-export-copy" style="flex:1">📋 نسخ الجدول</button>';
