@@ -7600,45 +7600,101 @@ let fetching=false;
   window._sayeghRenderDayExtras = function(){
     var box = document.getElementById('sg-day-extra');
     var det = document.getElementById('sg-day-details-body');
-    if(!box && !det) return;
+    var detWrap = document.getElementById('sg-day-details');
+    if(detWrap) detWrap.style.display='none';
+    if(!box) return;
     var ex = window._sayeghLastExtras || null;
     var full = window._sayeghFullCity || null;
     if(!ex && !full){
-      if(box) box.innerHTML = '<div class="prayer-status">جارٍ جلب التاريخ الفارسي وبيانات القمر...</div>';
+      box.innerHTML = '<div class="prayer-status">جارٍ جلب بيانات القمر...</div>';
       if(det) det.innerHTML = '';
       return;
     }
-    var farsi = ex ? ex.farsiDate : null;
     var moonrise = ex ? ex.moonriseTime : null;
     var moonset = ex ? ex.moonsetTime : null;
-    var anwaa = ex ? ex.anwaaName : null;
-    var mawasem = ex ? ex.mawasemName : null;
-    var trueZ = ex ? ex.trueZodiacName : null;
-    var commonZ = ex ? ex.commonZodiacName : null;
-    var coptic = ex ? ex.copticDate : null;
-    var hebrew = ex ? ex.hebrewDate : null;
-    var julian = ex ? ex.julianDate : null;
+    var borj = window._sayeghMoonBorj || null;
+    var isScorpio = !!(borj && String(borj).indexOf('عقرب')!==-1);
     var html = '';
     html += '<div style="border:1px solid rgba(212,175,55,.18);border-radius:12px;padding:12px;background:rgba(0,0,0,.18);margin-top:10px">';
-    html += '<div style="font-weight:900;color:#fde68a;font-size:13px">التاريخ الفارسي</div>';
-    html += '<div style="font-size:13px;color:#e8d9a3;margin-top:4px">'+esc(farsi || 'غير متوفر')+'</div>';
-    html += '<div style="font-weight:900;color:#fde68a;font-size:13px;margin-top:12px">القمر اليوم</div>';
-    html += '<div class="sg-pill-row">';
+    html += '<div style="font-weight:900;color:#fde68a;font-size:13px">القمر اليوم</div>';
+    html += '<div class="sg-pill-row" style="margin-top:8px">';
+    if(borj){
+      html += '<span class="sg-pill" style="'+(isScorpio?'background:rgba(245,158,11,.18);border-color:#f59e0b':'')+'"><b>القمر في</b>'+esc(borj)+'</span>';
+    }else if(window._sayeghMoonBorjTried){
+      html += '<span class="sg-pill"><b>القمر في</b>غير متوفر</span>';
+    }else{
+      html += '<span class="sg-pill"><b>القمر في</b>جارٍ الجلب…</span>';
+      if(!window._sayeghMoonBorjFetching && typeof window._sayeghFetchMoonBorj==='function'){
+        window._sayeghMoonBorjFetching=true;
+        try{ window._sayeghFetchMoonBorj(); }catch(e){ window._sayeghMoonBorjFetching=false; }
+      }
+    }
     html += '<span class="sg-pill"><b>طلوع القمر</b>'+num(moonrise || '-')+'</span>';
     html += '<span class="sg-pill"><b>غروب القمر</b>'+num(moonset || '-')+'</span>';
-    if(anwaa) html += '<span class="sg-pill"><b>الأنواء</b>'+esc(anwaa)+'</span>';
-    if(mawasem) html += '<span class="sg-pill"><b>المواسم</b>'+esc(mawasem)+'</span>';
-    if(trueZ) html += '<span class="sg-pill"><b>برج الشمس الحقيقي</b>'+esc(trueZ)+'</span>';
-    if(commonZ) html += '<span class="sg-pill"><b>برج الشمس الشائع</b>'+esc(commonZ)+'</span>';
     html += '</div></div>';
-    if(box) box.innerHTML = html;
-    if(det){
-      var dh = '';
-      if(coptic) dh += '<div>قبطي : '+esc(coptic)+'</div>';
-      if(hebrew) dh += '<div>عبري : '+esc(hebrew)+'</div>';
-      if(julian) dh += '<div>يولياني : '+esc(julian)+'</div>';
-      if(!dh) dh = '<div>لا توجد تفاصيل إضافية لهذا اليوم.</div>';
-      det.innerHTML = dh;
+    box.innerHTML = html;
+    if(det) det.innerHTML = '';
+  };
+  window._sayeghFetchMoonBorj = async function(){
+    try{
+      var url='https://api.sayeghcalendar.com/moon/zod';
+      var d=null;
+      try{
+        if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp){
+          var r=await window.Capacitor.Plugins.CapacitorHttp.get({url:url,headers:{Accept:'application/json'},connectTimeout:15000,readTimeout:15000,responseType:'json'});
+          if(r && r.status>=200 && r.status<300 && r.data) d=(typeof r.data==='string')?JSON.parse(r.data):r.data;
+        }
+      }catch(e){}
+      if(!d){
+        var res=await fetch(url,{headers:{'Accept':'application/json'},cache:'no-store'});
+        if(res && res.ok) d=await res.json(); else return;
+      }
+      var raw=(d && d.data!=null)?d.data:(d||[]);
+      var arr=[];
+      if(Array.isArray(raw)) arr=raw;
+      else if(raw && typeof raw==='object'){
+        if(raw.days && Array.isArray(raw.days)) arr=raw.days;
+        else if(raw.items && Array.isArray(raw.items)) arr=raw.items;
+        else{
+          for(var k in raw){ if(!Object.prototype.hasOwnProperty.call(raw,k)) continue; var v=raw[k]; if(v && typeof v==='object'){ var cp={}; for(var kk in v){ if(Object.prototype.hasOwnProperty.call(v,kk)) cp[kk]=v[kk]; } if(!cp.date) cp.date=k; arr.push(cp); } }
+        }
+      }
+      if(!arr.length) return;
+      var Z=['الحمل','الثور','الجوزاء','السرطان','الأسد','العذراء','الميزان','العقرب','القوس','الجدي','الدلو','الحوت'];
+      function findBorjIn(obj){
+        try{
+          var vals=[];
+          for(var key in obj){ if(!Object.prototype.hasOwnProperty.call(obj,key)) continue; var vv=obj[key]; if(typeof vv==='string' && vv) vals.push(vv); else if(Array.isArray(vv)){ for(var a=0;a<vv.length;a++){ if(typeof vv[a]==='string' && vv[a]) vals.push(vv[a]); else if(vv[a] && typeof vv[a]==='object'){ for(var k3 in vv[a]){ if(Object.prototype.hasOwnProperty.call(vv[a],k3) && typeof vv[a][k3]==='string' && vv[a][k3]) vals.push(vv[a][k3]); } } } } else if(vv && typeof vv==='object'){ for(var k4 in vv){ if(Object.prototype.hasOwnProperty.call(vv,k4) && typeof vv[k4]==='string' && vv[k4]) vals.push(vv[k4]); } } }
+          for(var i=0;i<vals.length;i++){ for(var j=0;j<Z.length;j++){ if(vals[i].indexOf(Z[j])!==-1) return Z[j]; } }
+        }catch(e){}
+        return null;
+      }
+      function dateMatches(ds){
+        try{
+          var today=new Date(); var ty=today.getFullYear(); var tm=today.getMonth()+1; var td=today.getDate();
+          var nums=String(ds||'').match(/\d+/g); if(!nums) return false;
+          var ns=nums.map(function(n){ return parseInt(n,10); });
+          if(ns.length>=3){
+            var y=ns[0], m=ns[1], dd=ns[2];
+            if(String(ds).indexOf(String(ty))!==-1){ return y===ty && m===tm && dd===td; }
+            return (m===tm && dd===td) || (y===td && m===tm);
+          }
+          if(ns.length===2) return ns[0]===tm && ns[1]===td;
+          if(ns.length===1) return ns[0]===td;
+        }catch(e){}
+        return false;
+      }
+      var found=null;
+      for(var i2=0;i2<arr.length;i2++){
+        var it=arr[i2]; var ds=String(it.date||it.miladi_date||it.miladiDate||it.day||it.gregorian||'');
+        if(ds && dateMatches(ds)){ found=findBorjIn(it); if(found) break; }
+      }
+      if(found){ window._sayeghMoonBorj=found; }
+    }catch(e){
+    }finally{
+      window._sayeghMoonBorjFetching=false;
+      window._sayeghMoonBorjTried=true;
+      try{ if(window._sayeghRenderDayExtras && document.getElementById('sg-day-extra')) window._sayeghRenderDayExtras(); }catch(e2){}
     }
   };
   window._sayeghRenderMonth = function(monthNum){
