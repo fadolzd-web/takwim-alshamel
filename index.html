@@ -762,18 +762,21 @@ function addGregorian(gy,gm,gd,offset){
  return{gy:d.getFullYear(),gm:d.getMonth()+1,gd:d.getDate(),dow:d.getDay(),date:d};
 }
 let days=[];
-let _monthLenFromSayegh=null;try{if(window._sayeghHijriMonthLen)_monthLenFromSayegh=window._sayeghHijriMonthLen(FINAL.hm,FINAL.hy);}catch(e){}
-let MONTH_LEN=(_monthLenFromSayegh===29||_monthLenFromSayegh===30)?_monthLenFromSayegh:((FINAL.len===29||FINAL.len===30)?FINAL.len:30);
+let _dispHm=p,_dispHy=i,_dispLen=null;try{if(window._sayeghHijriMonthLen)_dispLen=window._sayeghHijriMonthLen(_dispHm,_dispHy);}catch(e){}
+if(_dispLen!==29&&_dispLen!==30){try{let _umm=window._calUmmMonths?window._calUmmMonths(_dispHy):null;if(_umm){let _mm=_umm.find((m)=>m.n===_dispHm);if(_mm&&(_mm.len===29||_mm.len===30))_dispLen=_mm.len;}}catch(e){}}
+if(_dispLen!==29&&_dispLen!==30){if(_dispHm===FINAL.hm&&_dispHy===FINAL.hy)_dispLen=(FINAL.len===29||FINAL.len===30)?FINAL.len:30;else _dispLen=30;}
+let _dispStart=null;if(_dispHm===FINAL.hm&&_dispHy===FINAL.hy){_dispStart=addGregorian(DEVICE.gy,DEVICE.gm,DEVICE.gd,1-FINAL.hd);}else{try{let _umm2=window._calUmmMonths?window._calUmmMonths(_dispHy):null;if(_umm2){let _m2=_umm2.find((m)=>m.n===_dispHm);if(_m2&&_m2.start){_dispStart={gy:_m2.start.getUTCFullYear(),gm:_m2.start.getUTCMonth()+1,gd:_m2.start.getUTCDate()};}}}catch(e){}}
+if(!_dispStart){_dispStart=addGregorian(DEVICE.gy,DEVICE.gm,DEVICE.gd,1-FINAL.hd);}
+let MONTH_LEN=_dispLen;
 for(let hd=1;hd<=MONTH_LEN;hd++){
- let off=hd - FINAL.hd;
- let g=addGregorian(DEVICE.gy,DEVICE.gm,DEVICE.gd,off);
+ let g=addGregorian(_dispStart.gy,_dispStart.gm,_dispStart.gd,hd-1);
  days.push({
   pos:hd-1,
-  isToday:hd===FINAL.hd,
+  isToday:(hd===FINAL.hd&&_dispHm===FINAL.hm&&_dispHy===FINAL.hy),
   isCurrentGregorianMonth:true,
   isCurrentHijriMonth:true,
-  hd:hd,hm:FINAL.hm,hy:FINAL.hy,hmn:getHijriMonthName(FINAL.hm),
-  hijri:{hd:hd,hm:FINAL.hm,hy:FINAL.hy,hmn:getHijriMonthName(FINAL.hm)},
+  hd:hd,hm:_dispHm,hy:_dispHy,hmn:getHijriMonthName(_dispHm),
+  hijri:{hd:hd,hm:_dispHm,hy:_dispHy,hmn:getHijriMonthName(_dispHm)},
   gd:g.gd,gDay:g.gd,gMonth:g.gm,gYear:g.gy,
   gy:g.gy,gm:g.gm,gd:g.gd,
   gDate:g.date,
@@ -791,11 +794,15 @@ return{days:days,offset:offset,daysInMonth:MONTH_LEN,start:devStart,DEVICE:DEVIC
 }catch(e){
 let FINAL={hd:28,hm:2,hy:1448,hmn:"صفر المظفر"};
 let dev=new Date();
-let _ml2=null;try{if(window._sayeghHijriMonthLen)_ml2=window._sayeghHijriMonthLen(FINAL.hm,FINAL.hy);}catch(e){}
-let MONTH_LEN2=(_ml2===29||_ml2===30)?_ml2:30;
+let _ml2=null;try{if(window._sayeghHijriMonthLen)_ml2=window._sayeghHijriMonthLen(p,i);}catch(e){}
+if(_ml2!==29&&_ml2!==30){try{let _u2=window._calUmmMonths?window._calUmmMonths(i):null;if(_u2){let _mm2=_u2.find((m)=>m.n===p);if(_mm2&&(_mm2.len===29||_mm2.len===30))_ml2=_mm2.len;}}catch(e){}}
+if(_ml2!==29&&_ml2!==30){if(p===FINAL.hm&&i===FINAL.hy)_ml2=(FINAL.len===29||FINAL.len===30)?FINAL.len:30;else _ml2=30;}
+let _fbStart=null;if(p===FINAL.hm&&i===FINAL.hy){_fbStart=new Date(dev.getFullYear(),dev.getMonth(),dev.getDate()+(1-FINAL.hd));}else{try{let _u3=window._calUmmMonths?window._calUmmMonths(i):null;if(_u3){let _m3=_u3.find((m)=>m.n===p);if(_m3&&_m3.start){_fbStart=new Date(_m3.start.getUTCFullYear(),_m3.start.getUTCMonth(),_m3.start.getUTCDate());}}}catch(e){}}
+if(!_fbStart){_fbStart=new Date(dev.getFullYear(),dev.getMonth(),dev.getDate()+(1-FINAL.hd));}
+let MONTH_LEN2=_ml2;
 let o=Array.from({length:MONTH_LEN2},(f,k)=>{
- let g=new Date(dev.getFullYear(),dev.getMonth(),dev.getDate() + (k+1 - FINAL.hd));
- return{hd:k+1,hm:FINAL.hm,hy:FINAL.hy,hmn:FINAL.hmn,gDay:g.getDate(),gMonth:g.getMonth()+1,gYear:g.getFullYear(),gDate:g,isToday:k+1===FINAL.hd, pos:k, dow:g.getDay()};
+ let g=new Date(_fbStart.getFullYear(),_fbStart.getMonth(),_fbStart.getDate()+k);
+ return{hd:k+1,hm:p,hy:i,hmn:((window.hijriMonthsCanonical||[])[(p-1+12)%12]||FINAL.hmn),gDay:g.getDate(),gMonth:g.getMonth()+1,gYear:g.getFullYear(),gDate:g,isToday:(k+1===FINAL.hd&&p===FINAL.hm&&i===FINAL.hy), pos:k, dow:g.getDay()};
 });
 let firstDow2 = o.length>0 ? o[0].dow : 0;
 let offset2 = (firstDow2 + 2) % 7;
